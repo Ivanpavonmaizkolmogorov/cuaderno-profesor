@@ -167,6 +167,19 @@ function attachEventListeners() {
         });
       }
     }
+
+    // Listener para los checkboxes maestros de UD en el formulario de actividad
+    if (e.target.classList.contains('ud-master-checkbox')) {
+      const udRef = e.target.dataset.udRef;
+      const isChecked = e.target.checked;
+      
+      const form = e.target.closest('form');
+      if (form) {
+        form.querySelectorAll(`.ce-checkbox-for-ud-${udRef}`).forEach(checkbox => {
+          checkbox.checked = isChecked;
+        });
+      }
+    }
   });
 
 

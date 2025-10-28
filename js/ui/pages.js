@@ -663,7 +663,29 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
 export function renderActividadesManagement(module) {
   const { actividades } = getDB();
   const moduleActividades = actividades.filter(a => a.moduleId === module.id);
-  const allCes = module.resultados_de_aprendizaje.flatMap(ra => ra.criterios_de_evaluacion);
+
+  // Agrupar Criterios de Evaluación por Unidad Didáctica (ud_ref)
+  const cesByUd = module.resultados_de_aprendizaje
+    .flatMap(ra => ra.criterios_de_evaluacion)
+    .reduce((acc, ce) => {
+      const udRef = ce.ud_ref || '';
+      // Extraemos los grupos principales de UD, ej: "UD 10" de "UD 10: 1. La gestión..."
+      // o ["UD 2", "UD 3"] de "UD 2 y UD 3"
+      const mainUds = udRef.match(/UD \d+/g);
+
+      if (mainUds) {
+        mainUds.forEach(ud => {
+          if (!acc[ud]) acc[ud] = [];
+          acc[ud].push(ce);
+        });
+      } else {
+        const fallbackKey = 'Sin Unidad Didáctica';
+        if (!acc[fallbackKey]) acc[fallbackKey] = [];
+        acc[fallbackKey].push(ce);
+      }
+      return acc;
+    }, {});
+  const sortedUds = Object.keys(cesByUd).sort();
 
   return `
     <div class="my-6 bg-white dark:bg-gray-800 shadow-lg rounded-lg">
@@ -701,22 +723,23 @@ export function renderActividadesManagement(module) {
                 <option value="3">3er Trimestre</option>
               </select>
               <p class="text-sm mb-2">Criterios de Evaluación a los que se asocia:</p>
-              <div class="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1" id="ce-checkbox-container">
-                ${module.resultados_de_aprendizaje.map(ra => `
+              <div class="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1" id="ce-checkbox-container">
+                ${sortedUds.map(ud => `
                   <div class="py-1">
                     <label class="flex items-center gap-2 text-sm font-bold">
-                      <input type="checkbox" class="ra-master-checkbox" data-ra-id="${ra.ra_id}">
-                      <span>${ra.ra_id}</span>
+                      <input type="checkbox" class="ud-master-checkbox" data-ud-ref="${ud}">
+                      <span>${ud}</span>
                     </label>
                     <div class="pl-6 mt-1 space-y-1">
-                      ${ra.criterios_de_evaluacion.map(ce => `
+                      ${cesByUd[ud].map(ce => `
                         <label class="flex items-center gap-2 text-sm">
-                          <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-${ra.ra_id}">
+                          <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-ud-${ud}">
                           <span>${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...</span>
                         </label>
                       `).join('')}
                     </div>
-                  </div>`).join('')}
+                  </div>
+                `).join('')}
               </div>
               <button type="submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
                 Crear Actividad
