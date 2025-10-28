@@ -61,17 +61,32 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
       raTotals[ra.ra_id] = parseFloat(raGrade.toFixed(2));
     }
 
-    // La nota del módulo es la media de las notas de los RAs (sin ponderar entre ellos)
-    // Si es un cálculo trimestral, solo promediamos los RAs que tienen nota.
-    // Si es el cálculo final, promediamos todos los RAs (los no evaluados cuentan como 0).
-    const allRaGrades = Object.values(raTotals);
-    const evaluatedRaGrades = allRaGrades.filter(grade => grade > 0);
+    let moduleGrade;
 
+    if (trimestre) {
+      // Para cálculos trimestrales, la nota del módulo es la media ponderada de TODOS los CEs
+      // que han sido evaluados en este trimestre, independientemente del RA al que pertenezcan.
+      let trimesterCeWeightedTotal = 0;
+      let trimesterCeTotalWeight = 0;
 
-    const totalSumOfGrades = allRaGrades.reduce((sum, grade) => sum + grade, 0);
-    const divisor = trimestre ? (evaluatedRaGrades.length || 1) : ras.length;
-
-    const moduleGrade = totalSumOfGrades / divisor;
+      // Iterar a través de todos los CEs del módulo
+      for (const ra of ras) {
+        for (const ce of ra.criterios_de_evaluacion) {
+          // Si este CE tiene una nota final (es decir, ha sido evaluado en este trimestre)
+          if (ceFinalGrades[ce.ce_id] !== undefined) {
+            const grade = ceFinalGrades[ce.ce_id];
+            const weight = ce.peso || 0;
+            trimesterCeWeightedTotal += (grade * weight);
+            trimesterCeTotalWeight += weight;
+          }
+        }
+      }
+      moduleGrade = (trimesterCeTotalWeight > 0) ? (trimesterCeWeightedTotal / trimesterCeTotalWeight) : 0;
+    } else {
+      // Para la nota final, se mantiene la lógica de promediar todos los RAs (los no evaluados cuentan como 0).
+      const totalSumOfRaGrades = Object.values(raTotals).reduce((sum, grade) => sum + grade, 0);
+      moduleGrade = (ras.length > 0) ? (totalSumOfRaGrades / ras.length) : 0;
+    }
 
 
     studentData[student.id] = {
