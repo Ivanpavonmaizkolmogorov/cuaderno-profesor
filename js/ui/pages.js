@@ -625,13 +625,22 @@ export function renderActividadesManagement(module) {
                 <option value="3">3er Trimestre</option>
               </select>
               <p class="text-sm mb-2">Criterios de Evaluación a los que se asocia:</p>
-              <div class="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
-                ${allCes.map(ce => `
-                  <label class="flex items-center gap-2 text-sm">
-                    <input type="checkbox" name="ceIds" value="${ce.ce_id}">
-                    <span>${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...</span>
-                  </label>
-                `).join('')}
+              <div class="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1" id="ce-checkbox-container">
+                ${module.resultados_de_aprendizaje.map(ra => `
+                  <div class="py-1">
+                    <label class="flex items-center gap-2 text-sm font-bold">
+                      <input type="checkbox" class="ra-master-checkbox" data-ra-id="${ra.ra_id}">
+                      <span>${ra.ra_id}</span>
+                    </label>
+                    <div class="pl-6 mt-1 space-y-1">
+                      ${ra.criterios_de_evaluacion.map(ce => `
+                        <label class="flex items-center gap-2 text-sm">
+                          <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-${ra.ra_id}">
+                          <span>${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...</span>
+                        </label>
+                      `).join('')}
+                    </div>
+                  </div>`).join('')}
               </div>
               <button type="submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
                 Crear Actividad
@@ -678,13 +687,22 @@ export function renderActividadDetailPage() {
                 <option value="3" ${actividad.trimestre === '3' ? 'selected' : ''}>3er Trimestre</option>
               </select>
               <p class="text-sm">Criterios de Evaluación asociados:</p>
-              <div class="max-h-48 overflow-y-auto border rounded-md p-2 space-y-1 bg-white dark:bg-gray-800">
-                ${allCes.map(ce => `
-                  <label class="flex items-center gap-2 text-sm">
-                    <input type="checkbox" name="ceIds" value="${ce.ce_id}" ${actividad.ceIds.includes(ce.ce_id) ? 'checked' : ''}>
-                    <span>${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...</span>
-                  </label>
-                `).join('')}
+              <div class="max-h-48 overflow-y-auto border rounded-md p-2 space-y-1 bg-white dark:bg-gray-800" id="ce-checkbox-container">
+                ${module.resultados_de_aprendizaje.map(ra => `
+                  <div class="py-1">
+                    <label class="flex items-center gap-2 text-sm font-bold">
+                      <input type="checkbox" class="ra-master-checkbox" data-ra-id="${ra.ra_id}">
+                      <span>${ra.ra_id}</span>
+                    </label>
+                    <div class="pl-6 mt-1 space-y-1">
+                      ${ra.criterios_de_evaluacion.map(ce => `
+                        <label class="flex items-center gap-2 text-sm">
+                          <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-${ra.ra_id}" ${actividad.ceIds.includes(ce.ce_id) ? 'checked' : ''}>
+                          <span>${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...</span>
+                        </label>
+                      `).join('')}
+                    </div>
+                  </div>`).join('')}
               </div>
               <div class="flex gap-2 mt-4">
                 <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Cambios</button>

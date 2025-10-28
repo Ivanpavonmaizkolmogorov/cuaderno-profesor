@@ -80,6 +80,21 @@ function attachEventListeners() {
       e.preventDefault();
       handlers.handleSetPage(pageNavBtn.dataset.page);
     }
+
+    // Listener para los checkboxes maestros de RA en los formularios de actividad
+    // Se delega al contenedor de contenido para que funcione en cualquier página
+    if (e.target.classList.contains('ra-master-checkbox')) {
+      const raId = e.target.dataset.raId;
+      const isChecked = e.target.checked;
+      
+      // Buscar el contenedor padre más cercano para limitar el querySelector
+      const form = e.target.closest('form');
+      if (form) {
+        form.querySelectorAll(`.ce-checkbox-for-${raId}`).forEach(checkbox => {
+          checkbox.checked = isChecked;
+        });
+      }
+    }
   });
 
 
