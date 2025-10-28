@@ -83,9 +83,19 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
       }
       moduleGrade = (trimesterCeTotalWeight > 0) ? (trimesterCeWeightedTotal / trimesterCeTotalWeight) : 0;
     } else {
-      // Para la nota final, se mantiene la lógica de promediar todos los RAs (los no evaluados cuentan como 0).
-      const totalSumOfRaGrades = Object.values(raTotals).reduce((sum, grade) => sum + grade, 0);
-      moduleGrade = (ras.length > 0) ? (totalSumOfRaGrades / ras.length) : 0;
+      // Para la nota final, la nota del módulo es la media ponderada de TODOS los CEs del módulo.
+      // Los CEs no evaluados explícitamente (no presentes en ceFinalGrades) cuentan como 0.
+      let finalCeWeightedTotal = 0;
+      let finalCeTotalWeight = 0;
+
+      // Iterar a través de todos los CEs del módulo (allCes ya contiene todos los CEs)
+      allCes.forEach(ce => {
+        const grade = ceFinalGrades[ce.ce_id] ?? 0; // Si no hay nota, es un 0 para la final
+        const weight = ce.peso || 0;
+        finalCeWeightedTotal += (grade * weight);
+        finalCeTotalWeight += weight;
+      });
+      moduleGrade = (finalCeTotalWeight > 0) ? (finalCeWeightedTotal / finalCeTotalWeight) : 0;
     }
 
 
