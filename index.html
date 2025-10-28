@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cuaderno del Profesor</title>
+  <!-- Cargar Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Estilos base para una mejor apariencia */
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Estilo para los inputs numéricos */
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    /* Pequeña animación para la apertura del acordeón */
+    .accordion-content {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.3s ease-out;
+    }
+    .accordion-content:not(.hidden) {
+      max-height: 2000px; /* Un valor suficientemente grande */
+    }
+    .sticky-header th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-white">
+
+  <!-- Contenedor para la Cabecera (Header) -->
+  <header id="header-container"></header>
+
+  <!-- Contenedor principal para el contenido de la página -->
+  <main id="content-container"></main>
+
+  <!-- Punto de entrada de la aplicación refactorizada -->
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
