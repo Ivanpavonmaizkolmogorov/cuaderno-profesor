@@ -590,13 +590,13 @@ export function renderActividadesManagement(module) {
   const allCes = module.resultados_de_aprendizaje.flatMap(ra => ra.criterios_de_evaluacion);
 
   return `
-    <div class="my-6">
-      <details class="bg-white dark:bg-gray-800 shadow-lg rounded-lg">
-        <summary class="p-4 cursor-pointer font-semibold text-lg flex justify-between items-center">
-          <span>${ICONS.ClipboardList} Gestionar Actividades Evaluables (${moduleActividades.length})</span>
-          <span class="text-sm text-gray-500">Desplegar/Plegar</span>
-        </summary>
-        <div class="p-6 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="my-6 bg-white dark:bg-gray-800 shadow-lg rounded-lg">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="font-semibold text-lg flex items-center gap-2">
+          ${ICONS.ClipboardList} Gestionar Actividades Evaluables (${moduleActividades.length})
+        </h3>
+      </div>
+      <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Lista de Actividades -->
           <div>
             <h4 class="font-semibold mb-3">Actividades Creadas</h4>
@@ -638,8 +638,7 @@ export function renderActividadesManagement(module) {
               </button>
             </form>
           </div>
-        </div>
-      </details>
+      </div>
     </div>
   `;
 }
