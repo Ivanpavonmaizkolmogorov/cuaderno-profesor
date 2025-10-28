@@ -415,7 +415,7 @@ Marta Pérez Padillo`;
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Pega un listado para añadir o actualizar.</p>
           <textarea id="student-textarea" class="w-full h-32 p-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 font-mono text-sm">${studentText}</textarea>
           <div class="mt-2 flex flex-col gap-2">
-            <button id="process-students-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm">
+            <button id="process-students-btn" data-module-id="${module.id}" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm">
               ${ICONS.Users} Formatear Nombres y Añadir...
             </button>
             <button id="import-students-to-module-btn" data-module-id="${module.id}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
