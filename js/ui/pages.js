@@ -664,6 +664,11 @@ export function renderActividadesManagement(module) {
   const { actividades } = getDB();
   const moduleActividades = actividades.filter(a => a.moduleId === module.id);
 
+  // 1. Crear un Set con todos los CE IDs que ya están en uso en alguna actividad de este módulo.
+  const usedCeIds = new Set(
+    moduleActividades.flatMap(act => act.ceIds)
+  );
+
   // Agrupar Criterios de Evaluación por Unidad Didáctica (ud_ref)
   const cesByUd = module.resultados_de_aprendizaje
     .flatMap(ra => ra.criterios_de_evaluacion)
@@ -726,15 +731,21 @@ export function renderActividadesManagement(module) {
               <div class="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1" id="ce-checkbox-container">
                 ${sortedUds.map(ud => `
                   <div class="py-1">
-                    <label class="flex items-center gap-2 text-sm font-bold">
-                      <input type="checkbox" class="ud-master-checkbox" data-ud-ref="${ud}">
-                      <span>${ud}</span>
-                    </label>
+                    ${ud !== 'Sin Unidad Didáctica' ? `
+                      <label class="flex items-center gap-2 text-sm font-bold">
+                        <input type="checkbox" class="ud-master-checkbox" data-ud-ref="${ud}">
+                        <span>${ud}</span>
+                      </label>
+                    ` : `
+                      <h5 class="text-sm font-bold text-gray-500 dark:text-gray-400">${ud}</h5>
+                    `}
                     <div class="pl-6 mt-1 space-y-1">
                       ${cesByUd[ud].map(ce => `
                         <label class="flex items-center gap-2 text-sm">
                           <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-ud-${ud}">
-                          <span>${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...</span>
+                          <span class="${usedCeIds.has(ce.ce_id) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
+                            ${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...
+                          </span>
                         </label>
                       `).join('')}
                     </div>
