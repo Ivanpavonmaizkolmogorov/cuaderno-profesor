@@ -320,13 +320,20 @@ export function renderModulosPage() {
   if (modules && modules.length > 0) {
     moduleSelectHtml = `
       <div class="mb-6">
-          <label for="module-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Selecciona un módulo para calificar:</label>
-          <select id="module-select" class="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
-            <option value="">-- Selecciona un módulo --</option>
-            ${modules.map(m => `
-              <option key="${m.id}" value="${m.id}" ${m.id === selectedModuleId ? 'selected' : ''}>${m.modulo}</option>
-            `).join('')}
-          </select>
+        <label for="module-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Selecciona un módulo para calificar:</label>
+        <div class="flex items-center gap-2">
+            <select id="module-select" class="flex-grow w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
+              <option value="">-- Selecciona un módulo --</option>
+              ${modules.map(m => `
+                <option key="${m.id}" value="${m.id}" ${m.id === selectedModuleId ? 'selected' : ''}>${m.modulo}</option>
+              `).join('')}
+            </select>
+            ${selectedModule ? `
+              <button id="delete-module-btn" data-module-id="${selectedModule.id}" class="p-3 bg-red-600 hover:bg-red-700 text-white rounded-lg" title="Eliminar módulo seleccionado">
+                ${ICONS.Trash2}
+              </button>
+            ` : ''}
+        </div>
       </div>
       <hr class="my-6 border-gray-200 dark:border-gray-700" />
       ${selectedModule ? `
@@ -676,7 +683,7 @@ export function renderActividadesManagement(module) {
 
   allModuleCes.forEach(ce => {
     const udRef = ce.ud_ref || '';
-    const mainUds = udRef.match(/UD \d+/g) || [];
+    const mainUds = udRef.match(/UD ?\d+/g) || [];
 
     // Almacenar la lista de UDs para este CE
     ceUdInfo[ce.ce_id] = mainUds;
@@ -755,7 +762,7 @@ export function renderActividadesManagement(module) {
                     <div class="pl-6 mt-1 space-y-1">
                       ${cesByUd[ud].map(ce => `
                         <label class="flex items-center gap-2 text-sm">
-                          <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-ud-${ud}">
+                          <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-ud-${ud.replace(/ /g, '-')}">
                           <span class="${usedCeIds.has(ce.ce_id) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} flex items-center gap-1">
                             ${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...
                             ${ceUdInfo[ce.ce_id]?.length > 1 ? `

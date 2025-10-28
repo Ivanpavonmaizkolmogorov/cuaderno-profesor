@@ -175,7 +175,7 @@ function attachEventListeners() {
       
       const form = e.target.closest('form');
       if (form) {
-        form.querySelectorAll(`.ce-checkbox-for-ud-${udRef}`).forEach(checkbox => {
+        form.querySelectorAll(`.ce-checkbox-for-ud-${udRef.replace(/ /g, '-')}`).forEach(checkbox => {
           checkbox.checked = isChecked;
         });
       }
@@ -328,6 +328,11 @@ function attachEventListeners() {
     document.getElementById('process-students-btn')?.addEventListener('click', (e) => {
       const text = document.getElementById('student-textarea').value;
       handlers.handleProcessStudentNames(text, e.currentTarget.dataset.moduleId);
+    });
+    // Listener para el nuevo botón de eliminar módulo
+    document.getElementById('delete-module-btn')?.addEventListener('click', (e) => {
+      const moduleId = e.currentTarget.dataset.moduleId;
+      handlers.handleDeleteModule(moduleId);
     });
 
     document.getElementById('download-student-template-btn')?.addEventListener('click', handlers.handleDownloadStudentTemplate);

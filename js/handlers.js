@@ -422,6 +422,44 @@ export function handleImportModule(text) {
   }
 }
 
+export function handleDeleteModule(moduleId) {
+  const db = state.getDB();
+  const moduleToDelete = db.modules.find(m => m.id === moduleId);
+
+  if (!moduleToDelete) {
+    alert("Error: No se pudo encontrar el módulo a eliminar.");
+    return;
+  }
+
+  if (window.confirm(`¿Estás seguro de que quieres eliminar el módulo "${moduleToDelete.modulo}"?\n\n¡ATENCIÓN! Esta acción es irreversible y borrará también TODAS las actividades, calificaciones y comentarios asociados a este módulo.`)) {
+    // 1. Encontrar las actividades del módulo a eliminar
+    const actividadesToDeleteIds = new Set(db.actividades.filter(a => a.moduleId === moduleId).map(a => a.id));
+
+    // 2. Eliminar las actividades del módulo
+    db.actividades = db.actividades.filter(a => a.moduleId !== moduleId);
+
+    // 3. Eliminar las calificaciones asociadas a esas actividades
+    Object.keys(db.grades).forEach(studentId => {
+      Object.keys(db.grades[studentId]).forEach(actividadId => {
+        if (actividadesToDeleteIds.has(actividadId)) {
+          delete db.grades[studentId][actividadId];
+        }
+      });
+    });
+
+    // 4. Eliminar los comentarios del módulo
+    delete db.comments[moduleId];
+
+    // 5. Finalmente, eliminar el módulo
+    db.modules = db.modules.filter(m => m.id !== moduleId);
+
+    state.setDB(db);
+    state.saveDB();
+    alert(`Módulo "${moduleToDelete.modulo}" y todos sus datos asociados han sido eliminados.`);
+    handleSelectModule(null); // Deseleccionar y volver a la vista principal de módulos
+  }
+}
+
 export function handleClearData() {
   if (window.confirm("¿Estás seguro de que quieres borrar TODOS los datos? Esta acción no se puede deshacer.")) {
     state.setDB({ modules: [], students: [], grades: {}, comments: {}, actividades: [], trimesterGrades: {} });
