@@ -459,9 +459,28 @@ export function renderStudentFormatModal(nameSuggestions, moduleId) {
                     <p class="p-2 bg-gray-100 dark:bg-gray-900 rounded-md text-sm">${item.original}</p>
                   </div>
                   <div>
-                    <label for="${item.id}" class="block text-xs text-gray-500 dark:text-gray-400">Formato Sugerido (Editable)</label>
-                    <input type="text" id="${item.id}" name="${item.id}" value="${item.suggested}"
-                      class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-xs text-gray-500 dark:text-gray-400">Arrastra las palabras para corregir el formato:</label>
+                    <div id="${item.id}" class="name-editor-container flex items-center gap-2 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 min-h-[44px]">
+                      ${(() => {
+                        const [lastNamesStr = '', firstNamesStr = ''] = item.suggested.split(',').map(s => s.trim());
+                        const lastNameParts = lastNamesStr.split(' ').filter(Boolean);
+                        const firstNameParts = firstNamesStr.split(' ').filter(Boolean);
+
+                        const renderPills = (words) => words.map(word => 
+                          `<span draggable="true" class="name-pill cursor-move bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-sm font-medium px-2.5 py-0.5 rounded-full" data-word="${word}">${word}</span>`
+                        ).join('');
+
+                        return `
+                          <div class="name-drop-zone flex-1 flex flex-wrap gap-1 p-1 min-h-[30px] bg-gray-100 dark:bg-gray-800 rounded" data-part="lastNames">
+                            ${renderPills(lastNameParts)}
+                          </div>
+                          <span class="text-gray-400 font-bold">,</span>
+                          <div class="name-drop-zone flex-1 flex flex-wrap gap-1 p-1 min-h-[30px] bg-gray-100 dark:bg-gray-800 rounded" data-part="firstNames">
+                            ${renderPills(firstNameParts)}
+                          </div>
+                        `;
+                      })()}
+                    </div>
                   </div>
                 </div>
               `).join('')}

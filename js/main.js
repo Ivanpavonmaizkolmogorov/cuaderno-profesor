@@ -70,8 +70,20 @@ export function renderApp() {
 
       // Añadir listeners para los botones del modal
       document.getElementById('confirm-student-format-btn')?.addEventListener('click', () => {
-        const form = document.getElementById('format-student-form');
-        const finalNames = Array.from(form.elements).map(input => input.value).join('\n');
+        // Recolectar los nombres desde los editores interactivos
+        const finalNames = Array.from(document.querySelectorAll('.name-editor-container')).map(container => {
+          const lastNamesZone = container.querySelector('[data-part="lastNames"]');
+          const firstNamesZone = container.querySelector('[data-part="firstNames"]');
+          
+          const lastNames = Array.from(lastNamesZone.querySelectorAll('.name-pill')).map(pill => pill.dataset.word).join(' ');
+          const firstNames = Array.from(firstNamesZone.querySelectorAll('.name-pill')).map(pill => pill.dataset.word).join(' ');
+
+          if (!lastNames && !firstNames) {
+            return '';
+          }
+          return `${lastNames}, ${firstNames}`;
+        }).filter(Boolean).join('\n');
+
         modalContainer.innerHTML = ''; // Cerrar modal
         state.setUIProperty('studentNameSuggestions', null); // Limpiar estado
         handlers.handleImportStudentsToModule(finalNames, studentFormatData.moduleId);
@@ -81,6 +93,42 @@ export function renderApp() {
         modalContainer.innerHTML = ''; // Cerrar modal
         state.setUIProperty('studentNameSuggestions', null); // Limpiar estado
       });
+
+      // Lógica de Drag & Drop para los editores de nombres
+      let draggedPill = null;
+
+      document.querySelectorAll('.name-pill').forEach(pill => {
+        pill.addEventListener('dragstart', (e) => {
+          draggedPill = e.target;
+          setTimeout(() => e.target.classList.add('opacity-50'), 0);
+        });
+
+        pill.addEventListener('dragend', (e) => {
+          e.target.classList.remove('opacity-50');
+          draggedPill = null;
+        });
+      });
+
+      document.querySelectorAll('.name-drop-zone').forEach(zone => {
+        zone.addEventListener('dragover', (e) => {
+          e.preventDefault(); // Permite el drop
+          zone.classList.add('bg-green-100', 'dark:bg-green-900');
+        });
+
+        zone.addEventListener('dragleave', (e) => {
+          zone.classList.remove('bg-green-100', 'dark:bg-green-900');
+        });
+
+        zone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          zone.classList.remove('bg-green-100', 'dark:bg-green-900');
+          if (draggedPill) {
+            // Inserta la píldora en la nueva zona
+            zone.appendChild(draggedPill);
+          }
+        });
+      });
+
     }
   }
 }
