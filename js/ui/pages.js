@@ -151,9 +151,10 @@ export function renderAlumnosPage() {
           // Encontrar todos los módulos para este alumno
           const enrolledModules = db.modules
             .filter(m => m.studentIds?.includes(student.id))
-            .map(module => {
-              const calculated = calculateModuleGrades(module, [student], db.grades, db.actividades);
-              const finalGrade = calculated[student.id]?.moduleGrade || 0;
+            .map(module => { 
+              // Usamos las notas ya calculadas y almacenadas en el estado
+              const calculatedGrades = getCalculatedGrades();
+              const finalGrade = calculatedGrades[module.id]?.Final?.[student.id]?.moduleGrade || 0;
               return { name: module.modulo, grade: finalGrade };
             });
 
@@ -167,9 +168,6 @@ export function renderAlumnosPage() {
                 <div class="flex gap-2">
                     <button class="view-history-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-500 hover:bg-gray-600 text-white rounded-lg" data-student-id="${student.id}">
                       ${ICONS.MessageSquare} Historial
-                    </button>
-                    <button class="export-student-pdf-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg" data-student-id="${student.id}">
-                      ${ICONS.DownloadCloud} Exportar PDF
                     </button>
                 </div>
               </div>
@@ -817,8 +815,13 @@ function renderAlumnoView(module, moduleStudents) {
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Columna 1: Calificaciones Finales -->
-        <div class="lg:col-span-1 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Calificaciones Finales</h3>
+        <div class="lg:col-span-1 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 h-fit">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Calificaciones Finales</h3>
+            <button id="export-current-view-pdf-btn" class="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg" data-student-id="${currentStudent.id}" data-module-id="${module.id}" title="Exportar esta vista a PDF">
+              ${ICONS.DownloadCloud} Exportar
+            </button>
+          </div>
           <div class="space-y-4">
             <div class="flex justify-between items-center p-4 bg-green-50 dark:bg-green-900 rounded-lg">
               <span class="text-lg font-bold text-green-800 dark:text-green-200">Nota Final</span>

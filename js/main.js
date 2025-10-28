@@ -127,13 +127,6 @@ function attachEventListeners() {
     document.getElementById('sort-all-desc-btn')?.addEventListener('click', () => handlers.handleSortAllStudents('desc'));
     document.getElementById('student-module-filter')?.addEventListener('change', (e) => handlers.handleFilterStudentsByModule(e.target.value));
 
-    document.querySelectorAll('.export-student-pdf-btn').forEach(button => {
-      button.addEventListener('click', (e) => {
-        const studentId = e.currentTarget.dataset.studentId;
-        handlers.handleExportStudentPdf(studentId);
-      });
-    });
-
 
     // Listener para el historial de comentarios
     document.querySelectorAll('.view-history-btn').forEach(button => {
@@ -337,6 +330,15 @@ function attachEventListeners() {
     if (ui.moduleView === 'alumno') {
         document.getElementById('prev-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('prev'));
         document.getElementById('next-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('next'));
+
+        const exportBtn = document.getElementById('export-current-view-pdf-btn');
+        console.log("Buscando botón de exportación en vista de alumno:", exportBtn); // LOG
+        exportBtn?.addEventListener('click', (e) => {
+          const { studentId, moduleId } = e.currentTarget.dataset;
+          console.log("Botón de exportación clickeado. studentId:", studentId, "moduleId:", moduleId); // LOG
+          handlers.handleExportSingleModuleReport(studentId, moduleId);
+        });
+
     }
 
     // Listener para el formulario de comentarios

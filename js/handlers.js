@@ -78,24 +78,32 @@ Jiménez Castro, María de la Sierra`;
   dataManager.downloadTextAsFile(content, 'plantilla_alumnos.txt', 'text/plain');
 }
 
-export function handleExportStudentPdf(studentId) {
+export function handleExportSingleModuleReport(studentId, moduleId) {
+  console.log("===== INICIANDO EXPORTACIÓN DE VISTA ACTUAL A PDF =====");
+  console.log(`Recibido studentId: ${studentId}`);
+  console.log(`Recibido moduleId: ${moduleId}`);
+
   const db = state.getDB();
   const student = db.students.find(s => s.id === studentId);
-  if (!student) {
-    alert("Error: Alumno no encontrado.");
+  const module = db.modules.find(m => m.id === moduleId);
+
+  if (!student || !module) {
+    alert("Error: No se pudo encontrar el alumno o el módulo para exportar.");
     return;
   }
 
-  // Encontrar todos los módulos donde el alumno está inscrito
-  const enrolledModules = db.modules
-    .filter(m => m.studentIds?.includes(studentId))
-    .map(module => {
-      const calculated = calculateModuleGrades(module, [student], db.grades, db.actividades);
-      const studentGrades = calculated[studentId] || { moduleGrade: 0, raTotals: {} };
-      return { module, finalGrade: studentGrades.moduleGrade, raTotals: studentGrades.raTotals };
-    });
+  // Forzamos el cálculo de las notas finales para este alumno y módulo en el momento de la exportación.
+  // Esto asegura que los datos son siempre correctos e independientes del estado de la UI.
+  const calculatedData = calculateModuleGrades(module, [student], db.grades, db.actividades, null);
+  const finalGrades = calculatedData[studentId] || { moduleGrade: 0, raTotals: {}, ceFinalGrades: {} };
 
-  generateStudentReport(student, enrolledModules, db.grades);
+  const moduleDataForPdf = [{
+    module,
+    ...finalGrades
+  }];
+
+  // Pasamos también las actividades y las notas en bruto para el desglose
+  generateStudentReport(student, moduleDataForPdf, db.actividades, db.grades);
 }
 
 export function handleSetPage(newPage) {

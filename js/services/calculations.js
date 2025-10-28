@@ -1,16 +1,12 @@
 // --- LÓGICA DE CÁLCULO ---
 
-export function calculateModuleGrades(module, students, grades, actividades, trimestre = null) {
+export function calculateModuleGrades(module, students, grades, actividades, trimestre) {
   if (!module || !students || students.length === 0) return {};
 
   const studentData = {};
   const ras = module.resultados_de_aprendizaje;
   
-  // Filtrar actividades por trimestre si se especifica uno.
-  let moduleActividades = actividades.filter(a => a.moduleId === module.id);
-  if (trimestre) {
-    moduleActividades = moduleActividades.filter(a => a.trimestre === trimestre);
-  }
+  const moduleActividades = actividades.filter(a => a.moduleId === module.id && (!trimestre || a.trimestre === trimestre));
 
   for (const student of students) {
     if (!student || !student.id) continue;
@@ -54,7 +50,7 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
         if (ceFinalGrades[ce.ce_id] !== undefined) {
           raWeightedTotal += (ceFinalGrades[ce.ce_id] * weight);
           raTotalWeight += weight;
-        } else if (trimestre === null) {
+        } else if (!trimestre) { // Si no se especifica trimestre (cálculo final)
           // Si es el cálculo final y el CE no tiene nota, su peso sí cuenta (nota 0).
           raWeightedTotal += 0; // La nota es 0
           raTotalWeight += weight;
@@ -67,7 +63,7 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
 
     let moduleGrade;
 
-    if (trimestre) {
+    if (trimestre) { // Si estamos calculando para un trimestre específico
       // Para cálculos trimestrales, la nota del módulo es la media ponderada de TODOS los CEs
       // que han sido evaluados en este trimestre, independientemente del RA al que pertenezcan.
       let trimesterCeWeightedTotal = 0;
@@ -86,7 +82,7 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
         }
       }
       moduleGrade = (trimesterCeTotalWeight > 0) ? (trimesterCeWeightedTotal / trimesterCeTotalWeight) : 0;
-    } else {
+    } else { // Si es el cálculo final (trimestre es undefined o null)
       // Para la nota final, la nota del módulo es la media ponderada de TODOS los CEs del módulo.
       // Los CEs no evaluados explícitamente (no presentes en ceFinalGrades) cuentan como 0.
       let finalCeWeightedTotal = 0;
