@@ -169,6 +169,9 @@ export function renderAlumnosPage() {
                     <button class="view-history-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-500 hover:bg-gray-600 text-white rounded-lg" data-student-id="${student.id}">
                       ${ICONS.MessageSquare} Historial
                     </button>
+                    <button class="export-full-student-report-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg" data-student-id="${student.id}" title="Exportar informe completo de todos los módulos">
+                      ${ICONS.DownloadCloud} Informe Completo
+                    </button>
                 </div>
               </div>
               ${enrolledModules.length > 0 ? `

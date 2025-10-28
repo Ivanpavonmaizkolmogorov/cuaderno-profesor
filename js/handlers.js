@@ -106,6 +106,36 @@ export function handleExportSingleModuleReport(studentId, moduleId) {
   generateStudentReport(student, moduleDataForPdf, db.actividades, db.grades);
 }
 
+export function handleExportFullStudentReport(studentId) {
+  const db = state.getDB();
+  const student = db.students.find(s => s.id === studentId);
+  if (!student) {
+    alert("Error: Alumno/a no encontrado.");
+    return;
+  }
+
+  // 1. Forzar el cálculo de notas para TODOS los módulos en los que el alumno está inscrito.
+  // Esto asegura que los datos son siempre correctos e independientes del estado de la UI.
+  const allCalculatedGrades = state.getCalculatedGrades();
+  const enrolledModules = db.modules.filter(m => m.studentIds?.includes(studentId));
+
+  enrolledModules.forEach(module => {
+    if (!allCalculatedGrades[module.id]) {
+      allCalculatedGrades[module.id] = {};
+    }
+    // Calculamos solo la nota final (trimestre = null) para el informe.
+    allCalculatedGrades[module.id].Final = calculateModuleGrades(module, [student], db.grades, db.actividades, null);
+  });
+
+  // 2. Construir el array de datos para el PDF usando las notas recién calculadas.
+  const modulesDataForPdf = enrolledModules.map(module => {
+    const studentCalculations = allCalculatedGrades[module.id]?.Final?.[studentId] || { moduleGrade: 0, raTotals: {}, ceFinalGrades: {} };
+    return { module, ...studentCalculations };
+  });
+
+  generateStudentReport(student, modulesDataForPdf, db.actividades, db.grades);
+}
+
 export function handleSetPage(newPage) {
   state.setPage(newPage);
   renderApp();

@@ -127,6 +127,13 @@ function attachEventListeners() {
     document.getElementById('sort-all-desc-btn')?.addEventListener('click', () => handlers.handleSortAllStudents('desc'));
     document.getElementById('student-module-filter')?.addEventListener('change', (e) => handlers.handleFilterStudentsByModule(e.target.value));
 
+    // Listener para el nuevo botón de exportación completa
+    document.querySelectorAll('.export-full-student-report-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const studentId = e.currentTarget.dataset.studentId;
+        handlers.handleExportFullStudentReport(studentId);
+      });
+    });
 
     // Listener para el historial de comentarios
     document.querySelectorAll('.view-history-btn').forEach(button => {

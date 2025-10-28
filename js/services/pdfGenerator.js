@@ -39,8 +39,12 @@ export function generateStudentReport(student, modulesData, allActividades, allG
     yPosition += 10;
 
     // --- Iterar sobre los módulos del alumno/a ---
-    modulesData.forEach(moduleInfo => {
-      checkAndAddPage();
+    modulesData.forEach((moduleInfo, index) => {
+      // Antes de dibujar un nuevo módulo (excepto el primero), forzamos un salto de página.
+      if (index > 0) {
+        doc.addPage();
+        yPosition = 20; // Reiniciamos la posición Y al margen superior
+      }
 
       // --- Cabecera del Módulo y Nota Final ---
       doc.setFontSize(14);
