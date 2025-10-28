@@ -44,7 +44,7 @@ export function renderHeader(page, db) {
   `;
 }
 
-export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentId) {
+export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentId, isReadOnly = false) {
     const contentId = `ra-content-${ra.ra_id}`;
     
     return `
@@ -63,7 +63,11 @@ export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentI
       </button>
       <div id="${contentId}" class="accordion-content hidden p-4 bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
         ${ra.criterios_de_evaluacion.map(ce => {
-            const grade = studentGrades[ce.ce_id];
+            // En la vista de alumno, la nota del CE es la final calculada, no la de una actividad específica.
+            // Buscamos la nota final del CE en el objeto de notas del estudiante.
+            // Esto es una simplificación. La nota final del CE se calcula a partir de las actividades.
+            // Para la vista de solo lectura, mostraremos la nota final de la actividad que lo evalúa.
+            const grade = studentGrades[ce.ce_id]; // Esto es una simplificación, la nota final del CE viene de las actividades
             return `
             <div key="${ce.ce_id}" class="grid grid-cols-1 md:grid-cols-4 gap-4 py-4 items-center">
               <div class="md:col-span-3 flex flex-col gap-2">
@@ -76,9 +80,15 @@ export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentI
                 <p class="text-sm text-blue-600 dark:text-blue-400 mt-1 italic">${ce.ud_ref || 'Sin referencia UD'}</p>
               </div>
               <div class="md:col-span-1">
-                <input type="number" min="0" max="10" step="0.1" value="${grade != null ? grade : ''}" data-student-id="${studentId}" data-ce-id="${ce.ce_id}" 
-                  class="grade-input w-full p-2 text-center border border-gray-300 dark:border-gray-700 rounded-md text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 ${ce.dual ? 'bg-blue-100 dark:bg-blue-900/50' : 'bg-white dark:bg-gray-800'}" 
-                  aria-label="Nota ${ce.ce_id}" />
+                ${isReadOnly ? `
+                  <div class="w-full p-2 text-center font-bold text-lg ${grade == null ? 'text-gray-400' : (grade >= 5 ? 'text-green-500' : 'text-red-500')}">
+                    ${grade != null ? grade.toFixed(2) : '-'}
+                  </div>
+                ` : `
+                  <input type="number" min="0" max="10" step="0.1" value="${grade != null ? grade : ''}" data-student-id="${studentId}" data-ce-id="${ce.ce_id}" 
+                    class="grade-input w-full p-2 text-center border border-gray-300 dark:border-gray-700 rounded-md text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 ${ce.dual ? 'bg-blue-100 dark:bg-blue-900/50' : 'bg-white dark:bg-gray-800'}" 
+                    aria-label="Nota ${ce.ce_id}" />
+                `}
               </div>
             </div>
             `

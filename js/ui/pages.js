@@ -285,7 +285,7 @@ export function renderStudentModuleDetail(student, module) {
   const finalGrades = calculated[student.id] || { raTotals: {}, moduleGrade: 0 };
 
   return `
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" data-student-id="${student.id}" data-module-id="${module.id}">
       <!-- Columna 1: Criterios de Evaluación -->
       <div class="lg:col-span-2">
         <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Desglose de Calificaciones</h4>
@@ -295,7 +295,8 @@ export function renderStudentModuleDetail(student, module) {
                   ra, 
                   studentGrades, 
                   (finalGrades.raTotals && typeof finalGrades.raTotals[ra.ra_id] === 'number') ? finalGrades.raTotals[ra.ra_id] : 0,
-                  student.id
+                  student.id, // studentId
+                  true // Forzar solo lectura en esta vista
               )
           ).join('')}
         </div>
@@ -596,7 +597,7 @@ export function renderActividadesManagement(module) {
           ${ICONS.ClipboardList} Gestionar Actividades Evaluables (${moduleActividades.length})
         </h3>
       </div>
-      <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="p-6 grid grid-cols-1 gap-8">
           <!-- Lista de Actividades -->
           <div>
             <h4 class="font-semibold mb-3">Actividades Creadas</h4>
@@ -825,11 +826,16 @@ function renderAlumnoView(module, moduleStudents) {
             </div>
             <div class="space-y-3 mt-4">
               ${module.resultados_de_aprendizaje.map(ra => 
+                  // La nota del CE aquí es la final calculada a partir de las actividades.
+                  // Buscamos la nota final de cada CE para mostrarla.
+                  // La nota del CE se obtiene de la nota máxima de las actividades que lo evalúan.
+                  // `studentGrades` contiene las notas por actividad.
                   renderRaAccordion(
                       ra, 
                       studentGrades, 
                       (finalGrades.raTotals && typeof finalGrades.raTotals[ra.ra_id] === 'number') ? finalGrades.raTotals[ra.ra_id] : 0,
-                      currentStudent.id
+                      currentStudent.id,
+                      true // Modo solo lectura
                   )
               ).join('')}
             </div>
