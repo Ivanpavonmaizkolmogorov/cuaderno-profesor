@@ -19,6 +19,7 @@ let state = {
     selectedModuleId: null,
     moduleView: 'tabla', // 'tabla', 'alumno'
     selectedStudentIdForView: null, // ID del alumno en la vista 'alumno'
+    selectedActividadId: null, // ID de la actividad para la página de detalle
   },
   // Almacén para notas calculadas
   calculatedGrades: {},
@@ -48,6 +49,10 @@ export const setModuleView = (newView) => {
 
 export const setSelectedStudentIdForView = (studentId) => {
   state.ui.selectedStudentIdForView = studentId;
+};
+
+export const setSelectedActividadId = (actividadId) => {
+  state.ui.selectedActividadId = actividadId;
 };
 
 export const setCalculatedGrades = (grades) => {

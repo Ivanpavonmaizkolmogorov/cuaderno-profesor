@@ -40,8 +40,8 @@ export function renderApp() {
         case 'modulos':
           contentContainer.innerHTML = pages.renderModulosPage();
           break;
-        case 'actividades':
-          contentContainer.innerHTML = pages.renderActividadesPage();
+        case 'actividadDetail':
+          contentContainer.innerHTML = pages.renderActividadDetailPage();
           break;
         default:
           contentContainer.innerHTML = `<p class="text-center text-red-500 p-10">Error: Página no reconocida.</p>`;
@@ -204,33 +204,6 @@ function attachEventListeners() {
     }
   }
 
-  if (ui.page === 'actividades') {
-    // Formulario para crear actividad
-    const actividadForm = document.getElementById('actividad-form');
-    if (actividadForm) {
-      actividadForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const moduleId = e.currentTarget.dataset.moduleId;
-        handlers.handleCreateActividad(moduleId, e.currentTarget);
-      });
-    }
-
-    // Formularios para actualizar actividad
-    document.querySelectorAll('.update-actividad-form').forEach(form => {
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        handlers.handleUpdateActividad(e.currentTarget.dataset.actividadId, e.currentTarget);
-      });
-    });
-
-    // Botones para borrar actividad
-    document.querySelectorAll('.delete-actividad-btn').forEach(button => {
-      button.addEventListener('click', (e) => {
-        handlers.handleDeleteActividad(e.currentTarget.dataset.actividadId);
-      });
-    });
-  }
-
   if (ui.page === 'modulos') {
     document.getElementById('module-select')?.addEventListener('change', (e) => handlers.handleSelectModule(e.target.value || null));
     document.getElementById('view-tabla-btn')?.addEventListener('click', () => handlers.handleSetModuleView('tabla'));
@@ -242,6 +215,23 @@ function attachEventListeners() {
     document.getElementById('download-student-template-btn')?.addEventListener('click', handlers.handleDownloadStudentTemplate);
     document.getElementById('sort-asc-btn')?.addEventListener('click', (e) => handlers.handleSortStudents(e.currentTarget.dataset.moduleId, 'asc'));
     document.getElementById('sort-desc-btn')?.addEventListener('click', (e) => handlers.handleSortStudents(e.currentTarget.dataset.moduleId, 'desc'));
+
+    // Formulario para crear actividad
+    const actividadForm = document.getElementById('actividad-form');
+    if (actividadForm) {
+      actividadForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const moduleId = e.currentTarget.dataset.moduleId;
+        handlers.handleCreateActividad(moduleId, e.currentTarget);
+      });
+    }
+
+    // Panel de calificación de actividades
+    document.querySelectorAll('.open-actividad-panel-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        handlers.handleSelectActividad(e.currentTarget.dataset.actividadId);
+      });
+    });
 
     // Modal para cálculo de notas trimestrales
     const openModalBtn = document.getElementById('open-trimester-modal-btn');
@@ -359,6 +349,32 @@ function attachEventListeners() {
         });
     });
 
+  }
+
+  if (ui.page === 'actividadDetail') {
+    // Listeners para la página de detalle de actividad
+    document.querySelector('.update-actividad-form')?.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      handlers.handleUpdateActividad(ev.currentTarget.dataset.actividadId, ev.currentTarget);
+    });
+
+    document.querySelector('.delete-actividad-btn')?.addEventListener('click', (ev) => {
+      handlers.handleDeleteActividad(ev.currentTarget.dataset.actividadId);
+    });
+
+    document.querySelectorAll('.add-attempt-form').forEach(form => {
+      form.addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        handlers.handleAddActividadGradeAttempt(ev.currentTarget.dataset.studentId, ev.currentTarget.dataset.actividadId, ev.currentTarget);
+      });
+    });
+
+    document.querySelectorAll('.delete-attempt-btn').forEach(btn => {
+      btn.addEventListener('click', (ev) => {
+        const { studentId, actividadId, attemptId } = ev.currentTarget.dataset;
+        handlers.handleDeleteActividadGradeAttempt(studentId, actividadId, attemptId);
+      });
+    });
   }
 }
 

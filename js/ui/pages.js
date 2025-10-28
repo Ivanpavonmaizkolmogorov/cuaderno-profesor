@@ -307,9 +307,6 @@ export function renderModulosPage() {
       <hr class="my-6 border-gray-200 dark:border-gray-700" />
       ${selectedModule ? `
         <div class="text-center">
-            <button data-page="actividades" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg flex items-center justify-center gap-2 mx-auto">
-                ${ICONS.ClipboardList} Gestionar Actividades de "${selectedModule.modulo}"
-            </button>
         </div>
       ` : ''}
     `;
@@ -342,82 +339,6 @@ export function renderModulosPage() {
       <h2 class="text-3xl font-bold mb-6">Módulos (${modules.length})</h2>
       ${moduleSelectHtml}
       ${moduleDetailHtml}
-    </div>
-  `;
-}
-
-export function renderActividadesPage() {
-  const { modules, actividades } = getDB();
-  const { selectedModuleId } = getUI();
-  const selectedModule = modules.find(m => m.id === selectedModuleId);
-
-  if (!selectedModule) {
-    return `<div class="p-6"><p>Por favor, selecciona un módulo primero desde la página de Módulos.</p></div>`;
-  }
-
-  const moduleActividades = actividades.filter(a => a.moduleId === selectedModule.id);
-  const allCes = selectedModule.resultados_de_aprendizaje.flatMap(ra => ra.criterios_de_evaluacion);
-
-  return `
-    <div class="container mx-auto px-6 py-8">
-      <div class="flex justify-between items-center mb-6">
-        <div>
-          <h2 class="text-3xl font-bold">Gestión de Actividades</h2>
-          <p class="text-lg text-gray-500 dark:text-gray-400">${selectedModule.modulo}</p>
-        </div>
-        <button data-page="modulos" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Volver a Módulos</button>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Columna de Actividades Existentes -->
-        <div class="lg:col-span-2">
-          <h3 class="text-xl font-semibold mb-4">Actividades Creadas (${moduleActividades.length})</h3>
-          <div class="space-y-4">
-            ${moduleActividades.length > 0 ? moduleActividades.map(act => `
-              <details class="bg-white dark:bg-gray-800 shadow rounded-lg">
-                <summary class="p-4 cursor-pointer font-semibold flex justify-between items-center">
-                  <span>${act.name} (T${act.trimestre})</span>
-                  <div class="flex items-center gap-2">
-                    <span class="text-sm text-gray-500">${act.ceIds.length} CEs</span>
-                    <span class="chevron-icon transform transition-transform">${ICONS.ChevronRight}</span>
-                  </div>
-                </summary>
-                <div class="p-6 border-t border-gray-200 dark:border-gray-700">
-                  <form class="update-actividad-form" data-actividad-id="${act.id}">
-                    <input type="text" name="name" value="${act.name}" required class="w-full p-2 mb-2 border rounded-md dark:bg-gray-900">
-                    <select name="trimestre" required class="w-full p-2 mb-2 border rounded-md dark:bg-gray-900">
-                      <option value="1" ${act.trimestre === '1' ? 'selected' : ''}>1er Trimestre</option>
-                      <option value="2" ${act.trimestre === '2' ? 'selected' : ''}>2º Trimestre</option>
-                      <option value="3" ${act.trimestre === '3' ? 'selected' : ''}>3er Trimestre</option>
-                    </select>
-                    <p class="text-sm mb-2">Criterios de Evaluación asociados:</p>
-                    <div class="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
-                      ${allCes.map(ce => `
-                        <label class="flex items-center gap-2 text-sm">
-                          <input type="checkbox" name="ceIds" value="${ce.ce_id}" ${act.ceIds.includes(ce.ce_id) ? 'checked' : ''}>
-                          <span>${ce.ce_id} - ${ce.ce_descripcion.substring(0, 50)}...</span>
-                        </label>
-                      `).join('')}
-                    </div>
-                    <div class="flex gap-2 mt-4">
-                      <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Cambios</button>
-                      <button type="button" class="delete-actividad-btn w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg" data-actividad-id="${act.id}">Eliminar</button>
-                    </div>
-                  </form>
-                </div>
-              </details>
-            `).join('') : '<p class="text-gray-500">No hay actividades creadas para este módulo.</p>'}
-          </div>
-        </div>
-
-        <!-- Columna para Crear Nueva Actividad -->
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 h-fit">
-          <h3 class="text-xl font-semibold mb-4">Crear Nueva Actividad</h3>
-          <form id="actividad-form" data-module-id="${selectedModule.id}">
-            <!-- El mismo formulario de antes -->
-          </form>
-        </div>
-      </div>
     </div>
   `;
 }
@@ -483,6 +404,7 @@ Marta Pérez Padillo`;
 
 function renderModuloDetalle(module, moduleStudents) {
   const gestionAlumnosHtml = renderGestionAlumnos(module, moduleStudents);
+  const gestionActividadesHtml = renderActividadesManagement(module);
   const uiState = getUI();
   let moduleView = uiState.moduleView;
 
@@ -518,6 +440,7 @@ function renderModuloDetalle(module, moduleStudents) {
   return `
     <div>
       ${gestionAlumnosHtml}
+      ${gestionActividadesHtml}
       <hr class="my-8 border-gray-300 dark:border-gray-700">
       <!-- Selector de Vista -->
       <div class="mb-6 flex justify-center gap-2 p-2 bg-gray-200 dark:bg-gray-800 rounded-lg">
@@ -569,7 +492,7 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
         ${moduleActividades.map(act => {
           return `
             <th key="${act.id}" scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              <button class="open-actividad-panel-btn w-full h-full" data-actividad-id="${act.id}" title="Calificar actividad: ${act.name}\nCEs: ${act.ceIds.join(', ')}">
+              <button class="open-actividad-panel-btn w-full h-full" data-actividad-id="${act.id}" title="Gestionar y calificar actividad: ${act.name}\nCEs: ${act.ceIds.join(', ')}">
                 <span class="block">${act.name}</span>
                 <span class="block font-normal normal-case">(T${act.trimestre})</span>
               </button>
@@ -646,73 +569,6 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
   `;
 }
 
-export function renderActividadGradePanel(actividad, moduleStudents) {
-  const { grades } = getDB();
-
-  return `
-    <div class="flex justify-between items-start">
-      <div>
-        <h3 class="text-2xl font-bold">Panel de Calificación</h3>
-        <p class="text-lg text-gray-600 dark:text-gray-400">${actividad.name} (T${actividad.trimestre})</p>
-      </div>
-      <button id="close-actividad-panel-btn" class="text-gray-500 hover:text-gray-800 dark:hover:text-white">&times;</button>
-    </div>
-    <div class="mt-4 max-h-[70vh] overflow-y-auto">
-      <table class="min-w-full">
-        <thead class="sticky top-0 bg-gray-100 dark:bg-gray-800">
-          <tr>
-            <th class="px-4 py-2 text-left">Alumno</th>
-            <th class="px-4 py-2 text-center">Nota Final</th>
-            <th class="px-4 py-2 text-left">Historial de Calificaciones</th>
-            <th class="px-4 py-2 text-left">Nueva Calificación</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-          ${moduleStudents.map(student => {
-            const attempts = grades[student.id]?.[actividad.id] || [];
-            const finalGrade = attempts.length > 0 ? Math.max(...attempts.map(a => a.grade)) : null;
-
-            return `
-              <tr class="align-top">
-                <td class="px-4 py-3 font-semibold">${student.name}</td>
-                <td class="px-4 py-3 text-center font-bold text-xl ${finalGrade === null ? '' : (finalGrade >= 5 ? 'text-green-500' : 'text-red-500')}">
-                  ${finalGrade !== null ? finalGrade.toFixed(2) : '-'}
-                </td>
-                <td class="px-4 py-3">
-                  <div class="space-y-2">
-                    ${attempts.length > 0 ? attempts.map(att => `
-                      <div class="text-xs bg-gray-100 dark:bg-gray-700 p-2 rounded">
-                        <div class="flex justify-between">
-                          <span>${att.type}: <span class="font-bold">${att.grade.toFixed(2)}</span></span>
-                          <button class="delete-attempt-btn text-red-400 hover:text-red-600" data-student-id="${student.id}" data-actividad-id="${actividad.id}" data-attempt-id="${att.id}">&times;</button>
-                        </div>
-                        <p class="text-gray-500 italic">"${att.observation || 'Sin observación'}"</p>
-                        <p class="text-right text-gray-400">${new Date(att.date).toLocaleDateString()}</p>
-                      </div>
-                    `).join('') : '<p class="text-xs text-gray-500">Sin calificaciones</p>'}
-                  </div>
-                </td>
-                <td class="px-4 py-3">
-                  <form class="add-attempt-form space-y-2" data-student-id="${student.id}" data-actividad-id="${actividad.id}">
-                    <input type="number" name="grade" step="0.1" min="0" max="10" placeholder="Nota" required class="w-full p-1 border rounded dark:bg-gray-900">
-                    <select name="type" class="w-full p-1 border rounded dark:bg-gray-900">
-                      <option value="Ordinaria">Ordinaria</option>
-                      <option value="Recuperación">Recuperación</option>
-                      <option value="Mejora de nota">Mejora de nota</option>
-                    </select>
-                    <input type="text" name="observation" placeholder="Observación (opcional)" class="w-full p-1 border rounded dark:bg-gray-900">
-                    <button type="submit" class="w-full text-xs bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded">Añadir</button>
-                  </form>
-                </td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
 export function renderActividadesManagement(module) {
   const { actividades } = getDB();
   const moduleActividades = actividades.filter(a => a.moduleId === module.id);
@@ -722,7 +578,7 @@ export function renderActividadesManagement(module) {
     <div class="my-6">
       <details class="bg-white dark:bg-gray-800 shadow-lg rounded-lg">
         <summary class="p-4 cursor-pointer font-semibold text-lg flex justify-between items-center">
-          <span>Gestionar Actividades Evaluables (${moduleActividades.length})</span>
+          <span>${ICONS.ClipboardList} Gestionar Actividades Evaluables (${moduleActividades.length})</span>
           <span class="text-sm text-gray-500">Desplegar/Plegar</span>
         </summary>
         <div class="p-6 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -731,15 +587,14 @@ export function renderActividadesManagement(module) {
             <h4 class="font-semibold mb-3">Actividades Creadas</h4>
             <div class="space-y-2 max-h-60 overflow-y-auto">
               ${moduleActividades.length > 0 ? moduleActividades.map(act => `
-                <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-md">
+                <button class="open-actividad-panel-btn w-full text-left bg-gray-100 dark:bg-gray-700 p-3 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600" data-actividad-id="${act.id}">
                   <div class="flex justify-between items-start">
                     <div>
                       <p class="font-bold">${act.name} (T${act.trimestre})</p>
                       <p class="text-xs text-gray-500 dark:text-gray-400">CEs: ${act.ceIds.join(', ')}</p>
                     </div>
-                    <button class="delete-actividad-btn text-red-500 hover:text-red-700 p-1" data-actividad-id="${act.id}">&times;</button>
                   </div>
-                </div>
+                </button>
               `).join('') : '<p class="text-sm text-gray-500">No hay actividades creadas.</p>'}
             </div>
           </div>
@@ -773,6 +628,119 @@ export function renderActividadesManagement(module) {
     </div>
   `;
 }
+
+export function renderActividadDetailPage() {
+  const { db, ui } = { db: getDB(), ui: getUI() };
+  const actividad = db.actividades.find(a => a.id === ui.selectedActividadId);
+  const module = db.modules.find(m => m.id === actividad?.moduleId);
+
+  if (!actividad || !module) {
+    return `<div class="p-6"><p>Error: No se pudo encontrar la actividad o el módulo asociado. <button data-page="modulos" class="text-blue-500 underline">Volver a Módulos</button></p></div>`;
+  }
+
+  const moduleStudents = (module.studentIds || []).map(id => db.students.find(s => s.id === id)).filter(Boolean);
+  const allCes = module.resultados_de_aprendizaje.flatMap(ra => ra.criterios_de_evaluacion);
+  const { grades } = db;
+
+  return `
+    <div class="container mx-auto px-6 py-8">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-3xl font-bold">Gestionar Actividad: ${actividad.name}</h2>
+          <p class="text-lg text-gray-500 dark:text-gray-400">${module.modulo}</p>
+        </div>
+        <button data-page="modulos" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Volver a Módulos</button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Columna de Edición de Actividad -->
+        <div class="lg:col-span-1 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 h-fit">
+          <h3 class="text-xl font-semibold mb-4">Editar Actividad</h3>
+          <form class="update-actividad-form space-y-4" data-actividad-id="${actividad.id}">
+              <input type="text" name="name" value="${actividad.name}" required class="w-full p-2 border rounded-md dark:bg-gray-900" placeholder="Nombre de la actividad">
+              <select name="trimestre" required class="w-full p-2 border rounded-md dark:bg-gray-900">
+                <option value="1" ${actividad.trimestre === '1' ? 'selected' : ''}>1er Trimestre</option>
+                <option value="2" ${actividad.trimestre === '2' ? 'selected' : ''}>2º Trimestre</option>
+                <option value="3" ${actividad.trimestre === '3' ? 'selected' : ''}>3er Trimestre</option>
+              </select>
+              <p class="text-sm">Criterios de Evaluación asociados:</p>
+              <div class="max-h-48 overflow-y-auto border rounded-md p-2 space-y-1 bg-white dark:bg-gray-800">
+                ${allCes.map(ce => `
+                  <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="ceIds" value="${ce.ce_id}" ${actividad.ceIds.includes(ce.ce_id) ? 'checked' : ''}>
+                    <span>${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...</span>
+                  </label>
+                `).join('')}
+              </div>
+              <div class="flex gap-2 mt-4">
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Cambios</button>
+                <button type="button" class="delete-actividad-btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg" data-actividad-id="${actividad.id}">Eliminar</button>
+              </div>
+            </form>
+        </div>
+
+        <!-- Columna de Calificaciones -->
+        <div class="lg:col-span-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+          <h3 class="text-xl font-semibold mb-4">Calificaciones de Alumnos</h3>
+          <div class="overflow-x-auto">
+            <table class="min-w-full">
+              <thead class="bg-gray-100 dark:bg-gray-700">
+                <tr>
+                  <th class="px-4 py-3 text-left text-sm font-medium">Alumno</th>
+                  <th class="px-4 py-3 text-center text-sm font-medium">Nota Final</th>
+                  <th class="px-4 py-3 text-left text-sm font-medium">Historial</th>
+                  <th class="px-4 py-3 text-left text-sm font-medium">Nueva Calificación</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
+                ${moduleStudents.map(student => {
+                  const attempts = grades[student.id]?.[actividad.id] || [];
+                  const finalGrade = attempts.length > 0 ? Math.max(...attempts.map(a => a.grade)) : null;
+
+                  return `
+                    <tr class="align-top">
+                      <td class="px-4 py-4 font-semibold">${student.name}</td>
+                      <td class="px-4 py-4 text-center font-bold text-xl ${finalGrade === null ? '' : (finalGrade >= 5 ? 'text-green-500' : 'text-red-500')}">
+                        ${finalGrade !== null ? finalGrade.toFixed(2) : '-'}
+                      </td>
+                      <td class="px-4 py-4">
+                        <div class="space-y-2 max-h-32 overflow-y-auto">
+                          ${attempts.length > 0 ? attempts.map(att => `
+                            <div class="text-xs bg-gray-100 dark:bg-gray-900/50 p-2 rounded">
+                              <div class="flex justify-between">
+                                <span>${att.type}: <span class="font-bold">${att.grade.toFixed(2)}</span></span>
+                                <button class="delete-attempt-btn text-red-400 hover:text-red-600" data-student-id="${student.id}" data-actividad-id="${actividad.id}" data-attempt-id="${att.id}">&times;</button>
+                              </div>
+                              <p class="text-gray-500 italic">"${att.observation || 'Sin observación'}"</p>
+                              <p class="text-right text-gray-400">${new Date(att.date).toLocaleDateString()}</p>
+                            </div>
+                          `).join('') : '<p class="text-xs text-gray-500">Sin calificaciones</p>'}
+                        </div>
+                      </td>
+                      <td class="px-4 py-4">
+                        <form class="add-attempt-form space-y-2" data-student-id="${student.id}" data-actividad-id="${actividad.id}">
+                          <input type="number" name="grade" step="0.1" min="0" max="10" placeholder="Nota" required class="w-full p-1 border rounded dark:bg-gray-900 text-sm">
+                          <select name="type" class="w-full p-1 border rounded dark:bg-gray-900 text-sm">
+                            <option value="Ordinaria">Ordinaria</option>
+                            <option value="Recuperación">Recuperación</option>
+                            <option value="Mejora de nota">Mejora de nota</option>
+                          </select>
+                          <input type="text" name="observation" placeholder="Observación (opcional)" class="w-full p-1 border rounded dark:bg-gray-900 text-sm">
+                          <button type="submit" class="w-full text-xs bg-blue-500 hover:bg-blue-600 text-white py-1.5 px-2 rounded">Añadir</button>
+                        </form>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 
 
 

@@ -110,6 +110,11 @@ export function handleSelectModule(moduleId) {
     renderApp();
 }
 
+export function handleSelectActividad(actividadId) {
+  state.setSelectedActividadId(actividadId);
+  handleSetPage('actividadDetail');
+}
+
 export function handleSetModuleView(newView) {
     state.setModuleView(newView);
     const db = state.getDB();
@@ -503,8 +508,7 @@ export function handleCreateActividad(moduleId, form) {
   db.actividades.push(newActividad);
   state.setDB(db);
   state.saveDB();
-  // Vuelve a la página de actividades para ver el resultado
-  handleSetPage('actividades');
+  renderApp();
 }
 
 export function handleUpdateActividad(actividadId, form) {
@@ -527,22 +531,30 @@ export function handleUpdateActividad(actividadId, form) {
 
   state.setDB(db);
   state.saveDB();
-  handleSetPage('actividades');
+  alert("Actividad actualizada con éxito.");
+  // No es necesario navegar, nos quedamos en la misma página para ver los cambios
+  renderApp();
 }
 
 export function handleDeleteActividad(actividadId) {
-  if (!window.confirm("¿Seguro que quieres eliminar esta actividad? Las notas asociadas a ella en los CEs no se borrarán.")) {
+  if (!window.confirm("¿Seguro que quieres eliminar esta actividad? Todas las calificaciones asociadas a ella también se borrarán.")) {
     return;
   }
   const db = state.getDB();
   db.actividades = db.actividades.filter(a => a.id !== actividadId);
-  // Opcional: podrías querer borrar las notas de db.grades[studentId][actividadId]
+  // Borrar las notas de esta actividad para todos los alumnos
+  Object.keys(db.grades).forEach(studentId => {
+    if (db.grades[studentId][actividadId]) {
+      delete db.grades[studentId][actividadId];
+    }
+  });
   state.setDB(db);
   state.saveDB();
-  handleSetPage('actividades');
+  alert("Actividad eliminada. Volviendo a la página de módulos.");
+  handleSetPage('modulos');
 }
 
-export function handleAddActividadGradeAttempt(studentId, actividadId, form) {
+export function handleAddActividadGradeAttempt(studentId, actividadId, form, fromPanel = false) {
   const db = state.getDB();
   const grade = parseFloat(form.grade.value);
   const type = form.type.value;
@@ -571,17 +583,17 @@ export function handleAddActividadGradeAttempt(studentId, actividadId, form) {
   db.grades[studentId][actividadId].push(newAttempt);
   state.setDB(db);
   state.saveDB();
-  // No es necesario renderApp() completo, podríamos optimizarlo para solo refrescar el modal.
-  // Por ahora, un render completo es más simple.
+  // Simplemente volvemos a renderizar la página actual para ver la nueva nota
   renderApp();
 }
 
-export function handleDeleteActividadGradeAttempt(studentId, actividadId, attemptId) {
+export function handleDeleteActividadGradeAttempt(studentId, actividadId, attemptId, fromPanel = false) {
   if (!window.confirm("¿Seguro que quieres eliminar esta calificación?")) return;
   const db = state.getDB();
   const attempts = db.grades[studentId]?.[actividadId] || [];
   db.grades[studentId][actividadId] = attempts.filter(att => att.id !== attemptId);
   state.setDB(db);
   state.saveDB();
+  // Volvemos a renderizar la página para que la nota desaparezca
   renderApp();
 }
