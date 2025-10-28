@@ -474,13 +474,6 @@ function renderModuloDetalle(module, moduleStudents) {
         </button>
       </div>
 
-      <!-- Botón para abrir modal de cálculo de notas -->
-      ${moduleView === 'tabla' && moduleStudents.length > 0 ? `
-        <div class="text-center mb-6">
-          <button id="open-trimester-modal-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg">${ICONS.Database} Calcular Notas Trimestrales / Finales</button>
-        </div>
-      ` : ''}
-
       <!-- Contenido de la vista -->
       ${contentHtml}
     </div>
@@ -488,14 +481,10 @@ function renderModuloDetalle(module, moduleStudents) {
 }
 
 function renderCuadernoCalificaciones(module, moduleStudents) {
-  const { grades, trimesterGrades, actividades } = getDB();
+  const { grades, actividades } = getDB();
   const calculatedGrades = getCalculatedGrades();
   const ras = module.resultados_de_aprendizaje;
-  const { selectedModuleId } = getUI();
   const moduleActividades = actividades.filter(a => a.moduleId === module.id);
-  // const allCes = ras.flatMap(ra =>
-  //   ra.criterios_de_evaluacion.map(ce => ({ ...ce, raId: ra.ra_id }))
-  // );
 
   const headerHtml = `
     <thead class="bg-gray-50 dark:bg-gray-800 sticky-header">
@@ -508,7 +497,7 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
         <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T1</th>
         <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T2</th>
         <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T3</th>
-        <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">Ord.</th>
+        <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">Final</th>
         
         <!-- Columnas de Actividades Evaluables -->
         ${moduleActividades.map(act => {
@@ -537,8 +526,12 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
     <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
       ${moduleStudents.map(student => {
         const studentGrades = grades[student.id] || {};
-
-        const calcs = calculatedGrades[student.id] || { raTotals: {}, moduleGrade: 0 };
+        const studentAllCalcs = calculatedGrades[module.id] || {};
+        
+        const t1Grade = studentAllCalcs.T1?.[student.id]?.moduleGrade;
+        const t2Grade = studentAllCalcs.T2?.[student.id]?.moduleGrade;
+        const t3Grade = studentAllCalcs.T3?.[student.id]?.moduleGrade;
+        const finalCalcs = studentAllCalcs.Final?.[student.id] || { raTotals: {}, moduleGrade: 0 };
         
         return `
           <tr key="${student.id}" class="hover:bg-gray-50 dark:hover:bg-gray-800">
@@ -546,10 +539,10 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
               ${student.name}
             </td>
             <!-- Celdas de notas trimestrales -->
-            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${trimesterGrades[module.id]?.[student.id]?.T1?.toFixed(2) || '-'}</td>
-            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${trimesterGrades[module.id]?.[student.id]?.T2?.toFixed(2) || '-'}</td>
-            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${trimesterGrades[module.id]?.[student.id]?.T3?.toFixed(2) || '-'}</td>
-            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${trimesterGrades[module.id]?.[student.id]?.ORD?.toFixed(2) || '-'}</td>
+            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${t1Grade?.toFixed(2) || '-'}</td>
+            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${t2Grade?.toFixed(2) || '-'}</td>
+            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${t3Grade?.toFixed(2) || '-'}</td>
+            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${finalCalcs.moduleGrade?.toFixed(2) || '-'}</td>
 
             ${moduleActividades.map(act => {
               const attempts = studentGrades[act.id] || [];
@@ -564,7 +557,7 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
             }).join('')}
             
             ${ras.map(ra => {
-              const raGrade = (calcs.raTotals && calcs.raTotals[ra.ra_id] != null) ? calcs.raTotals[ra.ra_id].toFixed(2) : '0.00';
+              const raGrade = (finalCalcs.raTotals && finalCalcs.raTotals[ra.ra_id] != null) ? finalCalcs.raTotals[ra.ra_id].toFixed(2) : '0.00';
               return `
                 <td key="${ra.ra_id}" class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-900">
                   ${raGrade}
@@ -573,7 +566,7 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
             }).join('')}
             
             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900">
-              ${calcs.moduleGrade != null ? calcs.moduleGrade.toFixed(2) : '0.00'}
+              ${finalCalcs.moduleGrade != null ? finalCalcs.moduleGrade.toFixed(2) : '0.00'}
             </td>
           </tr>
         `
@@ -764,58 +757,6 @@ export function renderActividadDetailPage() {
 }
 
 
-
-
-
-
-
-
-
-export function renderTrimesterModalContent(module, moduleStudents) {
-  const calculatedGrades = getCalculatedGrades();
-  
-  return `
-    <div class="flex justify-between items-start">
-      <h3 class="text-2xl font-bold mb-4">Calcular Notas para ${module.modulo}</h3>
-      <button id="close-trimester-modal-btn" class="text-gray-500 hover:text-gray-800 dark:hover:text-white">&times;</button>
-    </div>
-    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-      El sistema calcula la nota para cada alumno basándose en **todos los criterios evaluados hasta este momento**. 
-      Selecciona un hito y pulsa "Guardar" para almacenar estas notas como oficiales.
-    </p>
-    <div class="max-h-60 overflow-y-auto border rounded-lg mb-4">
-      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead class="bg-gray-50 dark:bg-gray-800">
-          <tr>
-            <th class="px-4 py-2 text-left text-xs font-medium">Alumno</th>
-            <th class="px-4 py-2 text-right text-xs font-medium">Nota Calculada</th>
-          </tr>
-        </thead>
-        <tbody class="bg-white dark:bg-gray-900">
-          ${moduleStudents.map(student => `
-            <tr data-student-id="${student.id}" data-grade="${calculatedGrades[student.id]?.moduleGrade || 0}">
-              <td class="px-4 py-2 whitespace-nowrap">${student.name}</td>
-              <td class="px-4 py-2 whitespace-nowrap text-right font-bold">${(calculatedGrades[student.id]?.moduleGrade || 0).toFixed(2)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-    <div class="flex items-center gap-4 mt-4">
-      <label for="trimester-select" class="font-semibold">Guardar como:</label>
-      <select id="trimester-select" class="flex-grow p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800">
-        <option value="">-- Seleccionar Hito --</option>
-        <option value="T1">1er Trimestre</option>
-        <option value="T2">2º Trimestre</option>
-        <option value="T3">3er Trimestre</option>
-        <option value="ORD">Final Ordinaria</option>
-      </select>
-      <button id="save-trimester-grades-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">
-        Guardar Notas
-      </button>
-    </div>
-  `;
-}
 
 function renderAlumnoView(module, moduleStudents) {
   const { grades, comments } = getDB();

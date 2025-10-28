@@ -8,16 +8,25 @@ import { calculateModuleGrades } from './services/calculations.js';
 export function renderApp() {
   const { db, ui } = { db: state.getDB(), ui: state.getUI() };
 
-  // Recalcular notas si estamos en la página de módulos con un módulo seleccionado
+  // Recalcular notas para el módulo seleccionado (T1, T2, T3 y Final)
   if (ui.page === 'modulos' && ui.selectedModuleId) {
     const selectedModule = db.modules.find(m => m.id === ui.selectedModuleId);
     if (selectedModule) {
-      // Ahora calculamos las notas solo para los alumnos de ESE módulo
       const moduleStudents = (selectedModule.studentIds || [])
         .map(studentId => db.students.find(s => s.id === studentId))
         .filter(Boolean);
-      const newCalculatedGrades = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades);
-      state.setCalculatedGrades(newCalculatedGrades);
+
+      const allCalculatedGrades = state.getCalculatedGrades();
+      if (!allCalculatedGrades[selectedModule.id]) {
+        allCalculatedGrades[selectedModule.id] = {};
+      }
+
+      allCalculatedGrades[selectedModule.id].T1 = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades, '1');
+      allCalculatedGrades[selectedModule.id].T2 = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades, '2');
+      allCalculatedGrades[selectedModule.id].T3 = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades, '3');
+      allCalculatedGrades[selectedModule.id].Final = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades, null); // null para la final
+
+      state.setCalculatedGrades(allCalculatedGrades);
     }
   }
 

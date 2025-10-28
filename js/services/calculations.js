@@ -1,11 +1,16 @@
 // --- LÓGICA DE CÁLCULO ---
 
-export function calculateModuleGrades(module, students, grades, actividades) {
+export function calculateModuleGrades(module, students, grades, actividades, trimestre = null) {
   if (!module || !students || students.length === 0) return {};
 
   const studentData = {};
   const ras = module.resultados_de_aprendizaje;
-  const moduleActividades = actividades.filter(a => a.moduleId === module.id);
+  
+  // Filtrar actividades por trimestre si se especifica uno.
+  let moduleActividades = actividades.filter(a => a.moduleId === module.id);
+  if (trimestre) {
+    moduleActividades = moduleActividades.filter(a => a.trimestre === trimestre);
+  }
 
   for (const student of students) {
     if (!student || !student.id) continue;
@@ -45,9 +50,11 @@ export function calculateModuleGrades(module, students, grades, actividades) {
 
       for (const ce of ra.criterios_de_evaluacion) {
         const weight = ce.peso || 0;
-        const grade = ceFinalGrades[ce.ce_id] ?? 0; // Si no hay nota, es un 0
-        raWeightedTotal += (grade * weight);
-        raTotalWeight += weight;
+        // Solo incluir en el cálculo si el CE tiene una nota explícita (incluyendo 0).
+        if (ceFinalGrades[ce.ce_id] !== undefined) {
+          raWeightedTotal += (ceFinalGrades[ce.ce_id] * weight);
+          raTotalWeight += weight;
+        }
       }
 
       const raGrade = (raTotalWeight > 0) ? (raWeightedTotal / raTotalWeight) : 0;
@@ -55,8 +62,17 @@ export function calculateModuleGrades(module, students, grades, actividades) {
     }
 
     // La nota del módulo es la media de las notas de los RAs (sin ponderar entre ellos)
-    const raGrades = Object.values(raTotals);
-    const moduleGrade = raGrades.length > 0 ? raGrades.reduce((sum, grade) => sum + grade, 0) / raGrades.length : 0;
+    // Si es un cálculo trimestral, solo promediamos los RAs que tienen nota.
+    // Si es el cálculo final, promediamos todos los RAs (los no evaluados cuentan como 0).
+    const allRaGrades = Object.values(raTotals);
+    const evaluatedRaGrades = allRaGrades.filter(grade => grade > 0);
+
+
+    const totalSumOfGrades = allRaGrades.reduce((sum, grade) => sum + grade, 0);
+    const divisor = trimestre ? (evaluatedRaGrades.length || 1) : ras.length;
+
+    const moduleGrade = totalSumOfGrades / divisor;
+
 
     studentData[student.id] = {
       raTotals,

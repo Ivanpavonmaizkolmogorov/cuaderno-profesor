@@ -467,30 +467,6 @@ export function handleDeleteComment(moduleId, studentId, commentId) {
   }
 }
 
-export function handleSaveTrimesterGrades(moduleId, trimesterKey, gradesToSave) {
-  if (!trimesterKey) {
-    alert("Por favor, selecciona un hito de evaluación (ej: 1er Trimestre).");
-    return;
-  }
-
-  const db = state.getDB();
-  if (!db.trimesterGrades[moduleId]) {
-    db.trimesterGrades[moduleId] = {};
-  }
-
-  for (const [studentId, grade] of Object.entries(gradesToSave)) {
-    if (!db.trimesterGrades[moduleId][studentId]) {
-      db.trimesterGrades[moduleId][studentId] = {};
-    }
-    db.trimesterGrades[moduleId][studentId][trimesterKey] = grade;
-  }
-
-  state.setDB(db);
-  state.saveDB();
-  alert(`Notas guardadas para el ${trimesterKey}.`);
-  renderApp();
-}
-
 export function handleCreateActividad(moduleId, form) {
   const name = form.name.value.trim();
   const trimestre = form.trimestre.value;
