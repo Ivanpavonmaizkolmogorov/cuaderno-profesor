@@ -72,9 +72,9 @@ export function renderApp() {
       document.getElementById('confirm-student-format-btn')?.addEventListener('click', () => {
         const form = document.getElementById('format-student-form');
         const finalNames = Array.from(form.elements).map(input => input.value).join('\n');
-        handlers.handleImportStudentsToModule(finalNames, studentFormatData.moduleId);
         modalContainer.innerHTML = ''; // Cerrar modal
         state.setUIProperty('studentNameSuggestions', null); // Limpiar estado
+        handlers.handleImportStudentsToModule(finalNames, studentFormatData.moduleId);
       });
 
       document.getElementById('cancel-student-format-btn')?.addEventListener('click', () => {
