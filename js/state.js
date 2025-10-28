@@ -21,6 +21,7 @@ let state = {
     selectedStudentIdForView: null, // ID del alumno en la vista 'alumno'
     selectedActividadId: null, // ID de la actividad para la página de detalle
     studentPageModuleFilter: 'all', // 'all' o un ID de módulo
+    studentNameSuggestions: null, // { suggestions: [], moduleId: '' }
   },
   // Almacén para notas calculadas
   calculatedGrades: {},
@@ -63,6 +64,10 @@ export const setStudentPageModuleFilter = (moduleId) => {
 export const setCalculatedGrades = (grades) => {
   state.calculatedGrades = grades;
 };
+
+export function setUIProperty(key, value) {
+  state.ui[key] = value;
+}
 
 // --- LÓGICA DE LOCALSTORAGE ---
 

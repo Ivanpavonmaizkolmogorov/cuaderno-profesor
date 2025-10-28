@@ -1,6 +1,7 @@
 import * as state from './state.js';
 import * as handlers from './handlers.js';
 import { renderHeader } from './ui/components.js';
+import { renderStudentFormatModal } from './ui/pages.js';
 import * as pages from './ui/pages.js';
 import { calculateModuleGrades } from './services/calculations.js';
 
@@ -59,6 +60,29 @@ export function renderApp() {
   
   // 3. (Re)Añadir event listeners
   attachEventListeners();
+
+  // 4. Lógica para mostrar el modal de formato de estudiantes si hay datos para él
+  const studentFormatData = ui.studentNameSuggestions;
+  if (studentFormatData) {
+    const modalContainer = document.getElementById('student-format-modal-container');
+    if (modalContainer) {
+      modalContainer.innerHTML = renderStudentFormatModal(studentFormatData.suggestions, studentFormatData.moduleId);
+
+      // Añadir listeners para los botones del modal
+      document.getElementById('confirm-student-format-btn')?.addEventListener('click', () => {
+        const form = document.getElementById('format-student-form');
+        const finalNames = Array.from(form.elements).map(input => input.value).join('\n');
+        handlers.handleImportStudentsToModule(finalNames, studentFormatData.moduleId);
+        modalContainer.innerHTML = ''; // Cerrar modal
+        state.setUIProperty('studentNameSuggestions', null); // Limpiar estado
+      });
+
+      document.getElementById('cancel-student-format-btn')?.addEventListener('click', () => {
+        modalContainer.innerHTML = ''; // Cerrar modal
+        state.setUIProperty('studentNameSuggestions', null); // Limpiar estado
+      });
+    }
+  }
 }
 
 // Función para añadir todos los event listeners
@@ -233,10 +257,18 @@ function attachEventListeners() {
     document.getElementById('module-select')?.addEventListener('change', (e) => handlers.handleSelectModule(e.target.value || null));
     document.getElementById('view-tabla-btn')?.addEventListener('click', () => handlers.handleSetModuleView('tabla'));
     document.getElementById('view-alumno-btn')?.addEventListener('click', () => handlers.handleSetModuleView('alumno'));
+    
+    // Listener para el botón de importación directa (el original)
     document.getElementById('import-students-to-module-btn')?.addEventListener('click', (e) => {
       const text = document.getElementById('student-textarea').value;
       handlers.handleImportStudentsToModule(text, e.target.dataset.moduleId);
     });
+    // Listener para el nuevo botón que abre el modal de formato
+    document.getElementById('process-students-btn')?.addEventListener('click', (e) => {
+      const text = document.getElementById('student-textarea').value;
+      handlers.handleProcessStudentNames(text, e.currentTarget.dataset.moduleId);
+    });
+
     document.getElementById('download-student-template-btn')?.addEventListener('click', handlers.handleDownloadStudentTemplate);
     document.getElementById('sort-asc-btn')?.addEventListener('click', (e) => handlers.handleSortStudents(e.currentTarget.dataset.moduleId, 'asc'));
     document.getElementById('sort-desc-btn')?.addEventListener('click', (e) => handlers.handleSortStudents(e.currentTarget.dataset.moduleId, 'desc'));

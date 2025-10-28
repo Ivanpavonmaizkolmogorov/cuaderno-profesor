@@ -1,5 +1,7 @@
 import * as state from './state.js';
+import { setUIProperty } from './state.js'; // Importación nombrada
 import * as dataManager from './services/dataManager.js';
+import { parseStudentNames } from './services/nameParser.js';
 import { calculateModuleGrades } from './services/calculations.js';
 import { generateStudentReport } from './services/pdfGenerator.js';
 import { renderApp } from './main.js';
@@ -363,6 +365,17 @@ export function handleImportStudentsToModule(text, moduleId) {
   } catch (error) {
     alert(error.message);
   }
+}
+
+export function handleProcessStudentNames(text, moduleId) {
+  const suggestions = parseStudentNames(text);
+  if (suggestions.length === 0) {
+    alert("No se encontraron nombres en el texto para procesar.");
+    return;
+  }
+  // Guardamos las sugerencias en el estado para que el modal las pueda leer
+  setUIProperty('studentNameSuggestions', { suggestions, moduleId });
+  renderApp(); // Volver a renderizar para que main.js muestre el modal
 }
 
 export function handleRemoveStudentFromModule(moduleId, studentId) {
