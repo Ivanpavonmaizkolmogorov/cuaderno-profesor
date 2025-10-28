@@ -669,27 +669,40 @@ export function renderActividadesManagement(module) {
     moduleActividades.flatMap(act => act.ceIds)
   );
 
-  // Agrupar Criterios de Evaluación por Unidad Didáctica (ud_ref)
-  const cesByUd = module.resultados_de_aprendizaje
-    .flatMap(ra => ra.criterios_de_evaluacion)
-    .reduce((acc, ce) => {
-      const udRef = ce.ud_ref || '';
-      // Extraemos los grupos principales de UD, ej: "UD 10" de "UD 10: 1. La gestión..."
-      // o ["UD 2", "UD 3"] de "UD 2 y UD 3"
-      const mainUds = udRef.match(/UD \d+/g);
+  // 2. Agrupar CEs por UD y contar en cuántas UDs aparece cada CE.
+  const allModuleCes = module.resultados_de_aprendizaje.flatMap(ra => ra.criterios_de_evaluacion);
+  const ceUdInfo = {}; // Para almacenar las UDs de cada CE. e.g., { "RA1-a": ["UD 10"] }
+  const cesByUd = {};   // Para agrupar los CEs por UD
 
-      if (mainUds) {
-        mainUds.forEach(ud => {
-          if (!acc[ud]) acc[ud] = [];
-          acc[ud].push(ce);
-        });
-      } else {
-        const fallbackKey = 'Sin Unidad Didáctica';
-        if (!acc[fallbackKey]) acc[fallbackKey] = [];
-        acc[fallbackKey].push(ce);
+  allModuleCes.forEach(ce => {
+    const udRef = ce.ud_ref || '';
+    const mainUds = udRef.match(/UD \d+/g) || [];
+
+    // Almacenar la lista de UDs para este CE
+    ceUdInfo[ce.ce_id] = mainUds;
+
+    mainUds.forEach(ud => {
+      if (!cesByUd[ud]) cesByUd[ud] = [];
+      cesByUd[ud].push(ce);
+    });
+  });
+
+  // 3. Garantizar que todos los CEs se muestren, incluso si no tienen UD.
+  const fallbackKey = 'Sin Unidad Didáctica';
+  if (!cesByUd[fallbackKey]) {
+    cesByUd[fallbackKey] = [];
+  }
+  
+  const groupedCeIds = new Set(Object.values(cesByUd).flatMap(ceList => ceList.map(ce => ce.ce_id)));
+  allModuleCes.forEach(ce => {
+    if (!groupedCeIds.has(ce.ce_id)) {
+      // Si un CE no fue asignado a ninguna UD (porque su ud_ref no coincide con el patrón), lo añadimos al grupo "Sin UD".
+      if (!cesByUd[fallbackKey].some(c => c.ce_id === ce.ce_id)) {
+        cesByUd[fallbackKey].push(ce);
       }
-      return acc;
-    }, {});
+    }
+  });
+
   const sortedUds = Object.keys(cesByUd).sort();
 
   return `
@@ -743,8 +756,11 @@ export function renderActividadesManagement(module) {
                       ${cesByUd[ud].map(ce => `
                         <label class="flex items-center gap-2 text-sm">
                           <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-ud-${ud}">
-                          <span class="${usedCeIds.has(ce.ce_id) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
+                          <span class="${usedCeIds.has(ce.ce_id) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} flex items-center gap-1">
                             ${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...
+                            ${ceUdInfo[ce.ce_id]?.length > 1 ? `
+                              <span class="text-xs font-semibold text-blue-500" title="Este CE pertenece a: ${ceUdInfo[ce.ce_id].join(', ')}">(${ceUdInfo[ce.ce_id].join(', ')})</span>
+                            ` : ''}
                           </span>
                         </label>
                       `).join('')}
