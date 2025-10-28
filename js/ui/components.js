@@ -74,7 +74,8 @@ export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentI
               const maxGrade = Math.max(...attempts.map(a => a.grade));
               return {
                 name: act.name,
-                grade: maxGrade
+                grade: maxGrade,
+                trimestre: act.trimestre
               };
             }).filter(n => n !== null);
 
@@ -94,7 +95,7 @@ export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentI
                   <div class="mt-2 text-xs border-t border-gray-200 dark:border-gray-600 pt-2">
                     <span class="font-semibold">Actividades:</span>
                     <ul class="list-disc list-inside pl-2">
-                      ${notasDeActividades.map(n => `<li>${n.name}: <span class="font-bold">${n.grade.toFixed(2)}</span></li>`).join('')}
+                      ${notasDeActividades.map(n => `<li>${n.name} (T${n.trimestre}): <span class="font-bold">${n.grade.toFixed(2)}</span></li>`).join('')}
                     </ul>
                     ${notasDeActividades.length > 1 ? `<div class="mt-1 italic text-gray-500 dark:text-gray-400">Nota CE: (${notasDeActividades.map(n => n.grade.toFixed(2)).join(' + ')}) / ${notasDeActividades.length} = ${grade.toFixed(2)}</div>` : ''}
                     <div class="mt-1 italic text-gray-500 dark:text-gray-400">

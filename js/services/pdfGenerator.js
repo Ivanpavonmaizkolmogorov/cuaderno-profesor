@@ -102,7 +102,7 @@ export function generateStudentReport(student, modulesData, allActividades, allG
           const notasDeActividades = actividadesQueEvaluanEsteCE.map(act => {
               const attempts = allGrades[student.id]?.[act.id] || [];
               if (attempts.length === 0) return null;
-              return { name: act.name, grade: Math.max(...attempts.map(a => a.grade)) };
+              return { name: act.name, grade: Math.max(...attempts.map(a => a.grade)), trimestre: act.trimestre };
           }).filter(Boolean);
           
           if (notasDeActividades.length > 0) {
@@ -116,7 +116,7 @@ export function generateStudentReport(student, modulesData, allActividades, allG
 
               notasDeActividades.forEach(notaAct => {
                   checkAndAddPage();
-                  doc.text(`- ${notaAct.name}: ${notaAct.grade.toFixed(2)}`, pageMargin + 10, yPosition);
+                  doc.text(`- ${notaAct.name} (T${notaAct.trimestre}): ${notaAct.grade.toFixed(2)}`, pageMargin + 10, yPosition);
                   yPosition += 4;
               });
 
