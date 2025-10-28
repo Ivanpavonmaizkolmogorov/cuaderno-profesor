@@ -1,7 +1,7 @@
 const { jsPDF } = window.jspdf;
 
 /**
- * Genera un informe PDF detallado para un alumno.
+ * Genera un informe PDF detallado para un alumno/a.
  * @param {object} student - El objeto del alumno.
  * @param {Array<object>} modulesData - Array con los datos de los módulos y las notas calculadas.
  * @param {Array<object>} allActividades - Todas las actividades de la base de datos.
@@ -32,13 +32,13 @@ export function generateStudentReport(student, modulesData, allActividades, allG
     // --- Datos del Alumno ---
     doc.setFontSize(16);
     doc.setFont("helvetica", "normal");
-    doc.text(`Alumno: ${student.name}`, pageMargin, yPosition);
+    doc.text(`Alumno/a: ${student.name}`, pageMargin, yPosition);
     yPosition += 2;
     doc.setDrawColor(200, 200, 200);
     doc.line(pageMargin, yPosition, pageMargin + contentWidth, yPosition); // Línea separadora
     yPosition += 10;
 
-    // --- Iterar sobre los módulos del alumno ---
+    // --- Iterar sobre los módulos del alumno/a ---
     modulesData.forEach(moduleInfo => {
       checkAndAddPage();
 
@@ -83,6 +83,14 @@ export function generateStudentReport(student, modulesData, allActividades, allG
           doc.setTextColor(100, 100, 100);
           doc.text(ceDescriptionLines, pageMargin + 5, yPosition);
           yPosition += (ceDescriptionLines.length * 4);
+
+          // Añadir la referencia a la UD
+          if (ce.ud_ref) {
+            doc.setFont("helvetica", "italic");
+            doc.setTextColor(0, 0, 200); // Color azul para la referencia
+            doc.text(ce.ud_ref, pageMargin + 5, yPosition);
+            yPosition += 4;
+          }
           
           // Columna Derecha: Nota del CE
           doc.setFont("helvetica", "bold");
@@ -111,7 +119,7 @@ export function generateStudentReport(student, modulesData, allActividades, allG
               doc.setFont("helvetica", "italic");
               doc.setTextColor(120, 120, 120);
 
-              doc.text('Actividades:', pageMargin + 8, yPosition);
+              doc.text('Actividades evaluables:', pageMargin + 8, yPosition);
               yPosition += 4;
 
               notasDeActividades.forEach(notaAct => {

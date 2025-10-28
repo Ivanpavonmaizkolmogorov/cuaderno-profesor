@@ -128,7 +128,7 @@ Judith Fernández Porras`;
   `;
 }
 
-// Renderiza la página de Alumnos
+// Renderiza la página de Alumnos/as
 export function renderAlumnosPage() {
   const { db, ui } = { db: getDB(), ui: getUI() };
   let studentListHtml = '';
@@ -181,7 +181,7 @@ export function renderAlumnosPage() {
                     </li>
                   `).join('')}
                 </ul>
-              ` : `<p class="text-gray-500 dark:text-gray-400">Este alumno no está matriculado en ningún módulo.</p>`}
+              ` : `<p class="text-gray-500 dark:text-gray-400">Este alumno/a no está matriculado en ningún módulo.</p>`}
             </div>
           `;
         }).join('')}
@@ -190,7 +190,7 @@ export function renderAlumnosPage() {
   } else {
     studentListHtml = `
       <p class="text-center text-gray-500 dark:text-gray-400 my-10">
-          ${ui.studentPageModuleFilter !== 'all' ? 'No hay alumnos en el módulo seleccionado.' : 'No hay alumnos registrados en el sistema.'}
+          ${ui.studentPageModuleFilter !== 'all' ? 'No hay alumnos/as en el módulo seleccionado.' : 'No hay alumnos/as registrados en el sistema.'}
       </p>
     `;
   }
@@ -198,7 +198,7 @@ export function renderAlumnosPage() {
   return `
     <div class="container mx-auto px-6 py-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <h2 class="text-3xl font-bold">Panel General de Alumnos (${studentsToDisplay.length})</h2>
+            <h2 class="text-3xl font-bold">Panel General de Alumnos/as (${studentsToDisplay.length})</h2>
             <div class="flex gap-2">
                 <button id="sort-all-asc-btn" class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar A-Z">${ICONS.ArrowDownAZ}</button>
                 <button id="sort-all-desc-btn" class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar Z-A">${ICONS.ArrowUpAZ}</button>
@@ -209,7 +209,7 @@ export function renderAlumnosPage() {
         <div class="mb-8 max-w-md">
           <label for="student-module-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filtrar por Módulo:</label>
           <select id="student-module-filter" class="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
-            <option value="all" ${ui.studentPageModuleFilter === 'all' ? 'selected' : ''}>-- Ver todos los alumnos --</option>
+            <option value="all" ${ui.studentPageModuleFilter === 'all' ? 'selected' : ''}>-- Ver todos los alumnos/as --</option>
             ${db.modules.map(m => `
               <option value="${m.id}" ${m.id === ui.studentPageModuleFilter ? 'selected' : ''}>${m.modulo}</option>
             `).join('')}
@@ -241,7 +241,7 @@ export function renderStudentCommentHistoryModal(student) {
   if (studentCommentsByModule.length === 0) {
     return `
       <h3 class="text-2xl font-bold mb-4">Historial de ${student.name}</h3>
-      <p>Este alumno no tiene comentarios.</p>
+      <p>Este alumno/a no tiene comentarios.</p>
       <button id="close-modal-btn" class="mt-6 bg-red-500 text-white py-2 px-4 rounded">Cerrar</button>
     `;
   }
@@ -273,8 +273,8 @@ export function renderStudentCommentHistoryModal(student) {
 }
 
 /**
- * Renderiza la vista de detalle de un módulo para un alumno específico.
- * Se usa para inyectar en el acordeón de la página de Alumnos.
+ * Renderiza la vista de detalle de un módulo para un alumno/a específico.
+ * Se usa para inyectar en el acordeón de la página de Alumnos/as.
  */
 export function renderStudentModuleDetail(student, module) {
   const db = getDB();
@@ -371,7 +371,7 @@ function renderGestionAlumnos(module, moduleStudents) {
 Adrián Manchado Moreno
 Marta Pérez Padillo`;
 
-  // Los alumnos ya vienen ordenados según module.studentIds, solo los mostramos.
+  // Los alumnos/as ya vienen ordenados según module.studentIds, solo los mostramos.
   const studentListHtml = moduleStudents.length > 0
     ? `<ul id="student-list-container" class="space-y-2">
         ${moduleStudents.map(student => `
@@ -388,16 +388,16 @@ Marta Pérez Padillo`;
           </li>
         `).join('')}
       </ul>`
-    : `<p class="text-center text-gray-500 dark:text-gray-400">Este módulo aún no tiene alumnos.</p>`;
+    : `<p class="text-center text-gray-500 dark:text-gray-400">Este módulo aún no tiene alumnos/as.</p>`;
 
   return `
     <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mt-6">
-      <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Gestionar Alumnos del Módulo (${moduleStudents.length})</h3>
+      <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Gestionar Alumnos/as del Módulo (${moduleStudents.length})</h3>
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <div class="flex justify-between items-center mb-2">
-            <h4 class="font-semibold">Alumnos Actuales</h4>
+            <h4 class="font-semibold">Alumnos/as Actuales</h4>
             <div class="flex gap-2">
               <button id="sort-asc-btn" data-module-id="${module.id}" class="p-1 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar A-Z">${ICONS.ArrowDownAZ}</button>
               <button id="sort-desc-btn" data-module-id="${module.id}" class="p-1 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar Z-A">${ICONS.ArrowUpAZ}</button>
@@ -408,14 +408,14 @@ Marta Pérez Padillo`;
           </div>
         </div>
         <div>
-          <h4 class="font-semibold mb-2">Añadir Nuevos Alumnos</h4>
+          <h4 class="font-semibold mb-2">Añadir Nuevos Alumnos/as</h4>
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Pega un listado para añadir o actualizar.</p>
           <textarea id="student-textarea" class="w-full h-32 p-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 font-mono text-sm">${studentText}</textarea>
           <button id="download-student-template-btn" class="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm">
-            Descargar Plantilla de Alumnos
+            Descargar Plantilla de Alumnos/as
           </button>
           <button id="import-students-to-module-btn" data-module-id="${module.id}" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
-            ${ICONS.Users} Añadir / Actualizar Alumnos
+            ${ICONS.Users} Añadir / Actualizar Alumnos/as
           </button>
         </div>
       </div>
@@ -455,7 +455,7 @@ function renderModuloDetalle(module, moduleStudents) {
         contentHtml = renderAlumnoView(module, moduleStudents);
     }
   } else {
-    contentHtml = `<p class="text-center text-gray-500 dark:text-gray-400 my-10">Añade alumnos en la sección de gestión para empezar a calificar.</p>`;
+    contentHtml = `<p class="text-center text-gray-500 dark:text-gray-400 my-10">Añade alumnos/as en la sección de gestión para empezar a calificar.</p>`;
   }
   
   return `
@@ -469,7 +469,7 @@ function renderModuloDetalle(module, moduleStudents) {
           ${ICONS.Table} Vista Tabla
         </button>
         <button id="view-alumno-btn" class="${classAlumno}" ${moduleStudents.length === 0 ? 'disabled' : ''}>
-          ${ICONS.User} Vista Alumnos
+          ${ICONS.User} Vista Alumnos/as
         </button>
       </div>
 
@@ -490,7 +490,7 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
 
       <tr>
         <th scope="col" class="sticky left-0 z-10 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider bg-gray-50 dark:bg-gray-800">
-          Alumno
+          Alumno/a
         </th>
         <!-- Columnas de notas trimestrales guardadas -->
         <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T1</th>
@@ -712,12 +712,12 @@ export function renderActividadDetailPage() {
 
         <!-- Columna de Calificaciones -->
         <div class="lg:col-span-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-          <h3 class="text-xl font-semibold mb-4">Calificaciones de Alumnos</h3>
+          <h3 class="text-xl font-semibold mb-4">Calificaciones de Alumnos/as</h3>
           <div class="overflow-x-auto">
             <table class="min-w-full">
               <thead class="bg-gray-100 dark:bg-gray-700">
                 <tr>
-                  <th class="px-4 py-3 text-left text-sm font-medium">Alumno</th>
+                  <th class="px-4 py-3 text-left text-sm font-medium">Alumno/a</th>
                   <th class="px-4 py-3 text-center text-sm font-medium">Nota Final</th>
                   <th class="px-4 py-3 text-left text-sm font-medium">Historial</th>
                   <th class="px-4 py-3 text-left text-sm font-medium">Nueva Calificación</th>
@@ -780,7 +780,7 @@ function renderAlumnoView(module, moduleStudents) {
   const calculatedGrades = getCalculatedGrades();
 
   if (!moduleStudents || moduleStudents.length === 0) {
-       return `<p class="text-center text-gray-500 dark:text-gray-400 mt-10">No hay alumnos para mostrar en esta vista.</p>`;
+       return `<p class="text-center text-gray-500 dark:text-gray-400 mt-10">No hay alumnos/as para mostrar en esta vista.</p>`;
   }
   
   const currentStudent = moduleStudents.find(s => s.id === selectedStudentIdForView);
@@ -788,7 +788,7 @@ function renderAlumnoView(module, moduleStudents) {
   
   if (!currentStudent || studentIndex === -1) {
        console.error("Error: Could not find student with ID:", selectedStudentIdForView);
-       return `<p class="text-center text-red-500 dark:text-red-400 mt-10">Error: Alumno no encontrado.</p>`;
+       return `<p class="text-center text-red-500 dark:text-red-400 mt-10">Error: Alumno/a no encontrado.</p>`;
   }
   
   const isFirstStudent = studentIndex === 0;
@@ -802,11 +802,11 @@ function renderAlumnoView(module, moduleStudents) {
     <div class="p-4">
       <!-- Navegación y Nombre del Alumno -->
       <div class="flex items-center justify-between mb-2">
-        <button id="prev-student-btn" ${isFirstStudent ? 'disabled' : ''} class="p-2 rounded-full transition-colors ${isFirstStudent ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" aria-label="Alumno anterior" title="Alumno anterior">
+        <button id="prev-student-btn" ${isFirstStudent ? 'disabled' : ''} class="p-2 rounded-full transition-colors ${isFirstStudent ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" aria-label="Alumno/a anterior" title="Alumno/a anterior">
             ${ICONS.ArrowLeftCircle}
         </button>
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white text-center flex-grow mx-4">${currentStudent.name}</h2>
-        <button id="next-student-btn" ${isLastStudent ? 'disabled' : ''} class="p-2 rounded-full transition-colors ${isLastStudent ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" aria-label="Alumno siguiente" title="Alumno siguiente">
+        <button id="next-student-btn" ${isLastStudent ? 'disabled' : ''} class="p-2 rounded-full transition-colors ${isLastStudent ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" aria-label="Alumno/a siguiente" title="Alumno/a siguiente">
             ${ICONS.ArrowRightCircle}
         </button>
       </div>
@@ -829,7 +829,7 @@ function renderAlumnoView(module, moduleStudents) {
             </div>
             <div class="space-y-3 mt-4">
               ${module.resultados_de_aprendizaje.map(ra => 
-                  // Para la vista de alumno, la nota del CE es la final calculada,
+                  // Para la vista de alumno/a, la nota del CE es la final calculada,
                   // que es la nota más alta obtenida en cualquiera de las actividades que lo evalúan.
                   // La función `calculateModuleGrades` ya nos da esta información.
                   // `ceFinalGrades` contendrá el mapa de { ce_id: nota_final }.
@@ -894,7 +894,7 @@ function renderCommentForm(student, module) {
             <button class="delete-comment-btn text-red-500 hover:text-red-700 text-xs" data-comment-id="${comment.id}" data-student-id="${student.id}" data-module-id="${module.id}">Eliminar</button>
           </div>
         </div>
-      `).join('') : '<p class="text-sm text-gray-500">No hay comentarios para este alumno en este módulo.</p>'}
+      `).join('') : '<p class="text-sm text-gray-500">No hay comentarios para este alumno/a en este módulo.</p>'}
     </div>
   `;
 }

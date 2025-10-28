@@ -71,7 +71,7 @@ export function handleDownloadModuleTemplate() {
 }
 
 export function handleDownloadStudentTemplate() {
-  const content = `# FORMATO OBLIGATORIO: Apellidos, Nombre
+  const content = `# FORMATO RECOMENDADO: Apellidos, Nombre
 # Cada línea debe contener los apellidos, una coma, y luego el nombre.
 Pérez Padillo, Marta
 Jiménez Castro, María de la Sierra`;
@@ -88,7 +88,7 @@ export function handleExportSingleModuleReport(studentId, moduleId) {
   const module = db.modules.find(m => m.id === moduleId);
 
   if (!student || !module) {
-    alert("Error: No se pudo encontrar el alumno o el módulo para exportar.");
+    alert("Error: No se pudo encontrar el alumno/a o el módulo para exportar.");
     return;
   }
 
@@ -135,7 +135,7 @@ export function handleSetModuleView(newView) {
     const students = (selectedModule?.studentIds || [])
         .map(id => db.students.find(s => s.id === id))
         .filter(Boolean);
-    // Si cambiamos a la vista 'alumno' y no hay un alumno seleccionado, o el seleccionado ya no existe en la lista,
+    // Si cambiamos a la vista 'alumno' y no hay un alumno/a seleccionado, o el seleccionado ya no existe en la lista,
     // seleccionamos el primero de la lista actual.
     const currentSelectedId = state.getUI().selectedStudentIdForView;
     const isCurrentStudentInList = students.some(s => s.id === currentSelectedId);
@@ -296,19 +296,19 @@ export function handleToggleCeDual(moduleId, ceId) {
 export function handleImportStudentsToModule(text, moduleId) {
   try {
     if (!moduleId) {
-      throw new Error("No se ha seleccionado un módulo para asociar los alumnos.");
+      throw new Error("No se ha seleccionado un módulo para asociar los alumnos/as.");
     }
 
     const newStudents = dataManager.importStudents(text);
     const db = state.getDB();
 
-    // Añadir nuevos alumnos a la lista maestra si no existen
+    // Añadir nuevos alumnos/as a la lista maestra si no existen
     const existingStudentNames = new Set(db.students.map(s => s.name.toLowerCase()));
     const trulyNewStudents = newStudents.filter(s => !existingStudentNames.has(s.name.toLowerCase()));
     db.students.push(...trulyNewStudents);
     db.students.sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 
-    // Asociar los IDs de los alumnos importados al módulo
+    // Asociar los IDs de los alumnos/as importados al módulo
     const module = db.modules.find(m => m.id === moduleId);
     const importedStudentNames = new Set(newStudents.map(s => s.name.toLowerCase()));
     const studentIdsToAssociate = db.students
@@ -328,7 +328,7 @@ export function handleImportStudentsToModule(text, moduleId) {
     }
 
     state.saveDB();
-    alert(`Lista de alumnos actualizada para el módulo "${module.modulo}".`);
+    alert(`Lista de alumnos/as actualizada para el módulo "${module.modulo}".`);
     renderApp();
   } catch (error) {
     alert(error.message);
@@ -341,19 +341,19 @@ export function handleRemoveStudentFromModule(moduleId, studentId) {
   const student = db.students.find(s => s.id === studentId);
 
   if (!module || !student) {
-    alert("Error: No se pudo encontrar el módulo o el alumno.");
+    alert("Error: No se pudo encontrar el módulo o el alumno/a.");
     return;
   }
 
   if (window.confirm(`¿Estás seguro de que quieres eliminar a "${student.name}" del módulo "${module.modulo}"? Sus notas en este módulo también se borrarán.`)) {
-    // Eliminar al alumno de la lista del módulo
+    // Eliminar al alumno/a de la lista del módulo
     module.studentIds = module.studentIds.filter(id => id !== studentId);
 
     // Opcional pero recomendado: Limpiar sus notas para ese módulo
     if (db.grades[studentId]) {
       // Esto es simplificado. Si un CE pudiera estar en varios módulos, necesitaríamos una lógica más compleja.
       // Por ahora, asumimos que al quitarlo, podemos limpiar sus notas.
-      // Una mejor aproximación sería borrar solo las notas de los CEs de este módulo.
+      // Una mejor aproximación sería borrar solo las notas de las actividades de este módulo.
       // Por simplicidad, por ahora no borramos las notas para evitar perder datos si se re-añade.
     }
 
@@ -371,7 +371,7 @@ export function handleImportModule(text) {
     db.modules.push(newModule);
     state.setDB(db);
     state.saveDB();
-    alert(`Módulo "${newModule.modulo}" importado. Ahora puedes asociarle alumnos.`);
+    alert(`Módulo "${newModule.modulo}" importado. Ahora puedes asociarle alumnos/as.`);
     handleSelectModule(newModule.id); // Cambiamos esto para que seleccione el módulo directamente
   } catch (error) {
     console.error("Error importing module:", error);
@@ -381,7 +381,7 @@ export function handleImportModule(text) {
 
 export function handleClearData() {
   if (window.confirm("¿Estás seguro de que quieres borrar TODOS los datos? Esta acción no se puede deshacer.")) {
-    state.setDB({ modules: [], students: [], grades: {}, comments: {} });
+    state.setDB({ modules: [], students: [], grades: {}, comments: {}, actividades: [], trimesterGrades: {} });
     state.saveDB();
     state.setSelectedModuleId(null);
     alert("Todos los datos han sido borrados.");

@@ -33,7 +33,7 @@ export function renderHeader(page, db) {
         </button>
         <button data-page="alumnos" class="${navClass('alumnos')}">
           ${ICONS.Users}
-          <span>Alumnos (${db.students.length})</span>
+          <span>Alumnos/as (${db.students.length})</span>
         </button>
         <button data-page="configuracion" class="${navClass('configuracion')}">
           ${ICONS.Settings}
@@ -63,7 +63,7 @@ export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentI
       </button>
       <div id="${contentId}" class="accordion-content hidden p-4 bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
         ${ra.criterios_de_evaluacion.map(ce => {
-            // En la vista de alumno, la nota del CE es la final calculada, no la de una actividad específica.
+            // En la vista de alumno/a, la nota del CE es la final calculada, no la de una actividad específica.
             // Buscamos la nota final del CE en el objeto de notas del estudiante.
             // Esto es una simplificación. La nota final del CE se calcula a partir de las actividades.
             // Para la vista de solo lectura, mostraremos la nota final de la actividad que lo evalúa.
@@ -93,7 +93,7 @@ export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentI
                 <p class="text-sm text-blue-600 dark:text-blue-400 mt-1 italic">${ce.ud_ref || 'Sin referencia UD'}</p>
                 ${isReadOnly && notasDeActividades.length > 0 ? `
                   <div class="mt-2 text-xs border-t border-gray-200 dark:border-gray-600 pt-2">
-                    <span class="font-semibold">Actividades:</span>
+                    <span class="font-semibold">Actividades evaluables:</span>
                     <ul class="list-disc list-inside pl-2">
                       ${notasDeActividades.map(n => `<li>${n.name} (T${n.trimestre}): <span class="font-bold">${n.grade.toFixed(2)}</span></li>`).join('')}
                     </ul>
