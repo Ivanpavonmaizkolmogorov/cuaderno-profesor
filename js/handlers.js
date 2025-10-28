@@ -115,6 +115,11 @@ export function handleSelectActividad(actividadId) {
   handleSetPage('actividadDetail');
 }
 
+export function handleFilterStudentsByModule(moduleId) {
+  state.setStudentPageModuleFilter(moduleId);
+  renderApp();
+}
+
 export function handleSetModuleView(newView) {
     state.setModuleView(newView);
     const db = state.getDB();

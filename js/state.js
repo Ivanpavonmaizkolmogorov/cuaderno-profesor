@@ -20,6 +20,7 @@ let state = {
     moduleView: 'tabla', // 'tabla', 'alumno'
     selectedStudentIdForView: null, // ID del alumno en la vista 'alumno'
     selectedActividadId: null, // ID de la actividad para la página de detalle
+    studentPageModuleFilter: 'all', // 'all' o un ID de módulo
   },
   // Almacén para notas calculadas
   calculatedGrades: {},
@@ -53,6 +54,10 @@ export const setSelectedStudentIdForView = (studentId) => {
 
 export const setSelectedActividadId = (actividadId) => {
   state.ui.selectedActividadId = actividadId;
+};
+
+export const setStudentPageModuleFilter = (moduleId) => {
+  state.ui.studentPageModuleFilter = moduleId;
 };
 
 export const setCalculatedGrades = (grades) => {

@@ -101,6 +101,7 @@ function attachEventListeners() {
   if (ui.page === 'alumnos') {
     document.getElementById('sort-all-asc-btn')?.addEventListener('click', () => handlers.handleSortAllStudents('asc'));
     document.getElementById('sort-all-desc-btn')?.addEventListener('click', () => handlers.handleSortAllStudents('desc'));
+    document.getElementById('student-module-filter')?.addEventListener('change', (e) => handlers.handleFilterStudentsByModule(e.target.value));
 
     document.querySelectorAll('.export-student-pdf-btn').forEach(button => {
       button.addEventListener('click', (e) => {

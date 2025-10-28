@@ -130,14 +130,24 @@ Judith Fernández Porras`;
 
 // Renderiza la página de Alumnos
 export function renderAlumnosPage() {
-  const db = getDB();
+  const { db, ui } = { db: getDB(), ui: getUI() };
   let studentListHtml = '';
 
-  if (db.students && db.students.length > 0) {
-    // El orden de db.students es la fuente de la verdad
+  // Filtrar alumnos si hay un filtro de módulo activo
+  let studentsToDisplay = db.students;
+  if (ui.studentPageModuleFilter && ui.studentPageModuleFilter !== 'all') {
+    const module = db.modules.find(m => m.id === ui.studentPageModuleFilter);
+    if (module && module.studentIds) {
+      const studentIdsInModule = new Set(module.studentIds);
+      studentsToDisplay = db.students.filter(s => studentIdsInModule.has(s.id));
+    }
+  }
+
+  if (studentsToDisplay && studentsToDisplay.length > 0) {
+    // El orden de los alumnos se mantiene según el array `studentsToDisplay`
     studentListHtml = `
       <div id="all-students-container" class="space-y-6">
-        ${db.students.map(student => {
+        ${studentsToDisplay.map(student => {
           // Encontrar todos los módulos para este alumno
           const enrolledModules = db.modules
             .filter(m => m.studentIds?.includes(student.id))
@@ -181,21 +191,33 @@ export function renderAlumnosPage() {
     `;
   } else {
     studentListHtml = `
-      <p class="text-center text-gray-500 dark:text-gray-400 mt-10">
-          No hay alumnos registrados en el sistema.
+      <p class="text-center text-gray-500 dark:text-gray-400 my-10">
+          ${ui.studentPageModuleFilter !== 'all' ? 'No hay alumnos en el módulo seleccionado.' : 'No hay alumnos registrados en el sistema.'}
       </p>
     `;
   }
   
   return `
     <div class="container mx-auto px-6 py-8">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-3xl font-bold">Panel General de Alumnos (${db.students.length})</h2>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <h2 class="text-3xl font-bold">Panel General de Alumnos (${studentsToDisplay.length})</h2>
             <div class="flex gap-2">
                 <button id="sort-all-asc-btn" class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar A-Z">${ICONS.ArrowDownAZ}</button>
                 <button id="sort-all-desc-btn" class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar Z-A">${ICONS.ArrowUpAZ}</button>
             </div>
         </div>
+
+        <!-- Filtro por Módulo -->
+        <div class="mb-8 max-w-md">
+          <label for="student-module-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filtrar por Módulo:</label>
+          <select id="student-module-filter" class="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
+            <option value="all" ${ui.studentPageModuleFilter === 'all' ? 'selected' : ''}>-- Ver todos los alumnos --</option>
+            ${db.modules.map(m => `
+              <option value="${m.id}" ${m.id === ui.studentPageModuleFilter ? 'selected' : ''}>${m.modulo}</option>
+            `).join('')}
+          </select>
+        </div>
+
       ${studentListHtml}
       
       <!-- Modal para el historial de comentarios -->
