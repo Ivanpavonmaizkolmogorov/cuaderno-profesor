@@ -142,7 +142,7 @@ export function renderAlumnosPage() {
           const enrolledModules = db.modules
             .filter(m => m.studentIds?.includes(student.id))
             .map(module => {
-              const calculated = calculateModuleGrades(module, [student], db.grades);
+              const calculated = calculateModuleGrades(module, [student], db.grades, db.actividades);
               const finalGrade = calculated[student.id]?.moduleGrade || 0;
               return { name: module.modulo, grade: finalGrade };
             });
@@ -154,9 +154,14 @@ export function renderAlumnosPage() {
                     <span class="drag-handle cursor-move text-gray-400" title="Arrastrar para reordenar">${ICONS.GripVertical}</span>
                     <h3 class="text-xl font-bold text-gray-900 dark:text-white">${student.name}</h3>
                 </div>
-                <button class="export-student-pdf-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg" data-student-id="${student.id}">
-                  ${ICONS.DownloadCloud} Exportar PDF
-                </button>
+                <div class="flex gap-2">
+                    <button class="view-history-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-500 hover:bg-gray-600 text-white rounded-lg" data-student-id="${student.id}">
+                      ${ICONS.MessageSquare} Historial
+                    </button>
+                    <button class="export-student-pdf-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg" data-student-id="${student.id}">
+                      ${ICONS.DownloadCloud} Exportar PDF
+                    </button>
+                </div>
               </div>
               ${enrolledModules.length > 0 ? `
                 <h4 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Módulos Matriculados:</h4>
@@ -192,6 +197,91 @@ export function renderAlumnosPage() {
             </div>
         </div>
       ${studentListHtml}
+      
+      <!-- Modal para el historial de comentarios -->
+      <div id="comment-history-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div id="comment-history-modal-content" class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-11/12 md:w-3/4 lg:w-1/2 max-h-[80vh] overflow-y-auto p-6">
+          <!-- Contenido se inyectará aquí -->
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+export function renderStudentCommentHistoryModal(student) {
+  const db = getDB();
+  const studentCommentsByModule = Object.entries(db.comments)
+    .map(([moduleId, students]) => {
+      const module = db.modules.find(m => m.id === moduleId);
+      const comments = students[student.id];
+      return { module, comments };
+    })
+    .filter(item => item.module && item.comments && item.comments.length > 0);
+
+  if (studentCommentsByModule.length === 0) {
+    return `
+      <h3 class="text-2xl font-bold mb-4">Historial de ${student.name}</h3>
+      <p>Este alumno no tiene comentarios.</p>
+      <button id="close-modal-btn" class="mt-6 bg-red-500 text-white py-2 px-4 rounded">Cerrar</button>
+    `;
+  }
+
+  return `
+    <div class="flex justify-between items-start">
+        <h3 class="text-2xl font-bold mb-4">Historial de ${student.name}</h3>
+        <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 dark:hover:text-white">&times;</button>
+    </div>
+    <div class="space-y-6">
+      ${studentCommentsByModule.map(({ module, comments }) => `
+        <div>
+          <h4 class="text-lg font-semibold text-blue-600 dark:text-blue-400 border-b border-gray-300 dark:border-gray-600 pb-1 mb-2">${module.modulo}</h4>
+          <ul class="space-y-3">
+            ${comments.map(comment => `
+              <li class="bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-sm">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="font-semibold">${comment.type === 'ce' ? `CE: ${comment.ce_id}` : 'Comportamiento'}</span>
+                  <span class="text-xs text-gray-500">${new Date(comment.date).toLocaleDateString()}</span>
+                </div>
+                <p>${comment.text}</p>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+/**
+ * Renderiza la vista de detalle de un módulo para un alumno específico.
+ * Se usa para inyectar en el acordeón de la página de Alumnos.
+ */
+export function renderStudentModuleDetail(student, module) {
+  const db = getDB();
+  const studentGrades = db.grades[student.id] || {};
+  const calculated = calculateModuleGrades(module, [student], db.grades, db.actividades);
+  const finalGrades = calculated[student.id] || { raTotals: {}, moduleGrade: 0 };
+
+  return `
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Columna 1: Criterios de Evaluación -->
+      <div class="lg:col-span-2">
+        <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Desglose de Calificaciones</h4>
+        <div class="space-y-3">
+          ${module.resultados_de_aprendizaje.map(ra => 
+              renderRaAccordion(
+                  ra, 
+                  studentGrades, 
+                  (finalGrades.raTotals && typeof finalGrades.raTotals[ra.ra_id] === 'number') ? finalGrades.raTotals[ra.ra_id] : 0,
+                  student.id
+              )
+          ).join('')}
+        </div>
+      </div>
+      <!-- Columna 2: Comentarios -->
+      <div class="lg:col-span-1">
+        ${renderCommentForm(student, module)}
+      </div>
     </div>
   `;
 }
@@ -215,6 +305,13 @@ export function renderModulosPage() {
           </select>
       </div>
       <hr class="my-6 border-gray-200 dark:border-gray-700" />
+      ${selectedModule ? `
+        <div class="text-center">
+            <button data-page="actividades" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg flex items-center justify-center gap-2 mx-auto">
+                ${ICONS.ClipboardList} Gestionar Actividades de "${selectedModule.modulo}"
+            </button>
+        </div>
+      ` : ''}
     `;
   } else {
     moduleSelectHtml = `
@@ -245,6 +342,82 @@ export function renderModulosPage() {
       <h2 class="text-3xl font-bold mb-6">Módulos (${modules.length})</h2>
       ${moduleSelectHtml}
       ${moduleDetailHtml}
+    </div>
+  `;
+}
+
+export function renderActividadesPage() {
+  const { modules, actividades } = getDB();
+  const { selectedModuleId } = getUI();
+  const selectedModule = modules.find(m => m.id === selectedModuleId);
+
+  if (!selectedModule) {
+    return `<div class="p-6"><p>Por favor, selecciona un módulo primero desde la página de Módulos.</p></div>`;
+  }
+
+  const moduleActividades = actividades.filter(a => a.moduleId === selectedModule.id);
+  const allCes = selectedModule.resultados_de_aprendizaje.flatMap(ra => ra.criterios_de_evaluacion);
+
+  return `
+    <div class="container mx-auto px-6 py-8">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-3xl font-bold">Gestión de Actividades</h2>
+          <p class="text-lg text-gray-500 dark:text-gray-400">${selectedModule.modulo}</p>
+        </div>
+        <button data-page="modulos" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Volver a Módulos</button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Columna de Actividades Existentes -->
+        <div class="lg:col-span-2">
+          <h3 class="text-xl font-semibold mb-4">Actividades Creadas (${moduleActividades.length})</h3>
+          <div class="space-y-4">
+            ${moduleActividades.length > 0 ? moduleActividades.map(act => `
+              <details class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                <summary class="p-4 cursor-pointer font-semibold flex justify-between items-center">
+                  <span>${act.name} (T${act.trimestre})</span>
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-500">${act.ceIds.length} CEs</span>
+                    <span class="chevron-icon transform transition-transform">${ICONS.ChevronRight}</span>
+                  </div>
+                </summary>
+                <div class="p-6 border-t border-gray-200 dark:border-gray-700">
+                  <form class="update-actividad-form" data-actividad-id="${act.id}">
+                    <input type="text" name="name" value="${act.name}" required class="w-full p-2 mb-2 border rounded-md dark:bg-gray-900">
+                    <select name="trimestre" required class="w-full p-2 mb-2 border rounded-md dark:bg-gray-900">
+                      <option value="1" ${act.trimestre === '1' ? 'selected' : ''}>1er Trimestre</option>
+                      <option value="2" ${act.trimestre === '2' ? 'selected' : ''}>2º Trimestre</option>
+                      <option value="3" ${act.trimestre === '3' ? 'selected' : ''}>3er Trimestre</option>
+                    </select>
+                    <p class="text-sm mb-2">Criterios de Evaluación asociados:</p>
+                    <div class="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                      ${allCes.map(ce => `
+                        <label class="flex items-center gap-2 text-sm">
+                          <input type="checkbox" name="ceIds" value="${ce.ce_id}" ${act.ceIds.includes(ce.ce_id) ? 'checked' : ''}>
+                          <span>${ce.ce_id} - ${ce.ce_descripcion.substring(0, 50)}...</span>
+                        </label>
+                      `).join('')}
+                    </div>
+                    <div class="flex gap-2 mt-4">
+                      <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Cambios</button>
+                      <button type="button" class="delete-actividad-btn w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg" data-actividad-id="${act.id}">Eliminar</button>
+                    </div>
+                  </form>
+                </div>
+              </details>
+            `).join('') : '<p class="text-gray-500">No hay actividades creadas para este módulo.</p>'}
+          </div>
+        </div>
+
+        <!-- Columna para Crear Nueva Actividad -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 h-fit">
+          <h3 class="text-xl font-semibold mb-4">Crear Nueva Actividad</h3>
+          <form id="actividad-form" data-module-id="${selectedModule.id}">
+            <!-- El mismo formulario de antes -->
+          </form>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -356,6 +529,13 @@ function renderModuloDetalle(module, moduleStudents) {
         </button>
       </div>
 
+      <!-- Botón para abrir modal de cálculo de notas -->
+      ${moduleView === 'tabla' && moduleStudents.length > 0 ? `
+        <div class="text-center mb-6">
+          <button id="open-trimester-modal-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg">${ICONS.Database} Calcular Notas Trimestrales / Finales</button>
+        </div>
+      ` : ''}
+
       <!-- Contenido de la vista -->
       ${contentHtml}
     </div>
@@ -363,34 +543,36 @@ function renderModuloDetalle(module, moduleStudents) {
 }
 
 function renderCuadernoCalificaciones(module, moduleStudents) {
-  const { grades } = getDB();
+  const { grades, trimesterGrades, actividades } = getDB();
   const calculatedGrades = getCalculatedGrades();
   const ras = module.resultados_de_aprendizaje;
-  const allCes = ras.flatMap(ra =>
-    ra.criterios_de_evaluacion.map(ce => ({ ...ce, raId: ra.ra_id }))
-  );
+  const { selectedModuleId } = getUI();
+  const moduleActividades = actividades.filter(a => a.moduleId === module.id);
+  // const allCes = ras.flatMap(ra =>
+  //   ra.criterios_de_evaluacion.map(ce => ({ ...ce, raId: ra.ra_id }))
+  // );
 
   const headerHtml = `
     <thead class="bg-gray-50 dark:bg-gray-800 sticky-header">
+
       <tr>
         <th scope="col" class="sticky left-0 z-10 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider bg-gray-50 dark:bg-gray-800">
           Alumno
         </th>
-        ${allCes.map(ce => {
-          const dualClass = ce.dual ? 'bg-blue-100 dark:bg-blue-900/50 border-blue-200 dark:border-blue-700' : '';
-          const dualTitle = ce.dual ? ' (Dual)' : '';
+        <!-- Columnas de notas trimestrales guardadas -->
+        <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T1</th>
+        <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T2</th>
+        <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T3</th>
+        <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">Ord.</th>
+        
+        <!-- Columnas de Actividades Evaluables -->
+        ${moduleActividades.map(act => {
           return `
-            <th key="${ce.ce_id}" scope="col" 
-              class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b ${dualClass}" 
-              title="${ce.raId} - ${ce.ce_descripcion} (Peso: ${ce.peso}%)">
-              <div class="flex flex-col items-center justify-center gap-2">
-                <div>
-                  ${ce.dual ? `<span class="inline-block align-middle mr-1">${ICONS.Briefcase}</span>` : ''}
-                  <span>${ce.ce_id}</span>
-                </div>
-                <input type="checkbox" class="toggle-dual-btn" data-ce-id="${ce.ce_id}" 
-                  title="Marcar como evaluación Dual" ${ce.dual ? 'checked' : ''}>
-              </div>
+            <th key="${act.id}" scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <button class="open-actividad-panel-btn w-full h-full" data-actividad-id="${act.id}" title="Calificar actividad: ${act.name}\nCEs: ${act.ceIds.join(', ')}">
+                <span class="block">${act.name}</span>
+                <span class="block font-normal normal-case">(T${act.trimestre})</span>
+              </button>
             </th>
           `;
         }).join('')}
@@ -410,6 +592,7 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
     <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
       ${moduleStudents.map(student => {
         const studentGrades = grades[student.id] || {};
+
         const calcs = calculatedGrades[student.id] || { raTotals: {}, moduleGrade: 0 };
         
         return `
@@ -417,15 +600,20 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
             <td class="sticky left-0 z-10 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800">
               ${student.name}
             </td>
-            
-            ${allCes.map(ce => {
-              const grade = studentGrades[ce.ce_id];
-              const dualInputClass = ce.dual ? 'bg-blue-100 dark:bg-blue-900/50 cursor-not-allowed' : 'bg-white dark:bg-gray-800';
+            <!-- Celdas de notas trimestrales -->
+            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${trimesterGrades[module.id]?.[student.id]?.T1?.toFixed(2) || '-'}</td>
+            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${trimesterGrades[module.id]?.[student.id]?.T2?.toFixed(2) || '-'}</td>
+            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${trimesterGrades[module.id]?.[student.id]?.T3?.toFixed(2) || '-'}</td>
+            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${trimesterGrades[module.id]?.[student.id]?.ORD?.toFixed(2) || '-'}</td>
+
+            ${moduleActividades.map(act => {
+              const attempts = studentGrades[act.id] || [];
+              const finalGrade = attempts.length > 0 ? Math.max(...attempts.map(a => a.grade)) : null;
               return `
-                <td key="${ce.ce_id}" class="px-6 py-4 whitespace-nowrap text-sm">
-                  <input type="number" min="0" max="10" step="0.1" value="${grade != null ? grade : ''}" data-student-id="${student.id}" data-ce-id="${ce.ce_id}" 
-                    class="grade-input w-20 p-2 text-center border border-gray-300 dark:border-gray-700 rounded-md text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 ${dualInputClass}" 
-                    aria-label="Nota ${student.name} ${ce.ce_id}" ${ce.dual ? 'disabled' : ''} />
+                <td key="${act.id}" class="px-2 py-4 whitespace-nowrap text-sm">
+                  <div class="w-20 mx-auto p-2 text-center font-semibold ${finalGrade === null ? 'text-gray-400' : (finalGrade >= 5 ? 'text-green-600' : 'text-red-600')}">
+                    ${finalGrade !== null ? finalGrade.toFixed(2) : '-'}
+                  </div>
                 </td>
               `
             }).join('')}
@@ -458,6 +646,187 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
   `;
 }
 
+export function renderActividadGradePanel(actividad, moduleStudents) {
+  const { grades } = getDB();
+
+  return `
+    <div class="flex justify-between items-start">
+      <div>
+        <h3 class="text-2xl font-bold">Panel de Calificación</h3>
+        <p class="text-lg text-gray-600 dark:text-gray-400">${actividad.name} (T${actividad.trimestre})</p>
+      </div>
+      <button id="close-actividad-panel-btn" class="text-gray-500 hover:text-gray-800 dark:hover:text-white">&times;</button>
+    </div>
+    <div class="mt-4 max-h-[70vh] overflow-y-auto">
+      <table class="min-w-full">
+        <thead class="sticky top-0 bg-gray-100 dark:bg-gray-800">
+          <tr>
+            <th class="px-4 py-2 text-left">Alumno</th>
+            <th class="px-4 py-2 text-center">Nota Final</th>
+            <th class="px-4 py-2 text-left">Historial de Calificaciones</th>
+            <th class="px-4 py-2 text-left">Nueva Calificación</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          ${moduleStudents.map(student => {
+            const attempts = grades[student.id]?.[actividad.id] || [];
+            const finalGrade = attempts.length > 0 ? Math.max(...attempts.map(a => a.grade)) : null;
+
+            return `
+              <tr class="align-top">
+                <td class="px-4 py-3 font-semibold">${student.name}</td>
+                <td class="px-4 py-3 text-center font-bold text-xl ${finalGrade === null ? '' : (finalGrade >= 5 ? 'text-green-500' : 'text-red-500')}">
+                  ${finalGrade !== null ? finalGrade.toFixed(2) : '-'}
+                </td>
+                <td class="px-4 py-3">
+                  <div class="space-y-2">
+                    ${attempts.length > 0 ? attempts.map(att => `
+                      <div class="text-xs bg-gray-100 dark:bg-gray-700 p-2 rounded">
+                        <div class="flex justify-between">
+                          <span>${att.type}: <span class="font-bold">${att.grade.toFixed(2)}</span></span>
+                          <button class="delete-attempt-btn text-red-400 hover:text-red-600" data-student-id="${student.id}" data-actividad-id="${actividad.id}" data-attempt-id="${att.id}">&times;</button>
+                        </div>
+                        <p class="text-gray-500 italic">"${att.observation || 'Sin observación'}"</p>
+                        <p class="text-right text-gray-400">${new Date(att.date).toLocaleDateString()}</p>
+                      </div>
+                    `).join('') : '<p class="text-xs text-gray-500">Sin calificaciones</p>'}
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  <form class="add-attempt-form space-y-2" data-student-id="${student.id}" data-actividad-id="${actividad.id}">
+                    <input type="number" name="grade" step="0.1" min="0" max="10" placeholder="Nota" required class="w-full p-1 border rounded dark:bg-gray-900">
+                    <select name="type" class="w-full p-1 border rounded dark:bg-gray-900">
+                      <option value="Ordinaria">Ordinaria</option>
+                      <option value="Recuperación">Recuperación</option>
+                      <option value="Mejora de nota">Mejora de nota</option>
+                    </select>
+                    <input type="text" name="observation" placeholder="Observación (opcional)" class="w-full p-1 border rounded dark:bg-gray-900">
+                    <button type="submit" class="w-full text-xs bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded">Añadir</button>
+                  </form>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+export function renderActividadesManagement(module) {
+  const { actividades } = getDB();
+  const moduleActividades = actividades.filter(a => a.moduleId === module.id);
+  const allCes = module.resultados_de_aprendizaje.flatMap(ra => ra.criterios_de_evaluacion);
+
+  return `
+    <div class="my-6">
+      <details class="bg-white dark:bg-gray-800 shadow-lg rounded-lg">
+        <summary class="p-4 cursor-pointer font-semibold text-lg flex justify-between items-center">
+          <span>Gestionar Actividades Evaluables (${moduleActividades.length})</span>
+          <span class="text-sm text-gray-500">Desplegar/Plegar</span>
+        </summary>
+        <div class="p-6 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Lista de Actividades -->
+          <div>
+            <h4 class="font-semibold mb-3">Actividades Creadas</h4>
+            <div class="space-y-2 max-h-60 overflow-y-auto">
+              ${moduleActividades.length > 0 ? moduleActividades.map(act => `
+                <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-md">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <p class="font-bold">${act.name} (T${act.trimestre})</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">CEs: ${act.ceIds.join(', ')}</p>
+                    </div>
+                    <button class="delete-actividad-btn text-red-500 hover:text-red-700 p-1" data-actividad-id="${act.id}">&times;</button>
+                  </div>
+                </div>
+              `).join('') : '<p class="text-sm text-gray-500">No hay actividades creadas.</p>'}
+            </div>
+          </div>
+          <!-- Formulario para Nueva Actividad -->
+          <div>
+            <h4 class="font-semibold mb-3">Crear Nueva Actividad</h4>
+            <form id="actividad-form" data-module-id="${module.id}">
+              <input type="text" name="name" placeholder="Nombre de la actividad (Ej: Examen T1)" required class="w-full p-2 mb-2 border rounded-md dark:bg-gray-900">
+              <select name="trimestre" required class="w-full p-2 mb-2 border rounded-md dark:bg-gray-900">
+                <option value="">Seleccionar Trimestre</option>
+                <option value="1">1er Trimestre</option>
+                <option value="2">2º Trimestre</option>
+                <option value="3">3er Trimestre</option>
+              </select>
+              <p class="text-sm mb-2">Criterios de Evaluación a los que se asocia:</p>
+              <div class="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                ${allCes.map(ce => `
+                  <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="ceIds" value="${ce.ce_id}">
+                    <span>${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...</span>
+                  </label>
+                `).join('')}
+              </div>
+              <button type="submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+                Crear Actividad
+              </button>
+            </form>
+          </div>
+        </div>
+      </details>
+    </div>
+  `;
+}
+
+
+
+
+
+
+
+
+export function renderTrimesterModalContent(module, moduleStudents) {
+  const calculatedGrades = getCalculatedGrades();
+  
+  return `
+    <div class="flex justify-between items-start">
+      <h3 class="text-2xl font-bold mb-4">Calcular Notas para ${module.modulo}</h3>
+      <button id="close-trimester-modal-btn" class="text-gray-500 hover:text-gray-800 dark:hover:text-white">&times;</button>
+    </div>
+    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+      El sistema calcula la nota para cada alumno basándose en **todos los criterios evaluados hasta este momento**. 
+      Selecciona un hito y pulsa "Guardar" para almacenar estas notas como oficiales.
+    </p>
+    <div class="max-h-60 overflow-y-auto border rounded-lg mb-4">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-800">
+          <tr>
+            <th class="px-4 py-2 text-left text-xs font-medium">Alumno</th>
+            <th class="px-4 py-2 text-right text-xs font-medium">Nota Calculada</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white dark:bg-gray-900">
+          ${moduleStudents.map(student => `
+            <tr data-student-id="${student.id}" data-grade="${calculatedGrades[student.id]?.moduleGrade || 0}">
+              <td class="px-4 py-2 whitespace-nowrap">${student.name}</td>
+              <td class="px-4 py-2 whitespace-nowrap text-right font-bold">${(calculatedGrades[student.id]?.moduleGrade || 0).toFixed(2)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="flex items-center gap-4 mt-4">
+      <label for="trimester-select" class="font-semibold">Guardar como:</label>
+      <select id="trimester-select" class="flex-grow p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800">
+        <option value="">-- Seleccionar Hito --</option>
+        <option value="T1">1er Trimestre</option>
+        <option value="T2">2º Trimestre</option>
+        <option value="T3">3er Trimestre</option>
+        <option value="ORD">Final Ordinaria</option>
+      </select>
+      <button id="save-trimester-grades-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">
+        Guardar Notas
+      </button>
+    </div>
+  `;
+}
+
 function renderAlumnoView(module, moduleStudents) {
   const { grades, comments } = getDB();
   const { selectedStudentIdForView } = getUI();
@@ -481,7 +850,6 @@ function renderAlumnoView(module, moduleStudents) {
   const finalGrades = calculatedGrades[currentStudent.id] || { raTotals: {}, moduleGrade: 0 };
   const finalModuleGrade = (typeof finalGrades.moduleGrade === 'number') ? finalGrades.moduleGrade.toFixed(2) : '0.00';
   const studentGrades = grades[currentStudent.id] || {};
-  const studentComment = (comments[module.id] && comments[module.id][currentStudent.id]) ? comments[module.id][currentStudent.id] : '';
 
   return `
     <div class="p-4">
@@ -522,12 +890,52 @@ function renderAlumnoView(module, moduleStudents) {
 
         <!-- Columna 2: Comentarios -->
         <div class="lg:col-span-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            ${ICONS.FileText} Comentarios
-          </h3>
-          <textarea id="comment-textarea" data-student-id="${currentStudent.id}" data-module-id="${module.id}" class="w-full h-48 p-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500" placeholder="Escribe aquí observaciones, anotaciones sobre la recuperación, etc.">${studentComment}</textarea>
+          ${renderCommentForm(currentStudent, module)}
         </div>
       </div>
+    </div>
+  `;
+}
+
+function renderCommentForm(student, module) {
+  const db = getDB();
+  const studentComments = (db.comments[module.id] && db.comments[module.id][student.id]) || [];
+  const allCes = module.resultados_de_aprendizaje.flatMap(ra => ra.criterios_de_evaluacion);
+
+  return `
+    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+      ${ICONS.FileText} Comentarios
+    </h3>
+    <form id="comment-form" data-student-id="${student.id}" data-module-id="${module.id}">
+      <textarea name="text" class="w-full h-24 p-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500" placeholder="Escribe un nuevo comentario..."></textarea>
+      <div class="flex gap-2 mt-2">
+        <select name="type" class="comment-type-select flex-grow p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800">
+          <option value="comportamiento">Comportamiento</option>
+          <option value="ce">Asociar a CE</option>
+        </select>
+        <select name="ce" class="comment-ce-select hidden flex-grow p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800">
+          ${allCes.map(ce => `<option value="${ce.ce_id}">${ce.ce_id}</option>`).join('')}
+        </select>
+      </div>
+      <button type="submit" class="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
+        ${ICONS.PlusCircle} Añadir Comentario
+      </button>
+    </form>
+    <hr class="my-6 border-gray-300 dark:border-gray-700">
+    <h4 class="text-lg font-semibold mb-3">Comentarios Guardados</h4>
+    <div class="space-y-3 max-h-60 overflow-y-auto pr-2">
+      ${studentComments.length > 0 ? studentComments.map(comment => `
+        <div class="bg-gray-100 dark:bg-gray-900/50 p-3 rounded-md">
+          <div class="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <span class="font-semibold">${comment.type === 'ce' ? `CE: ${comment.ce_id}` : 'Comportamiento'}</span>
+            <span>${new Date(comment.date).toLocaleDateString()}</span>
+          </div>
+          <p class="text-sm">${comment.text}</p>
+          <div class="text-right mt-1">
+            <button class="delete-comment-btn text-red-500 hover:text-red-700 text-xs" data-comment-id="${comment.id}" data-student-id="${student.id}" data-module-id="${module.id}">Eliminar</button>
+          </div>
+        </div>
+      `).join('') : '<p class="text-sm text-gray-500">No hay comentarios para este alumno en este módulo.</p>'}
     </div>
   `;
 }

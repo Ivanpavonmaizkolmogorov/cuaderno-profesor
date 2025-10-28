@@ -1,7 +1,7 @@
 import * as state from './state.js';
 import * as handlers from './handlers.js';
 import { renderHeader } from './ui/components.js';
-import { renderConfiguracionPage, renderAlumnosPage, renderModulosPage } from './ui/pages.js';
+import * as pages from './ui/pages.js';
 import { calculateModuleGrades } from './services/calculations.js';
 
 // Función principal que dibuja la UI
@@ -16,7 +16,7 @@ export function renderApp() {
       const moduleStudents = (selectedModule.studentIds || [])
         .map(studentId => db.students.find(s => s.id === studentId))
         .filter(Boolean);
-      const newCalculatedGrades = calculateModuleGrades(selectedModule, moduleStudents, db.grades);
+      const newCalculatedGrades = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades);
       state.setCalculatedGrades(newCalculatedGrades);
     }
   }
@@ -32,13 +32,16 @@ export function renderApp() {
   if (contentContainer) {
       switch (ui.page) {
         case 'configuracion':
-          contentContainer.innerHTML = renderConfiguracionPage();
+          contentContainer.innerHTML = pages.renderConfiguracionPage();
           break;
         case 'alumnos':
-          contentContainer.innerHTML = renderAlumnosPage();
+          contentContainer.innerHTML = pages.renderAlumnosPage();
           break;
         case 'modulos':
-          contentContainer.innerHTML = renderModulosPage();
+          contentContainer.innerHTML = pages.renderModulosPage();
+          break;
+        case 'actividades':
+          contentContainer.innerHTML = pages.renderActividadesPage();
           break;
         default:
           contentContainer.innerHTML = `<p class="text-center text-red-500 p-10">Error: Página no reconocida.</p>`;
@@ -60,6 +63,16 @@ function attachEventListeners() {
       handlers.handleSetPage(button.dataset.page);
     }
   });
+
+  // Delegación de eventos para botones de navegación dentro del contenido
+  document.getElementById('content-container')?.addEventListener('click', (e) => {
+    const pageNavBtn = e.target.closest('button[data-page]');
+    if (pageNavBtn) {
+      e.preventDefault();
+      handlers.handleSetPage(pageNavBtn.dataset.page);
+    }
+  });
+
 
   document.getElementById('connect-btn')?.addEventListener('click', handlers.handleConnect);
   document.getElementById('disconnect-btn')?.addEventListener('click', handlers.handleDisconnect);
@@ -93,6 +106,58 @@ function attachEventListeners() {
       button.addEventListener('click', (e) => {
         const studentId = e.currentTarget.dataset.studentId;
         handlers.handleExportStudentPdf(studentId);
+      });
+    });
+
+
+    // Listener para el historial de comentarios
+    document.querySelectorAll('.view-history-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const studentId = e.currentTarget.dataset.studentId;
+        const student = state.getDB().students.find(s => s.id === studentId);
+        if (student) {
+          const modal = document.getElementById('comment-history-modal');
+          const modalContent = document.getElementById('comment-history-modal-content');
+          modalContent.innerHTML = pages.renderStudentCommentHistoryModal(student);
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+          // Añadir listener para cerrar el modal
+          document.getElementById('close-modal-btn').addEventListener('click', () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+          });
+        }
+      });
+    });
+
+
+    // Listener para los acordeones de Módulo por Alumno
+    document.querySelectorAll('.student-module-toggle').forEach(button => {
+      button.addEventListener('click', () => {
+        const contentId = button.dataset.contentId;
+        const contentDiv = document.getElementById(contentId);
+        const studentId = button.dataset.studentId;
+        const moduleId = button.dataset.moduleId;
+        
+        const isOpen = !contentDiv.classList.contains('hidden');
+
+        if (isOpen) {
+          contentDiv.innerHTML = ''; // Limpiar contenido al cerrar
+          contentDiv.classList.add('hidden');
+          button.querySelector('.chevron-icon')?.classList.remove('rotate-90');
+        } else {
+          // Cargar y mostrar el contenido
+          const db = state.getDB();
+          const student = db.students.find(s => s.id === studentId);
+          const module = db.modules.find(m => m.id === moduleId);
+          if (student && module) {
+            contentDiv.innerHTML = pages.renderStudentModuleDetail(student, module);
+            contentDiv.classList.remove('hidden');
+            button.querySelector('.chevron-icon')?.classList.add('rotate-90');
+            // Re-adjuntar listeners para los elementos recién creados
+            attachEventListeners();
+          }
+        }
       });
     });
 
@@ -139,6 +204,33 @@ function attachEventListeners() {
     }
   }
 
+  if (ui.page === 'actividades') {
+    // Formulario para crear actividad
+    const actividadForm = document.getElementById('actividad-form');
+    if (actividadForm) {
+      actividadForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const moduleId = e.currentTarget.dataset.moduleId;
+        handlers.handleCreateActividad(moduleId, e.currentTarget);
+      });
+    }
+
+    // Formularios para actualizar actividad
+    document.querySelectorAll('.update-actividad-form').forEach(form => {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handlers.handleUpdateActividad(e.currentTarget.dataset.actividadId, e.currentTarget);
+      });
+    });
+
+    // Botones para borrar actividad
+    document.querySelectorAll('.delete-actividad-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        handlers.handleDeleteActividad(e.currentTarget.dataset.actividadId);
+      });
+    });
+  }
+
   if (ui.page === 'modulos') {
     document.getElementById('module-select')?.addEventListener('change', (e) => handlers.handleSelectModule(e.target.value || null));
     document.getElementById('view-tabla-btn')?.addEventListener('click', () => handlers.handleSetModuleView('tabla'));
@@ -150,6 +242,32 @@ function attachEventListeners() {
     document.getElementById('download-student-template-btn')?.addEventListener('click', handlers.handleDownloadStudentTemplate);
     document.getElementById('sort-asc-btn')?.addEventListener('click', (e) => handlers.handleSortStudents(e.currentTarget.dataset.moduleId, 'asc'));
     document.getElementById('sort-desc-btn')?.addEventListener('click', (e) => handlers.handleSortStudents(e.currentTarget.dataset.moduleId, 'desc'));
+
+    // Modal para cálculo de notas trimestrales
+    const openModalBtn = document.getElementById('open-trimester-modal-btn');
+    const modalContainer = document.createElement('div');
+    modalContainer.id = 'trimester-modal-container';
+    document.body.appendChild(modalContainer);
+
+    openModalBtn?.addEventListener('click', () => {
+      const selectedModule = state.getDB().modules.find(m => m.id === state.getUI().selectedModuleId);
+      const moduleStudents = (selectedModule.studentIds || []).map(id => state.getDB().students.find(s => s.id === id)).filter(Boolean);
+      modalContainer.innerHTML = `<div id="trimester-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-11/12 md:w-1/2 p-6">${pages.renderTrimesterModalContent(selectedModule, moduleStudents)}</div></div>`;
+      
+      document.getElementById('close-trimester-modal-btn').addEventListener('click', () => {
+        modalContainer.innerHTML = '';
+      });
+
+      document.getElementById('save-trimester-grades-btn').addEventListener('click', () => {
+        const trimesterKey = document.getElementById('trimester-select').value;
+        const gradesToSave = {};
+        document.querySelectorAll('#trimester-modal tbody tr').forEach(row => {
+          gradesToSave[row.dataset.studentId] = parseFloat(row.dataset.grade);
+        });
+        handlers.handleSaveTrimesterGrades(selectedModule.id, trimesterKey, gradesToSave);
+        modalContainer.innerHTML = ''; // Cierra el modal al guardar
+      });
+    });
 
     // Lógica de Drag and Drop para reordenar alumnos
     const studentListContainer = document.getElementById('student-list-container');
@@ -200,13 +318,30 @@ function attachEventListeners() {
       });
     });
 
+
     if (ui.moduleView === 'alumno') {
         document.getElementById('prev-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('prev'));
         document.getElementById('next-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('next'));
-        document.getElementById('comment-textarea')?.addEventListener('input', (e) => handlers.handleCommentChange(e.target.dataset.moduleId, e.target.dataset.studentId, e.target.value)); 
     }
 
-    // Este listener ahora funciona tanto para la vista tabla como para la vista alumno si fuera necesario.
+    // Listener para el formulario de comentarios
+
+    const commentForm = document.getElementById('comment-form');
+    if (commentForm) {
+      commentForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const { studentId, moduleId } = e.currentTarget.dataset;
+        handlers.handleAddComment(moduleId, studentId, e.currentTarget.elements);
+      });
+
+      // Lógica para mostrar/ocultar el select de CEs
+      const typeSelect = commentForm.querySelector('.comment-type-select');
+      const ceSelect = commentForm.querySelector('.comment-ce-select');
+      typeSelect.addEventListener('change', (e) => {
+        ceSelect.classList.toggle('hidden', e.target.value !== 'ce');
+      });
+    }
+
     document.querySelectorAll('.ra-accordion-toggle').forEach(button => {
         button.addEventListener('click', () => {
             const content = document.getElementById(button.dataset.contentId);
@@ -224,11 +359,6 @@ function attachEventListeners() {
         });
     });
 
-    document.getElementById('content-container').addEventListener('change', (e) => {
-        if (e.target.classList.contains('grade-input')) {
-            handlers.handleGradeChange(e.target.dataset.studentId, e.target.dataset.ceId, e.target.value);
-        }
-    });
   }
 }
 

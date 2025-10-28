@@ -38,14 +38,16 @@ export function handleDownloadModuleTemplate() {
           { 
             "ce_id": "RA1-a", 
             "ce_descripcion": "Descripción del Criterio de Evaluación 'a' del RA1.", 
-            "peso": 50, 
-            "ud_ref": "Referencia a la Unidad Didáctica (opcional)" 
+            "peso": 50,
+            "ud_ref": "Referencia a la Unidad Didáctica (opcional)",
+            "dual": false
           },
           { 
             "ce_id": "RA1-b", 
             "ce_descripcion": "Descripción del Criterio de Evaluación 'b' del RA1.", 
-            "peso": 50, 
-            "ud_ref": "UD2" 
+            "peso": 50,
+            "ud_ref": "UD2",
+            "dual": true
           }
         ]
       },
@@ -56,8 +58,9 @@ export function handleDownloadModuleTemplate() {
           { 
             "ce_id": "RA2-a", 
             "ce_descripcion": "Descripción del Criterio de Evaluación 'a' del RA2.", 
-            "peso": 100, 
-            "ud_ref": "UD3" 
+            "peso": 100,
+            "ud_ref": "UD3",
+            "dual": false
           }
         ]
       }
@@ -87,7 +90,7 @@ export function handleExportStudentPdf(studentId) {
   const enrolledModules = db.modules
     .filter(m => m.studentIds?.includes(studentId))
     .map(module => {
-      const calculated = calculateModuleGrades(module, [student], db.grades);
+      const calculated = calculateModuleGrades(module, [student], db.grades, db.actividades);
       const studentGrades = calculated[studentId] || { moduleGrade: 0, raTotals: {} };
       return { module, finalGrade: studentGrades.moduleGrade, raTotals: studentGrades.raTotals };
     });
@@ -412,15 +415,173 @@ export function handleGradeChange(studentId, ceId, value) {
     }
 }
 
-export function handleCommentChange(moduleId, studentId, text) {
+export function handleAddComment(moduleId, studentId, form) {
   const db = state.getDB();
+  const text = form.text.value.trim();
+  const type = form.type.value;
+  const ceId = form.ce.value;
+
+  if (!text) {
+    alert("El comentario no puede estar vacío.");
+    return;
+  }
+
   if (!db.comments[moduleId]) {
     db.comments[moduleId] = {};
   }
-  
-  if (db.comments[moduleId][studentId] !== text) {
-      db.comments[moduleId][studentId] = text;
-      state.setDB(db);
-      state.saveDB();
+  if (!db.comments[moduleId][studentId]) {
+    db.comments[moduleId][studentId] = [];
   }
+  
+  const newComment = {
+    id: crypto.randomUUID(),
+    text,
+    type,
+    ce_id: type === 'ce' ? ceId : null,
+    date: new Date().toISOString(),
+  };
+
+  db.comments[moduleId][studentId].unshift(newComment); // Añadir al principio
+  state.setDB(db);
+  state.saveDB();
+  renderApp();
+}
+
+export function handleDeleteComment(moduleId, studentId, commentId) {
+  const db = state.getDB();
+  if (db.comments[moduleId] && db.comments[moduleId][studentId]) {
+    db.comments[moduleId][studentId] = db.comments[moduleId][studentId].filter(c => c.id !== commentId);
+    state.setDB(db);
+    state.saveDB();
+    renderApp();
+  }
+}
+
+export function handleSaveTrimesterGrades(moduleId, trimesterKey, gradesToSave) {
+  if (!trimesterKey) {
+    alert("Por favor, selecciona un hito de evaluación (ej: 1er Trimestre).");
+    return;
+  }
+
+  const db = state.getDB();
+  if (!db.trimesterGrades[moduleId]) {
+    db.trimesterGrades[moduleId] = {};
+  }
+
+  for (const [studentId, grade] of Object.entries(gradesToSave)) {
+    if (!db.trimesterGrades[moduleId][studentId]) {
+      db.trimesterGrades[moduleId][studentId] = {};
+    }
+    db.trimesterGrades[moduleId][studentId][trimesterKey] = grade;
+  }
+
+  state.setDB(db);
+  state.saveDB();
+  alert(`Notas guardadas para el ${trimesterKey}.`);
+  renderApp();
+}
+
+export function handleCreateActividad(moduleId, form) {
+  const name = form.name.value.trim();
+  const trimestre = form.trimestre.value;
+  const ceIds = Array.from(form.querySelectorAll('input[name="ceIds"]:checked')).map(cb => cb.value);
+
+  if (!name || !trimestre || ceIds.length === 0) {
+    alert("Por favor, completa todos los campos: nombre, trimestre y al menos un CE.");
+    return;
+  }
+
+  const newActividad = {
+    id: crypto.randomUUID(),
+    moduleId,
+    name,
+    trimestre,
+    ceIds,
+  };
+
+  const db = state.getDB();
+  db.actividades.push(newActividad);
+  state.setDB(db);
+  state.saveDB();
+  // Vuelve a la página de actividades para ver el resultado
+  handleSetPage('actividades');
+}
+
+export function handleUpdateActividad(actividadId, form) {
+  const name = form.name.value.trim();
+  const trimestre = form.trimestre.value;
+  const ceIds = Array.from(form.querySelectorAll('input[name="ceIds"]:checked')).map(cb => cb.value);
+
+  if (!name || !trimestre || ceIds.length === 0) {
+    alert("Por favor, completa todos los campos: nombre, trimestre y al menos un CE.");
+    return;
+  }
+
+  const db = state.getDB();
+  const actividad = db.actividades.find(a => a.id === actividadId);
+  if (!actividad) return;
+
+  actividad.name = name;
+  actividad.trimestre = trimestre;
+  actividad.ceIds = ceIds;
+
+  state.setDB(db);
+  state.saveDB();
+  handleSetPage('actividades');
+}
+
+export function handleDeleteActividad(actividadId) {
+  if (!window.confirm("¿Seguro que quieres eliminar esta actividad? Las notas asociadas a ella en los CEs no se borrarán.")) {
+    return;
+  }
+  const db = state.getDB();
+  db.actividades = db.actividades.filter(a => a.id !== actividadId);
+  // Opcional: podrías querer borrar las notas de db.grades[studentId][actividadId]
+  state.setDB(db);
+  state.saveDB();
+  handleSetPage('actividades');
+}
+
+export function handleAddActividadGradeAttempt(studentId, actividadId, form) {
+  const db = state.getDB();
+  const grade = parseFloat(form.grade.value);
+  const type = form.type.value;
+  const observation = form.observation.value.trim();
+
+  if (isNaN(grade) || grade < 0 || grade > 10) {
+    alert("La nota debe ser un número entre 0 y 10.");
+    return;
+  }
+
+  if (!db.grades[studentId]) {
+    db.grades[studentId] = {};
+  }
+  if (!db.grades[studentId][actividadId]) {
+    db.grades[studentId][actividadId] = [];
+  }
+
+  const newAttempt = {
+    id: crypto.randomUUID(),
+    grade,
+    type,
+    observation,
+    date: new Date().toISOString(),
+  };
+
+  db.grades[studentId][actividadId].push(newAttempt);
+  state.setDB(db);
+  state.saveDB();
+  // No es necesario renderApp() completo, podríamos optimizarlo para solo refrescar el modal.
+  // Por ahora, un render completo es más simple.
+  renderApp();
+}
+
+export function handleDeleteActividadGradeAttempt(studentId, actividadId, attemptId) {
+  if (!window.confirm("¿Seguro que quieres eliminar esta calificación?")) return;
+  const db = state.getDB();
+  const attempts = db.grades[studentId]?.[actividadId] || [];
+  db.grades[studentId][actividadId] = attempts.filter(att => att.id !== attemptId);
+  state.setDB(db);
+  state.saveDB();
+  renderApp();
 }

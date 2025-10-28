@@ -20,7 +20,7 @@ export function generateStudentReport(student, modules, grades) {
 
   // --- Iterar sobre los módulos del alumno ---
   modules.forEach(moduleInfo => {
-    if (yPosition > 260) { // Si nos acercamos al final de la página, añadir una nueva
+    if (yPosition > 250) { // Si nos acercamos al final de la página, añadir una nueva
       doc.addPage();
       yPosition = 20;
     }
@@ -35,38 +35,59 @@ export function generateStudentReport(student, modules, grades) {
     yPosition += 12;
 
     // --- Tabla de Resultados de Aprendizaje (RAs) ---
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("RA", 16, yPosition);
-    doc.text("Descripción", 35, yPosition);
-    doc.text("Nota", 194, yPosition, { align: "right" });
-    yPosition += 2;
-    doc.line(14, yPosition, 196, yPosition);
-    yPosition += 5;
-
-    doc.setFont("helvetica", "normal");
     moduleInfo.module.resultados_de_aprendizaje.forEach(ra => {
       const raGrade = moduleInfo.raTotals[ra.ra_id] || 0;
-      const descriptionLines = doc.splitTextToSize(ra.ra_descripcion, 140); // Ajustar texto a la anchura
+      const descriptionLines = doc.splitTextToSize(ra.ra_descripcion, 150); // Ajustar texto a la anchura
 
       // Comprobar si algún CE de este RA es dual
       const isDualRa = ra.criterios_de_evaluacion.some(ce => ce.dual);
-      if (isDualRa) {
-        doc.setFont("helvetica", "bold");
-      }
 
+      // --- Cabecera del RA ---
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setFillColor(245, 245, 245); // Gris muy claro
+      doc.rect(14, yPosition - 4, 182, 6, 'F');
       doc.text(ra.ra_id, 16, yPosition);
-      doc.text(descriptionLines, 35, yPosition);
+      doc.text(ra.ra_descripcion, 35, yPosition);
       doc.text(raGrade.toFixed(2), 194, yPosition, { align: "right" });
+      yPosition += 8;
 
-      if (isDualRa) {
-        doc.setFont("helvetica", "normal"); // Volver a la fuente normal
-      }
+      // --- Desglose de Criterios de Evaluación (CEs) ---
+      doc.setFontSize(9);
+      doc.setTextColor(80, 80, 80);
 
-      yPosition += (descriptionLines.length * 5) + 3; // Incrementar Y según las líneas de texto
+      ra.criterios_de_evaluacion.forEach(ce => {
+        if (yPosition > 270) {
+          doc.addPage();
+          yPosition = 20;
+        }
+        const ceGrade = (grades[student.id] && grades[student.id][ce.ce_id] != null) ? grades[student.id][ce.ce_id] : 'S.C.'; // S.C. = Sin Calificar
+        const ceDescriptionLines = doc.splitTextToSize(ce.ce_descripcion, 110);
+
+        doc.setFont("helvetica", "normal");
+        doc.text(ce.ce_id, 20, yPosition);
+        doc.text(ceDescriptionLines, 45, yPosition);
+        
+        doc.setFont("helvetica", "bold");
+        doc.text(`${ce.peso}%`, 168, yPosition, { align: "right" });
+        doc.text(typeof ceGrade === 'number' ? ceGrade.toFixed(2) : ceGrade, 194, yPosition, { align: "right" });
+
+        if (ce.dual) {
+          doc.saveGraphicsState();
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(0, 0, 255);
+          doc.text("Dual", 20, yPosition + 4);
+          doc.restoreGraphicsState();
+        }
+
+        yPosition += (ceDescriptionLines.length * 4) + 4;
+      });
+
+      doc.setTextColor(0, 0, 0); // Restaurar color de texto
+      yPosition += 4; // Espacio entre RAs
     });
 
-    yPosition += 10; // Espacio entre módulos
+    yPosition += 5; // Espacio entre módulos
   });
 
   // --- Pie de página ---

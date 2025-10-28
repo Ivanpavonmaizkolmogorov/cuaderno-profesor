@@ -8,8 +8,10 @@ let state = {
   db: {
     modules: [],
     students: [],
-    grades: {},
+    grades: {}, // { studentId: { actividadId: [ {id, grade, date, type, observation} ] } }
+    actividades: [], // { id, moduleId, name, trimestre, ceIds: [] }
     comments: {},
+    trimesterGrades: {}, // { moduleId: { studentId: { T1: 7.5, T2: 8.0, ... } } }
   },
   // Estado de navegación y UI
   ui: {
@@ -70,7 +72,7 @@ export async function connectToFile() {
     if (content) {
       const newDb = JSON.parse(content);
       // Validar la estructura básica del JSON
-      if (newDb && newDb.modules && newDb.students && newDb.grades && newDb.comments) {
+      if (newDb && newDb.modules && newDb.students && newDb.grades && newDb.comments && newDb.trimesterGrades && newDb.actividades) {
         setDB(newDb);
       } else {
         throw new Error("El archivo JSON no tiene la estructura de base de datos esperada.");

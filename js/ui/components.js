@@ -77,8 +77,8 @@ export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentI
               </div>
               <div class="md:col-span-1">
                 <input type="number" min="0" max="10" step="0.1" value="${grade != null ? grade : ''}" data-student-id="${studentId}" data-ce-id="${ce.ce_id}" 
-                  class="grade-input w-full p-2 text-center border border-gray-300 dark:border-gray-700 rounded-md text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 ${ce.dual ? 'bg-gray-200 dark:bg-gray-600 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}" 
-                  aria-label="Nota ${ce.ce_id}" ${ce.dual ? 'disabled' : ''} />
+                  class="grade-input w-full p-2 text-center border border-gray-300 dark:border-gray-700 rounded-md text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 ${ce.dual ? 'bg-blue-100 dark:bg-blue-900/50' : 'bg-white dark:bg-gray-800'}" 
+                  aria-label="Nota ${ce.ce_id}" />
               </div>
             </div>
             `
