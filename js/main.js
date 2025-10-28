@@ -66,29 +66,77 @@ function attachEventListeners() {
   
   if (ui.page === 'configuracion') {
     document.getElementById('import-module-btn')?.addEventListener('click', () => handlers.handleImportModule(document.getElementById('module-textarea').value));
+    document.getElementById('import-module-file-input')?.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target.result;
+        handlers.handleImportModule(text);
+      };
+      reader.readAsText(file);
+      e.target.value = ''; // Reset para poder seleccionar el mismo archivo de nuevo
+    });
+
+    document.getElementById('download-module-template-btn')?.addEventListener('click', handlers.handleDownloadModuleTemplate);
     document.getElementById('save-as-btn')?.addEventListener('click', handlers.handleSaveAs);
     document.getElementById('export-data-btn')?.addEventListener('click', handlers.handleExportData);
-    document.getElementById('import-data-btn')?.addEventListener('click', () => {
-      const text = document.getElementById('import-db-textarea').value;
-      if (!text.trim()) {
-        alert("El campo para importar la base de datos está vacío.");
-        return;
-      }
-      if (window.confirm("¿Seguro que quieres importar? Esto sobreescribirá todos los datos actuales.")) {
-        handlers.handleImportData(text);
-        document.getElementById('import-db-textarea').value = '';
-      }
-    });
     document.getElementById('clear-data-btn')?.addEventListener('click', handlers.handleClearData);
   }
   
   if (ui.page === 'alumnos') {
+    document.getElementById('sort-all-asc-btn')?.addEventListener('click', () => handlers.handleSortAllStudents('asc'));
+    document.getElementById('sort-all-desc-btn')?.addEventListener('click', () => handlers.handleSortAllStudents('desc'));
+
     document.querySelectorAll('.export-student-pdf-btn').forEach(button => {
       button.addEventListener('click', (e) => {
         const studentId = e.currentTarget.dataset.studentId;
         handlers.handleExportStudentPdf(studentId);
       });
     });
+
+    // Lógica de Drag and Drop para la lista general de alumnos
+    const allStudentsContainer = document.getElementById('all-students-container');
+    if (allStudentsContainer) {
+      let draggedItem = null;
+
+      allStudentsContainer.addEventListener('dragstart', (e) => {
+        if (e.target.classList.contains('student-draggable')) {
+          draggedItem = e.target;
+          setTimeout(() => {
+            draggedItem.style.opacity = '0.5';
+          }, 0);
+        }
+      });
+
+      allStudentsContainer.addEventListener('dragend', () => {
+        if (draggedItem) {
+          draggedItem.style.opacity = '1';
+          draggedItem = null;
+        }
+      });
+
+      allStudentsContainer.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(allStudentsContainer, e.clientY);
+        if (draggedItem) {
+          if (afterElement == null) {
+            allStudentsContainer.appendChild(draggedItem);
+          } else {
+            allStudentsContainer.insertBefore(draggedItem, afterElement);
+          }
+        }
+      });
+
+      allStudentsContainer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (draggedItem) {
+          const newOrderedIds = [...allStudentsContainer.querySelectorAll('.student-draggable')].map(div => div.dataset.studentId);
+          handlers.handleReorderAllStudents(newOrderedIds);
+        }
+      });
+    }
   }
 
   if (ui.page === 'modulos') {
@@ -99,6 +147,51 @@ function attachEventListeners() {
       const text = document.getElementById('student-textarea').value;
       handlers.handleImportStudentsToModule(text, e.target.dataset.moduleId);
     });
+    document.getElementById('download-student-template-btn')?.addEventListener('click', handlers.handleDownloadStudentTemplate);
+    document.getElementById('sort-asc-btn')?.addEventListener('click', (e) => handlers.handleSortStudents(e.currentTarget.dataset.moduleId, 'asc'));
+    document.getElementById('sort-desc-btn')?.addEventListener('click', (e) => handlers.handleSortStudents(e.currentTarget.dataset.moduleId, 'desc'));
+
+    // Lógica de Drag and Drop para reordenar alumnos
+    const studentListContainer = document.getElementById('student-list-container');
+    if (studentListContainer) {
+      let draggedItem = null;
+
+      studentListContainer.addEventListener('dragstart', (e) => {
+        draggedItem = e.target;
+        // Añadimos un estilo para que se vea semitransparente mientras se arrastra
+        setTimeout(() => {
+          draggedItem.style.opacity = '0.5';
+        }, 0);
+      });
+
+      studentListContainer.addEventListener('dragend', (e) => {
+        // Restauramos la opacidad
+        setTimeout(() => {
+          if (draggedItem) draggedItem.style.opacity = '1';
+          draggedItem = null;
+        }, 0);
+      });
+
+      studentListContainer.addEventListener('dragover', (e) => {
+        e.preventDefault(); // Necesario para permitir el drop
+        const afterElement = getDragAfterElement(studentListContainer, e.clientY);
+        const currentElement = document.querySelector('.dragging');
+        if (afterElement == null) {
+          studentListContainer.appendChild(draggedItem);
+        } else {
+          studentListContainer.insertBefore(draggedItem, afterElement);
+        }
+      });
+
+      studentListContainer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!draggedItem) return;
+        draggedItem.style.opacity = '1';
+        const newOrderedIds = [...studentListContainer.querySelectorAll('.student-draggable')].map(li => li.dataset.studentId);
+        const moduleId = document.getElementById('sort-asc-btn').dataset.moduleId;
+        handlers.handleReorderStudents(moduleId, newOrderedIds);
+      });
+    }
 
     document.querySelectorAll('.remove-student-btn').forEach(button => {
       button.addEventListener('click', (e) => {
@@ -126,6 +219,20 @@ function attachEventListeners() {
         }
     });
   }
+}
+
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('.student-draggable:not(.dragging)')];
+
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
 function init() {

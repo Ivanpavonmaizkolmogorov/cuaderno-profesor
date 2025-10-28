@@ -88,9 +88,18 @@ Judith Fernández Porras`;
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Importar *Nuevo* Módulo (JSON)</h2>
         <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Pega el JSON del módulo (incluyendo \`ud_ref\`).</p>
         <textarea id="module-textarea" class="w-full h-48 p-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 font-mono text-xs">${moduleText}</textarea>
-        <button id="import-module-btn" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
-          ${ICONS.UploadCloud} Importar Módulo
+        <button id="download-module-template-btn" class="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm">
+          Descargar Plantilla de Módulo
         </button>
+        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label for="import-module-file-input" class="w-full text-center cursor-pointer bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                ${ICONS.UploadCloud} Importar Archivo
+            </label>
+            <input type="file" id="import-module-file-input" class="hidden" accept=".json">
+            <button id="import-module-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                Importar desde Texto
+            </button>
+        </div>
       </div>
 
       <!-- Guardar / Exportar -->
@@ -102,18 +111,8 @@ Judith Fernández Porras`;
         </button>
         <hr class="my-4 border-gray-300 dark:border-gray-700">
         <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Descarga una copia de seguridad (backup) del estado actual sin conectarte.</p>
-        <button id="export-data-btn" class="w-full text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors bg-blue-600 hover:bg-blue-700">
+        <button id="export-data-btn" class="w-full text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors bg-blue-600 hover:bg-blue-700 mt-2">
           ${ICONS.DownloadCloud} Exportar Backup (Descarga)
-        </button>
-      </div>
-
-      <!-- Importar Base de Datos -->
-      <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Importar Base de Datos</h2>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Pega el contenido de un JSON exportado para restaurar todos los datos (sobrescribe todo).</p>
-        <textarea id="import-db-textarea" class="w-full h-24 p-3 border rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 font-mono text-xs border-gray-300 dark:border-gray-700" placeholder="Pega aquí tu JSON de la base de datos..."></textarea>
-        <button id="import-data-btn" class="mt-4 w-full text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors bg-orange-600 hover:bg-orange-700">
-          ${ICONS.Database} Importar Datos
         </button>
       </div>
 
@@ -135,8 +134,9 @@ export function renderAlumnosPage() {
   let studentListHtml = '';
 
   if (db.students && db.students.length > 0) {
+    // El orden de db.students es la fuente de la verdad
     studentListHtml = `
-      <div class="space-y-6">
+      <div id="all-students-container" class="space-y-6">
         ${db.students.map(student => {
           // Encontrar todos los módulos para este alumno
           const enrolledModules = db.modules
@@ -148,9 +148,12 @@ export function renderAlumnosPage() {
             });
 
           return `
-            <div key="${student.id}" class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 border-l-4 border-blue-500">
+            <div key="${student.id}" draggable="true" data-student-id="${student.id}" class="student-draggable bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 border-l-4 border-blue-500 transition-opacity">
               <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-gray-900 dark:text-white">${student.name}</h3>
+                <div class="flex items-center gap-2">
+                    <span class="drag-handle cursor-move text-gray-400" title="Arrastrar para reordenar">${ICONS.GripVertical}</span>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">${student.name}</h3>
+                </div>
                 <button class="export-student-pdf-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg" data-student-id="${student.id}">
                   ${ICONS.DownloadCloud} Exportar PDF
                 </button>
@@ -181,7 +184,13 @@ export function renderAlumnosPage() {
   
   return `
     <div class="container mx-auto px-6 py-8">
-      <h2 class="text-3xl font-bold mb-6">Panel General de Alumnos (${db.students.length})</h2>
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-3xl font-bold">Panel General de Alumnos (${db.students.length})</h2>
+            <div class="flex gap-2">
+                <button id="sort-all-asc-btn" class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar A-Z">${ICONS.ArrowDownAZ}</button>
+                <button id="sort-all-desc-btn" class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar Z-A">${ICONS.ArrowUpAZ}</button>
+            </div>
+        </div>
       ${studentListHtml}
     </div>
   `;
@@ -247,14 +256,20 @@ function renderGestionAlumnos(module, moduleStudents) {
 Adrián Manchado Moreno
 Marta Pérez Padillo`;
 
+  // Los alumnos ya vienen ordenados según module.studentIds, solo los mostramos.
   const studentListHtml = moduleStudents.length > 0
-    ? `<ul class="space-y-2">
+    ? `<ul id="student-list-container" class="space-y-2">
         ${moduleStudents.map(student => `
-          <li key="${student.id}" class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-md">
-            <span>${student.name}</span>
-            <button class="remove-student-btn text-red-500 hover:text-red-700 p-1" data-student-id="${student.id}" data-module-id="${module.id}" title="Eliminar alumno de este módulo">
-              ${ICONS.Trash2}
-            </button>
+          <li key="${student.id}" draggable="true" data-student-id="${student.id}" class="student-draggable flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-md transition-opacity">
+            <div class="flex items-center gap-2">
+              <span class="drag-handle cursor-move text-gray-400" title="Arrastrar para reordenar">${ICONS.GripVertical}</span>
+              <span>${student.name}</span>
+            </div>
+            <div>
+              <button class="remove-student-btn text-red-500 hover:text-red-700 p-1" data-student-id="${student.id}" data-module-id="${module.id}" title="Eliminar alumno de este módulo">
+                ${ICONS.Trash2}
+              </button>
+            </div>
           </li>
         `).join('')}
       </ul>`
@@ -266,7 +281,13 @@ Marta Pérez Padillo`;
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h4 class="font-semibold mb-2">Alumnos Actuales</h4>
+          <div class="flex justify-between items-center mb-2">
+            <h4 class="font-semibold">Alumnos Actuales</h4>
+            <div class="flex gap-2">
+              <button id="sort-asc-btn" data-module-id="${module.id}" class="p-1 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar A-Z">${ICONS.ArrowDownAZ}</button>
+              <button id="sort-desc-btn" data-module-id="${module.id}" class="p-1 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar Z-A">${ICONS.ArrowUpAZ}</button>
+            </div>
+          </div>
           <div class="max-h-60 overflow-y-auto pr-2">
             ${studentListHtml}
           </div>
@@ -275,6 +296,9 @@ Marta Pérez Padillo`;
           <h4 class="font-semibold mb-2">Añadir Nuevos Alumnos</h4>
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Pega un listado para añadir o actualizar.</p>
           <textarea id="student-textarea" class="w-full h-32 p-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 font-mono text-sm">${studentText}</textarea>
+          <button id="download-student-template-btn" class="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm">
+            Descargar Plantilla de Alumnos
+          </button>
           <button id="import-students-to-module-btn" data-module-id="${module.id}" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
             ${ICONS.Users} Añadir / Actualizar Alumnos
           </button>
@@ -286,8 +310,16 @@ Marta Pérez Padillo`;
 
 function renderModuloDetalle(module, moduleStudents) {
   const gestionAlumnosHtml = renderGestionAlumnos(module, moduleStudents);
+  const uiState = getUI();
+  let moduleView = uiState.moduleView;
 
-  const { moduleView } = getUI();
+  // Lógica de seguridad: si estamos en vista 'alumno' pero no hay alumnos o ninguno está seleccionado,
+  // forzamos el cambio a la vista 'tabla' para evitar errores.
+  if (moduleView === 'alumno' && (moduleStudents.length === 0 || !uiState.selectedStudentIdForView)) {
+    moduleView = 'tabla';
+    // Opcional: podrías llamar a un handler para actualizar el estado global aquí, pero para la UI es suficiente.
+  }
+
   const classTabla = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
         moduleView === 'tabla'
           ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
@@ -319,7 +351,7 @@ function renderModuloDetalle(module, moduleStudents) {
         <button id="view-tabla-btn" class="${classTabla}" ${moduleStudents.length === 0 ? 'disabled' : ''}>
           ${ICONS.Table} Vista Tabla
         </button>
-        <button id="view-alumno-btn" class="${classAlumno}">
+        <button id="view-alumno-btn" class="${classAlumno}" ${moduleStudents.length === 0 ? 'disabled' : ''}>
           ${ICONS.User} Vista Alumnos
         </button>
       </div>

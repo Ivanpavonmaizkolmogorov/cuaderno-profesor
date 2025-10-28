@@ -26,6 +26,55 @@ export async function handleSaveAs() {
     }
 }
 
+export function handleDownloadModuleTemplate() {
+  const template = {
+    "modulo": "Nombre del Módulo",
+    "id": "ID_UNICO_MODULO",
+    "resultados_de_aprendizaje": [
+      {
+        "ra_id": "RA1",
+        "ra_descripcion": "Descripción del Resultado de Aprendizaje 1.",
+        "criterios_de_evaluacion": [
+          { 
+            "ce_id": "RA1-a", 
+            "ce_descripcion": "Descripción del Criterio de Evaluación 'a' del RA1.", 
+            "peso": 50, 
+            "ud_ref": "Referencia a la Unidad Didáctica (opcional)" 
+          },
+          { 
+            "ce_id": "RA1-b", 
+            "ce_descripcion": "Descripción del Criterio de Evaluación 'b' del RA1.", 
+            "peso": 50, 
+            "ud_ref": "UD2" 
+          }
+        ]
+      },
+      {
+        "ra_id": "RA2",
+        "ra_descripcion": "Descripción del Resultado de Aprendizaje 2.",
+        "criterios_de_evaluacion": [
+          { 
+            "ce_id": "RA2-a", 
+            "ce_descripcion": "Descripción del Criterio de Evaluación 'a' del RA2.", 
+            "peso": 100, 
+            "ud_ref": "UD3" 
+          }
+        ]
+      }
+    ]
+  };
+  const content = JSON.stringify(template, null, 2);
+  dataManager.downloadTextAsFile(content, 'plantilla_modulo.json', 'application/json');
+}
+
+export function handleDownloadStudentTemplate() {
+  const content = `# FORMATO OBLIGATORIO: Apellidos, Nombre
+# Cada línea debe contener los apellidos, una coma, y luego el nombre.
+Pérez Padillo, Marta
+Jiménez Castro, María de la Sierra`;
+  dataManager.downloadTextAsFile(content, 'plantilla_alumnos.txt', 'text/plain');
+}
+
 export function handleExportStudentPdf(studentId) {
   const db = state.getDB();
   const student = db.students.find(s => s.id === studentId);
@@ -65,7 +114,11 @@ export function handleSetModuleView(newView) {
     const students = (selectedModule?.studentIds || [])
         .map(id => db.students.find(s => s.id === id))
         .filter(Boolean);
-    if (newView === 'alumno' && !state.getUI().selectedStudentIdForView && students.length > 0) {
+    // Si cambiamos a la vista 'alumno' y no hay un alumno seleccionado, o el seleccionado ya no existe en la lista,
+    // seleccionamos el primero de la lista actual.
+    const currentSelectedId = state.getUI().selectedStudentIdForView;
+    const isCurrentStudentInList = students.some(s => s.id === currentSelectedId);
+    if (newView === 'alumno' && (!currentSelectedId || !isCurrentStudentInList) && students.length > 0) {
         state.setSelectedStudentIdForView(students[0].id);
     }
     renderApp();
@@ -92,6 +145,109 @@ export function handleNavigateStudent(direction) {
         state.setSelectedStudentIdForView(moduleStudents[nextIndex].id);
         renderApp();
     }
+}
+
+export function handleSortStudents(moduleId, direction = 'asc') {
+  const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
+  if (!module || !module.studentIds) return;
+
+  // Creamos un mapa de ID a nombre para poder ordenar
+  const studentNameMap = new Map(db.students.map(s => [s.id, s.name]));
+
+  const sortByName = (idA, idB) => {
+    const nameA = studentNameMap.get(idA) || '';
+    const nameB = studentNameMap.get(idB) || '';
+    
+    const getNameParts = (fullName) => {
+      if (fullName.includes(',')) {
+        const parts = fullName.split(',');
+        return { lastName: parts[0].trim(), firstName: parts[1].trim() };
+      } else {
+        const words = fullName.split(' ');
+        const firstName = words.pop();
+        const lastName = words.join(' ');
+        return { lastName: lastName || firstName, firstName: lastName ? firstName : '' };
+      }
+    };
+
+    const partsA = getNameParts(nameA);
+    const partsB = getNameParts(nameB);
+
+    const lastNameCompare = partsA.lastName.localeCompare(partsB.lastName, 'es', { sensitivity: 'base' });
+    if (lastNameCompare !== 0) {
+      return lastNameCompare;
+    }
+    return partsA.firstName.localeCompare(partsB.firstName, 'es', { sensitivity: 'base' });
+  };
+
+  module.studentIds.sort(sortByName);
+
+  if (direction === 'desc') {
+    module.studentIds.reverse();
+  }
+
+  state.setDB(db);
+  state.saveDB();
+  renderApp();
+}
+
+export function handleReorderStudents(moduleId, orderedStudentIds) {
+  const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
+  if (!module) return;
+
+  module.studentIds = orderedStudentIds;
+  state.setDB(db);
+  state.saveDB();
+  renderApp(); // Volvemos a renderizar para confirmar el orden
+}
+
+export function handleSortAllStudents(direction = 'asc') {
+  const db = state.getDB();
+  if (!db.students) return;
+
+  const sortByName = (a, b) => {
+    const getNameParts = (fullName) => {
+      if (fullName.includes(',')) {
+        const parts = fullName.split(',');
+        return { lastName: parts[0].trim(), firstName: parts[1].trim() };
+      } else {
+        const words = fullName.split(' ');
+        const firstName = words.pop();
+        const lastName = words.join(' ');
+        return { lastName: lastName || firstName, firstName: lastName ? firstName : '' };
+      }
+    };
+
+    const partsA = getNameParts(a.name);
+    const partsB = getNameParts(b.name);
+
+    const lastNameCompare = partsA.lastName.localeCompare(partsB.lastName, 'es', { sensitivity: 'base' });
+    if (lastNameCompare !== 0) {
+      return lastNameCompare;
+    }
+    return partsA.firstName.localeCompare(partsB.firstName, 'es', { sensitivity: 'base' });
+  };
+
+  db.students.sort(sortByName);
+
+  if (direction === 'desc') {
+    db.students.reverse();
+  }
+
+  state.setDB(db);
+  state.saveDB();
+  renderApp();
+}
+
+export function handleReorderAllStudents(orderedStudentIds) {
+  const db = state.getDB();
+  const studentMap = new Map(db.students.map(s => [s.id, s]));
+  db.students = orderedStudentIds.map(id => studentMap.get(id)).filter(Boolean);
+  state.setDB(db);
+  state.saveDB();
+  renderApp();
 }
 
 export function handleImportStudentsToModule(text, moduleId) {
@@ -121,6 +277,13 @@ export function handleImportStudentsToModule(text, moduleId) {
     module.studentIds = Array.from(new Set([...existingStudentIds, ...studentIdsToAssociate])); 
 
     state.setDB(db);
+
+    // Advertir al usuario si se importaron nombres sin coma
+    const studentsWithoutComma = newStudents.filter(s => !s.name.includes(','));
+    if (studentsWithoutComma.length > 0) {
+        alert(`¡Atención! Se han importado alumnos sin usar el formato "Apellidos, Nombre".\n\nPara un ordenamiento alfabético preciso por apellido, se recomienda usar el formato "Apellidos, Nombre" (ej: "Pérez Padillo, Marta").\n\nSi ya has usado este formato, ignora este mensaje.`);
+    }
+
     state.saveDB();
     alert(`Lista de alumnos actualizada para el módulo "${module.modulo}".`);
     renderApp();
@@ -189,20 +352,6 @@ export function handleExportData() {
     alert("Base de datos exportada correctamente.");
   } catch (error) {
     alert(error.message);
-  }
-}
-
-export function handleImportData(jsonText) {
-  try {
-    const newDb = dataManager.importData(jsonText);
-    state.setDB(newDb);
-    state.saveDB();
-    state.setSelectedModuleId(null);
-    alert("Base de datos importada correctamente.");
-    handleSetPage('modulos');
-  } catch (error) {
-    console.error("Error al importar datos:", error);
-    alert(`Error al importar datos: ${error.message}. Asegúrate de pegar un JSON válido.`);
   }
 }
 

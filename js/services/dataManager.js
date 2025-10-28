@@ -6,17 +6,33 @@ export function importStudents(text) {
     throw new Error("No se encontraron alumnos en el texto.");
   }
 
-  const sortByName = (a, b) => {
-    const partsA = a.name.split(' ');
-    const partsB = b.name.split(' ');
-    const lastNameA = partsA.length > 1 ? partsA.slice(0, -1).join(' ') : partsA[0];
-    const firstNameA = partsA.length > 1 ? partsA[partsA.length - 1] : '';
-    const lastNameB = partsB.length > 1 ? partsB.slice(0, -1).join(' ') : partsB[0];
-    const firstNameB = partsB.length > 1 ? partsB[partsB.length - 1] : '';
+  // Validación estricta: todas las líneas deben contener una coma.
+  if (lines.some(line => !line.includes(','))) {
+    throw new Error("Error de formato: Todas las líneas deben usar el formato 'Apellidos, Nombre'.\n\nPor favor, corrige el listado y vuelve a intentarlo.\nEjemplo: Pérez Padillo, Marta");
+  }
 
-    const lastNameCompare = lastNameA.localeCompare(lastNameB, 'es', { sensitivity: 'base' });
-    if (lastNameCompare !== 0) return lastNameCompare;
-    return firstNameA.localeCompare(firstNameB, 'es', { sensitivity: 'base' });
+  const sortByName = (a, b) => {
+    const getNameParts = (fullName) => {
+      if (fullName.includes(',')) {
+        const parts = fullName.split(',');
+        return { lastName: parts[0].trim(), firstName: parts[1].trim() };
+      } else {
+        // Heurística anterior como fallback: asume que la última palabra es el nombre
+        const words = fullName.split(' ');
+        const firstName = words.pop();
+        const lastName = words.join(' ');
+        return { lastName: lastName || firstName, firstName: lastName ? firstName : '' };
+      }
+    };
+
+    const partsA = getNameParts(a.name);
+    const partsB = getNameParts(b.name);
+
+    const lastNameCompare = partsA.lastName.localeCompare(partsB.lastName, 'es', { sensitivity: 'base' });
+    if (lastNameCompare !== 0) {
+      return lastNameCompare;
+    }
+    return partsA.firstName.localeCompare(partsB.firstName, 'es', { sensitivity: 'base' });
   };
 
   const newStudents = lines.map(line => ({
@@ -40,37 +56,26 @@ export function importModule(text, currentModules) {
   return newModule;
 }
 
+export function downloadTextAsFile(content, filename, contentType) {
+  const blob = new Blob([content], { type: contentType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export function exportData(db) {
   try {
     const json = JSON.stringify(db, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    a.download = `cuaderno_profesor_backup_${timestamp}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const filename = `cuaderno_profesor_backup_${timestamp}.json`;
+    downloadTextAsFile(json, filename, 'application/json');
   } catch (error) {
     console.error("Error exporting data:", error);
     throw new Error(`Error al exportar datos: ${error.message}`);
-  }
-}
-
-export function importData(jsonText) {
-  if (!jsonText) throw new Error("El campo de importación está vacío.");
-  const newDb = JSON.parse(jsonText);
-  if (
-    typeof newDb === 'object' && newDb !== null &&
-    Array.isArray(newDb.modules) &&
-    Array.isArray(newDb.students) &&
-    typeof newDb.grades === 'object' && newDb.grades !== null &&
-    typeof newDb.comments === 'object' && newDb.comments !== null
-  ) {
-    return newDb;
-  } else {
-    throw new Error("El JSON no tiene la estructura de base de datos esperada (modules, students, grades, comments).");
   }
 }
