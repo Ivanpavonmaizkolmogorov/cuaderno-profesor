@@ -21,21 +21,20 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
     // 1. Calcular la nota final de cada CE basándose en las actividades
     const allCes = ras.flatMap(ra => ra.criterios_de_evaluacion);
     allCes.forEach(ce => {
-      const relevantActividades = moduleActividades.filter(act => act.ceIds.includes(ce.ce_id));
-      let highestGrade = -1;
+      const actividadesQueEvaluanEsteCE = moduleActividades.filter(act => act.ceIds.includes(ce.ce_id));
+      const gradesFromActivities = [];
 
-      relevantActividades.forEach(act => {
+      actividadesQueEvaluanEsteCE.forEach(act => {
         const attempts = studentGradesByActividad[act.id] || [];
         if (attempts.length > 0) {
           const maxAttemptGrade = Math.max(...attempts.map(att => att.grade));
-          if (maxAttemptGrade > highestGrade) {
-            highestGrade = maxAttemptGrade;
-          }
+          gradesFromActivities.push(maxAttemptGrade);
         }
       });
 
-      if (highestGrade !== -1) {
-        ceFinalGrades[ce.ce_id] = highestGrade;
+      if (gradesFromActivities.length > 0) {
+        const averageGrade = gradesFromActivities.reduce((sum, g) => sum + g, 0) / gradesFromActivities.length;
+        ceFinalGrades[ce.ce_id] = averageGrade;
       }
     });
 
@@ -50,9 +49,14 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
 
       for (const ce of ra.criterios_de_evaluacion) {
         const weight = ce.peso || 0;
-        // Solo incluir en el cálculo si el CE tiene una nota explícita (incluyendo 0).
+        // Para la nota final (trimestre es null), si un CE no tiene nota, su nota es 0.
+        // Para una nota trimestral, solo se consideran los CEs con nota en ese trimestre.
         if (ceFinalGrades[ce.ce_id] !== undefined) {
           raWeightedTotal += (ceFinalGrades[ce.ce_id] * weight);
+          raTotalWeight += weight;
+        } else if (trimestre === null) {
+          // Si es el cálculo final y el CE no tiene nota, su peso sí cuenta (nota 0).
+          raWeightedTotal += 0; // La nota es 0
           raTotalWeight += weight;
         }
       }
@@ -102,6 +106,7 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
     studentData[student.id] = {
       raTotals,
       moduleGrade: parseFloat(moduleGrade.toFixed(2)),
+      ceFinalGrades, // Devolvemos las notas finales de los CEs
     };
   }
   return studentData;

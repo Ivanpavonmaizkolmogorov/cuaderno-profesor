@@ -44,7 +44,7 @@ export function renderHeader(page, db) {
   `;
 }
 
-export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentId, isReadOnly = false) {
+export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentId, isReadOnly = false, allActividades = [], allStudentGrades = {}) {
     const contentId = `ra-content-${ra.ra_id}`;
     
     return `
@@ -67,6 +67,18 @@ export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentI
             // Buscamos la nota final del CE en el objeto de notas del estudiante.
             // Esto es una simplificación. La nota final del CE se calcula a partir de las actividades.
             // Para la vista de solo lectura, mostraremos la nota final de la actividad que lo evalúa.
+            const actividadesQueEvaluanEsteCE = allActividades.filter(act => act.ceIds.includes(ce.ce_id));
+            const notasDeActividades = actividadesQueEvaluanEsteCE.map(act => {
+              const attempts = allStudentGrades[act.id] || [];
+              if (attempts.length === 0) return null;
+              const maxGrade = Math.max(...attempts.map(a => a.grade));
+              return {
+                name: act.name,
+                grade: maxGrade
+              };
+            }).filter(n => n !== null);
+
+
             const grade = studentGrades[ce.ce_id]; // Esto es una simplificación, la nota final del CE viene de las actividades
             return `
             <div key="${ce.ce_id}" class="grid grid-cols-1 md:grid-cols-4 gap-4 py-4 items-center">
@@ -78,6 +90,19 @@ export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentI
                 <span class="text-sm text-gray-600 dark:text-gray-400"> (Peso: ${ce.peso}%)</span>
                 <p class="text-sm text-gray-700 dark:text-gray-300 mt-1">${ce.ce_descripcion}</p>
                 <p class="text-sm text-blue-600 dark:text-blue-400 mt-1 italic">${ce.ud_ref || 'Sin referencia UD'}</p>
+                ${isReadOnly && notasDeActividades.length > 0 ? `
+                  <div class="mt-2 text-xs border-t border-gray-200 dark:border-gray-600 pt-2">
+                    <span class="font-semibold">Actividades:</span>
+                    <ul class="list-disc list-inside pl-2">
+                      ${notasDeActividades.map(n => `<li>${n.name}: <span class="font-bold">${n.grade.toFixed(2)}</span></li>`).join('')}
+                    </ul>
+                    ${notasDeActividades.length > 1 ? `<div class="mt-1 italic text-gray-500 dark:text-gray-400">Nota CE: (${notasDeActividades.map(n => n.grade.toFixed(2)).join(' + ')}) / ${notasDeActividades.length} = ${grade.toFixed(2)}</div>` : ''}
+                    <div class="mt-1 italic text-gray-500 dark:text-gray-400">
+                      Aportación: (${grade.toFixed(2)} × ${ce.peso}%) / 100 = 
+                      <span class="font-bold">${((grade * ce.peso) / 100).toFixed(3)}</span>
+                    </div>
+                  </div>
+                ` : ''}
               </div>
               <div class="md:col-span-1">
                 ${isReadOnly ? `

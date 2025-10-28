@@ -777,7 +777,7 @@ export function renderActividadDetailPage() {
 
 
 function renderAlumnoView(module, moduleStudents) {
-  const { grades, comments } = getDB();
+  const { db, ui } = { db: getDB(), ui: getUI() };
   const { selectedStudentIdForView } = getUI();
   const calculatedGrades = getCalculatedGrades();
 
@@ -796,11 +796,11 @@ function renderAlumnoView(module, moduleStudents) {
   const isFirstStudent = studentIndex === 0;
   const isLastStudent = studentIndex === moduleStudents.length - 1;
   
-  const finalGrades = calculatedGrades[currentStudent.id] || { raTotals: {}, moduleGrade: 0 };
+  const finalGrades = (calculatedGrades[module.id]?.Final?.[currentStudent.id]) || { raTotals: {}, moduleGrade: 0, ceFinalGrades: {} };
   const finalModuleGrade = (typeof finalGrades.moduleGrade === 'number') ? finalGrades.moduleGrade.toFixed(2) : '0.00';
-  const studentGrades = grades[currentStudent.id] || {};
+  const studentGrades = db.grades[currentStudent.id] || {};
 
-  return `
+  return ` 
     <div class="p-4">
       <!-- Navegación y Nombre del Alumno -->
       <div class="flex items-center justify-between mb-2">
@@ -826,16 +826,18 @@ function renderAlumnoView(module, moduleStudents) {
             </div>
             <div class="space-y-3 mt-4">
               ${module.resultados_de_aprendizaje.map(ra => 
-                  // La nota del CE aquí es la final calculada a partir de las actividades.
-                  // Buscamos la nota final de cada CE para mostrarla.
-                  // La nota del CE se obtiene de la nota máxima de las actividades que lo evalúan.
-                  // `studentGrades` contiene las notas por actividad.
-                  renderRaAccordion(
-                      ra, 
-                      studentGrades, 
+                  // Para la vista de alumno, la nota del CE es la final calculada,
+                  // que es la nota más alta obtenida en cualquiera de las actividades que lo evalúan.
+                  // La función `calculateModuleGrades` ya nos da esta información.
+                  // `ceFinalGrades` contendrá el mapa de { ce_id: nota_final }.
+                  renderRaAccordion( 
+                      ra,
+                      finalGrades.ceFinalGrades || {}, // Pasamos las notas finales de los CEs
                       (finalGrades.raTotals && typeof finalGrades.raTotals[ra.ra_id] === 'number') ? finalGrades.raTotals[ra.ra_id] : 0,
                       currentStudent.id,
-                      true // Modo solo lectura
+                      true, // Forzar modo solo lectura
+                      db.actividades,
+                      studentGrades
                   )
               ).join('')}
             </div>
