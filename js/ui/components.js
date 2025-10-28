@@ -66,14 +66,19 @@ export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentI
             const grade = studentGrades[ce.ce_id];
             return `
             <div key="${ce.ce_id}" class="grid grid-cols-1 md:grid-cols-4 gap-4 py-4 items-center">
-              <div class="md:col-span-3">
-                <span class="font-bold text-gray-900 dark:text-white">${ce.ce_id}</span>
+              <div class="md:col-span-3 flex flex-col gap-2">
+                <div>
+                  <span class="font-bold text-gray-900 dark:text-white">${ce.ce_id}</span>
+                  ${ce.dual ? `<span class="inline-block ml-2 text-blue-500" title="Evaluado en empresa (Dual)">${ICONS.Briefcase}</span>` : ''}
+                </div>
                 <span class="text-sm text-gray-600 dark:text-gray-400"> (Peso: ${ce.peso}%)</span>
                 <p class="text-sm text-gray-700 dark:text-gray-300 mt-1">${ce.ce_descripcion}</p>
                 <p class="text-sm text-blue-600 dark:text-blue-400 mt-1 italic">${ce.ud_ref || 'Sin referencia UD'}</p>
               </div>
               <div class="md:col-span-1">
-                <input type="number" min="0" max="10" step="0.1" value="${grade != null ? grade : ''}" data-student-id="${studentId}" data-ce-id="${ce.ce_id}" class="grade-input w-full p-2 text-center border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500" aria-label="Nota ${ce.ce_id}" />
+                <input type="number" min="0" max="10" step="0.1" value="${grade != null ? grade : ''}" data-student-id="${studentId}" data-ce-id="${ce.ce_id}" 
+                  class="grade-input w-full p-2 text-center border border-gray-300 dark:border-gray-700 rounded-md text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 ${ce.dual ? 'bg-gray-200 dark:bg-gray-600 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}" 
+                  aria-label="Nota ${ce.ce_id}" ${ce.dual ? 'disabled' : ''} />
               </div>
             </div>
             `

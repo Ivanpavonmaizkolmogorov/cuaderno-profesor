@@ -376,11 +376,24 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
         <th scope="col" class="sticky left-0 z-10 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider bg-gray-50 dark:bg-gray-800">
           Alumno
         </th>
-        ${allCes.map(ce => `
-          <th key="${ce.ce_id}" scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" title="${ce.raId} - ${ce.ce_descripcion} (Peso: ${ce.peso}%)">
-            ${ce.ce_id}
-          </th>
-        `).join('')}
+        ${allCes.map(ce => {
+          const dualClass = ce.dual ? 'bg-blue-100 dark:bg-blue-900/50 border-blue-200 dark:border-blue-700' : '';
+          const dualTitle = ce.dual ? ' (Dual)' : '';
+          return `
+            <th key="${ce.ce_id}" scope="col" 
+              class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b ${dualClass}" 
+              title="${ce.raId} - ${ce.ce_descripcion} (Peso: ${ce.peso}%)">
+              <div class="flex flex-col items-center justify-center gap-2">
+                <div>
+                  ${ce.dual ? `<span class="inline-block align-middle mr-1">${ICONS.Briefcase}</span>` : ''}
+                  <span>${ce.ce_id}</span>
+                </div>
+                <input type="checkbox" class="toggle-dual-btn" data-ce-id="${ce.ce_id}" 
+                  title="Marcar como evaluación Dual" ${ce.dual ? 'checked' : ''}>
+              </div>
+            </th>
+          `;
+        }).join('')}
         ${ras.map(ra => `
           <th key="${ra.ra_id}" scope="col" class="px-6 py-3 text-center text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider bg-blue-50 dark:bg-blue-900" title="${ra.ra_descripcion}">
             ${ra.ra_id}
@@ -407,9 +420,12 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
             
             ${allCes.map(ce => {
               const grade = studentGrades[ce.ce_id];
+              const dualInputClass = ce.dual ? 'bg-blue-100 dark:bg-blue-900/50 cursor-not-allowed' : 'bg-white dark:bg-gray-800';
               return `
                 <td key="${ce.ce_id}" class="px-6 py-4 whitespace-nowrap text-sm">
-                  <input type="number" min="0" max="10" step="0.1" value="${grade != null ? grade : ''}" data-student-id="${student.id}" data-ce-id="${ce.ce_id}" class="grade-input w-20 p-2 text-center border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500" aria-label="Nota ${student.name} ${ce.ce_id}" />
+                  <input type="number" min="0" max="10" step="0.1" value="${grade != null ? grade : ''}" data-student-id="${student.id}" data-ce-id="${ce.ce_id}" 
+                    class="grade-input w-20 p-2 text-center border border-gray-300 dark:border-gray-700 rounded-md text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 ${dualInputClass}" 
+                    aria-label="Nota ${student.name} ${ce.ce_id}" ${ce.dual ? 'disabled' : ''} />
                 </td>
               `
             }).join('')}
@@ -491,17 +507,16 @@ function renderAlumnoView(module, moduleStudents) {
               <span class="text-lg font-bold text-green-800 dark:text-green-200">Nota Final</span>
               <span class="text-2xl font-bold text-green-700 dark:text-green-100">${finalModuleGrade}</span>
             </div>
-            ${module.resultados_de_aprendizaje.map(ra => {
-                 const raGrade = (finalGrades.raTotals && typeof finalGrades.raTotals[ra.ra_id] === 'number')
-                                 ? finalGrades.raTotals[ra.ra_id].toFixed(2)
-                                 : '0.00';
-                 return `
-                    <div key="${ra.ra_id}" class="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900 rounded-lg">
-                      <span class="font-semibold text-blue-800 dark:text-blue-200" title="${ra.ra_descripcion}">${ra.ra_id}</span>
-                      <span class="text-lg font-bold text-blue-700 dark:text-blue-100">${raGrade}</span>
-                    </div>
-                 `;
-             }).join('')}
+            <div class="space-y-3 mt-4">
+              ${module.resultados_de_aprendizaje.map(ra => 
+                  renderRaAccordion(
+                      ra, 
+                      studentGrades, 
+                      (finalGrades.raTotals && typeof finalGrades.raTotals[ra.ra_id] === 'number') ? finalGrades.raTotals[ra.ra_id] : 0,
+                      currentStudent.id
+                  )
+              ).join('')}
+            </div>
           </div>
         </div>
 
@@ -511,21 +526,6 @@ function renderAlumnoView(module, moduleStudents) {
             ${ICONS.FileText} Comentarios
           </h3>
           <textarea id="comment-textarea" data-student-id="${currentStudent.id}" data-module-id="${module.id}" class="w-full h-48 p-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500" placeholder="Escribe aquí observaciones, anotaciones sobre la recuperación, etc.">${studentComment}</textarea>
-        </div>
-
-        <!-- Fila 2: Criterios de Evaluación (Acordeón) -->
-        <div class="lg:col-span-3 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Criterios de Evaluación</h3>
-          <div class="space-y-3 mt-4">
-             ${module.resultados_de_aprendizaje.map(ra => 
-                renderRaAccordion(
-                    ra, 
-                    studentGrades, 
-                    (finalGrades.raTotals && typeof finalGrades.raTotals[ra.ra_id] === 'number') ? finalGrades.raTotals[ra.ra_id] : 0,
-                    currentStudent.id
-                )
-             ).join('')}
-          </div>
         </div>
       </div>
     </div>

@@ -49,9 +49,19 @@ export function generateStudentReport(student, modules, grades) {
       const raGrade = moduleInfo.raTotals[ra.ra_id] || 0;
       const descriptionLines = doc.splitTextToSize(ra.ra_descripcion, 140); // Ajustar texto a la anchura
 
+      // Comprobar si algún CE de este RA es dual
+      const isDualRa = ra.criterios_de_evaluacion.some(ce => ce.dual);
+      if (isDualRa) {
+        doc.setFont("helvetica", "bold");
+      }
+
       doc.text(ra.ra_id, 16, yPosition);
       doc.text(descriptionLines, 35, yPosition);
       doc.text(raGrade.toFixed(2), 194, yPosition, { align: "right" });
+
+      if (isDualRa) {
+        doc.setFont("helvetica", "normal"); // Volver a la fuente normal
+      }
 
       yPosition += (descriptionLines.length * 5) + 3; // Incrementar Y según las líneas de texto
     });

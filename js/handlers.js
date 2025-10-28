@@ -250,6 +250,28 @@ export function handleReorderAllStudents(orderedStudentIds) {
   renderApp();
 }
 
+export function handleToggleCeDual(moduleId, ceId) {
+  const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
+  if (!module) return;
+
+  let ceFound = false;
+  for (const ra of module.resultados_de_aprendizaje) {
+    const ce = ra.criterios_de_evaluacion.find(c => c.ce_id === ceId);
+    if (ce) {
+      ce.dual = !ce.dual; // Cambia el estado
+      ceFound = true;
+      break;
+    }
+  }
+
+  if (ceFound) {
+    state.setDB(db);
+    state.saveDB();
+    renderApp();
+  }
+}
+
 export function handleImportStudentsToModule(text, moduleId) {
   try {
     if (!moduleId) {

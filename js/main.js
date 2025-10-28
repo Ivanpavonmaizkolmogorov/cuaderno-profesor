@@ -204,15 +204,26 @@ function attachEventListeners() {
         document.getElementById('prev-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('prev'));
         document.getElementById('next-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('next'));
         document.getElementById('comment-textarea')?.addEventListener('input', (e) => handlers.handleCommentChange(e.target.dataset.moduleId, e.target.dataset.studentId, e.target.value)); 
-        document.querySelectorAll('.ra-accordion-toggle').forEach(button => {
-            button.addEventListener('click', () => {
-                const content = document.getElementById(button.dataset.contentId);
-                content?.classList.toggle('hidden');
-                button.querySelector('.chevron-icon')?.classList.toggle('rotate-90');
-            });
-        });
     }
+
+    // Este listener ahora funciona tanto para la vista tabla como para la vista alumno si fuera necesario.
+    document.querySelectorAll('.ra-accordion-toggle').forEach(button => {
+        button.addEventListener('click', () => {
+            const content = document.getElementById(button.dataset.contentId);
+            content?.classList.toggle('hidden');
+            button.querySelector('.chevron-icon')?.classList.toggle('rotate-90');
+        });
+    });
     
+    // Listener para los checkboxes de Dual
+    document.querySelectorAll('.toggle-dual-btn').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const moduleId = ui.selectedModuleId; // El módulo activo
+            const ceId = e.currentTarget.dataset.ceId;
+            handlers.handleToggleCeDual(moduleId, ceId);
+        });
+    });
+
     document.getElementById('content-container').addEventListener('change', (e) => {
         if (e.target.classList.contains('grade-input')) {
             handlers.handleGradeChange(e.target.dataset.studentId, e.target.dataset.ceId, e.target.value);
