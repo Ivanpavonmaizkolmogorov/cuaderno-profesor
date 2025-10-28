@@ -44,16 +44,17 @@ export function importStudents(text) {
 }
 
 export function importModule(text, currentModules) {
-  const newModule = JSON.parse(text);
-  if (!newModule.id || !newModule.modulo || !newModule.resultados_de_aprendizaje) {
+  const data = JSON.parse(text);
+  // Ahora 'data' debería ser el objeto del módulo
+  if (!data.id || !data.modulo || !data.resultados_de_aprendizaje) {
     throw new Error("El JSON no tiene la estructura de módulo esperada (id, modulo, resultados_de_aprendizaje).");
   }
 
-  if (currentModules.find(m => m.id === newModule.id)) {
-    throw new Error(`Ya existe un módulo con el ID "${newModule.id}". No se puede importar duplicado.`);
+  if (currentModules.find(m => m.id === data.id)) {
+    throw new Error(`Ya existe un módulo con el ID "${data.id}". No se puede importar duplicado.`);
   }
 
-  return newModule;
+  return data;
 }
 
 export function downloadTextAsFile(content, filename, contentType) {

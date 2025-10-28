@@ -409,13 +409,36 @@ export function handleRemoveStudentFromModule(moduleId, studentId) {
 
 export function handleImportModule(text) {
   try {
+    let data = JSON.parse(text);
     const db = state.getDB();
-    const newModule = dataManager.importModule(text, db.modules);
-    db.modules.push(newModule);
-    state.setDB(db);
-    state.saveDB();
-    alert(`Módulo "${newModule.modulo}" importado. Ahora puedes asociarle alumnos/as.`);
-    handleSelectModule(newModule.id); // Cambiamos esto para que seleccione el módulo directamente
+    let modulesToImport = [];
+
+    // Detectar si es un archivo de backup completo con un array de "modules"
+    if (Array.isArray(data.modules)) {
+      modulesToImport = data.modules;
+    } else if (data.module && typeof data.module === 'object') {
+      // Si es un objeto anidado bajo la clave "module"
+      modulesToImport.push(data.module);
+    } else {
+      // Asumir que es un único objeto de módulo
+      modulesToImport.push(data);
+    }
+
+    let importedCount = 0;
+    modulesToImport.forEach(moduleData => {
+      const newModule = dataManager.importModule(JSON.stringify(moduleData), db.modules);
+      db.modules.push(newModule);
+      importedCount++;
+    });
+
+    if (importedCount > 0) {
+      state.setDB(db);
+      state.saveDB();
+      alert(`${importedCount} módulo(s) importado(s) con éxito.`);
+      handleSelectModule(modulesToImport[modulesToImport.length - 1].id); // Seleccionar el último importado
+    } else {
+      throw new Error("No se encontraron módulos válidos para importar en el JSON proporcionado.");
+    }
   } catch (error) {
     console.error("Error importing module:", error);
     alert(`Error al importar el módulo: ${error.message}`);
