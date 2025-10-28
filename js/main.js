@@ -82,6 +82,15 @@ function attachEventListeners() {
     document.getElementById('clear-data-btn')?.addEventListener('click', handlers.handleClearData);
   }
   
+  if (ui.page === 'alumnos') {
+    document.querySelectorAll('.export-student-pdf-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const studentId = e.currentTarget.dataset.studentId;
+        handlers.handleExportStudentPdf(studentId);
+      });
+    });
+  }
+
   if (ui.page === 'modulos') {
     document.getElementById('module-select')?.addEventListener('change', (e) => handlers.handleSelectModule(e.target.value || null));
     document.getElementById('view-tabla-btn')?.addEventListener('click', () => handlers.handleSetModuleView('tabla'));
@@ -89,6 +98,13 @@ function attachEventListeners() {
     document.getElementById('import-students-to-module-btn')?.addEventListener('click', (e) => {
       const text = document.getElementById('student-textarea').value;
       handlers.handleImportStudentsToModule(text, e.target.dataset.moduleId);
+    });
+
+    document.querySelectorAll('.remove-student-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const { studentId, moduleId } = e.currentTarget.dataset;
+        handlers.handleRemoveStudentFromModule(moduleId, studentId);
+      });
     });
 
     if (ui.moduleView === 'alumno') {

@@ -1,5 +1,6 @@
 import { ICONS } from './constants.js';
 import { renderRaAccordion } from './components.js';
+import { calculateModuleGrades } from '../services/calculations.js';
 import { getDB, getUI, getCalculatedGrades } from '../state.js';
 
 // Renderiza la página de Configuración
@@ -130,17 +131,45 @@ Judith Fernández Porras`;
 
 // Renderiza la página de Alumnos
 export function renderAlumnosPage() {
-  const { students } = getDB(); // Ahora muestra todos los alumnos del sistema
+  const db = getDB();
   let studentListHtml = '';
-  if (students && students.length > 0) {
+
+  if (db.students && db.students.length > 0) {
     studentListHtml = `
-      <ul class="divide-y divide-gray-200 dark:divide-gray-700">
-        ${students.map(student => `
-          <li key="${student.id}" class="py-3 px-4 flex justify-between items-center">
-            <span class="text-lg">${student.name}</span>
-          </li>
-        `).join('')}
-      </ul>
+      <div class="space-y-6">
+        ${db.students.map(student => {
+          // Encontrar todos los módulos para este alumno
+          const enrolledModules = db.modules
+            .filter(m => m.studentIds?.includes(student.id))
+            .map(module => {
+              const calculated = calculateModuleGrades(module, [student], db.grades);
+              const finalGrade = calculated[student.id]?.moduleGrade || 0;
+              return { name: module.modulo, grade: finalGrade };
+            });
+
+          return `
+            <div key="${student.id}" class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 border-l-4 border-blue-500">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white">${student.name}</h3>
+                <button class="export-student-pdf-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg" data-student-id="${student.id}">
+                  ${ICONS.DownloadCloud} Exportar PDF
+                </button>
+              </div>
+              ${enrolledModules.length > 0 ? `
+                <h4 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Módulos Matriculados:</h4>
+                <ul class="space-y-2">
+                  ${enrolledModules.map(m => `
+                    <li class="flex justify-between items-center text-gray-800 dark:text-gray-300">
+                      <span>${m.name}</span>
+                      <span class="font-bold text-lg ${m.grade >= 5 ? 'text-green-500' : 'text-red-500'}">${m.grade.toFixed(2)}</span>
+                    </li>
+                  `).join('')}
+                </ul>
+              ` : `<p class="text-gray-500 dark:text-gray-400">Este alumno no está matriculado en ningún módulo.</p>`}
+            </div>
+          `;
+        }).join('')}
+      </div>
     `;
   } else {
     studentListHtml = `
@@ -152,10 +181,8 @@ export function renderAlumnosPage() {
   
   return `
     <div class="container mx-auto px-6 py-8">
-      <h2 class="text-3xl font-bold mb-6">Listado General de Alumnos (${students.length})</h2>
-      <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-        ${studentListHtml}
-      </div>
+      <h2 class="text-3xl font-bold mb-6">Panel General de Alumnos (${db.students.length})</h2>
+      ${studentListHtml}
     </div>
   `;
 }
@@ -215,22 +242,50 @@ export function renderModulosPage() {
 
 // --- Sub-renderers para Módulos ---
 
-function renderModuloDetalle(module, moduleStudents) {
-  if (!module.studentIds || module.studentIds.length === 0) {
-    const studentText = `David Palomeque Aguilera
+function renderGestionAlumnos(module, moduleStudents) {
+  const studentText = `David Palomeque Aguilera
 Adrián Manchado Moreno
 Marta Pérez Padillo`;
-    return `
-      <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mt-6">
-        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Asociar Alumnos al Módulo</h3>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Este módulo no tiene alumnos. Pega un listado de alumnos (un nombre por línea) para asociarlos.</p>
-        <textarea id="student-textarea" class="w-full h-48 p-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 font-mono text-sm">${studentText}</textarea>
-        <button id="import-students-to-module-btn" data-module-id="${module.id}" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
-          ${ICONS.Users} Asociar Alumnos
-        </button>
+
+  const studentListHtml = moduleStudents.length > 0
+    ? `<ul class="space-y-2">
+        ${moduleStudents.map(student => `
+          <li key="${student.id}" class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-md">
+            <span>${student.name}</span>
+            <button class="remove-student-btn text-red-500 hover:text-red-700 p-1" data-student-id="${student.id}" data-module-id="${module.id}" title="Eliminar alumno de este módulo">
+              ${ICONS.Trash2}
+            </button>
+          </li>
+        `).join('')}
+      </ul>`
+    : `<p class="text-center text-gray-500 dark:text-gray-400">Este módulo aún no tiene alumnos.</p>`;
+
+  return `
+    <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mt-6">
+      <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Gestionar Alumnos del Módulo (${moduleStudents.length})</h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-semibold mb-2">Alumnos Actuales</h4>
+          <div class="max-h-60 overflow-y-auto pr-2">
+            ${studentListHtml}
+          </div>
+        </div>
+        <div>
+          <h4 class="font-semibold mb-2">Añadir Nuevos Alumnos</h4>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Pega un listado para añadir o actualizar.</p>
+          <textarea id="student-textarea" class="w-full h-32 p-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 font-mono text-sm">${studentText}</textarea>
+          <button id="import-students-to-module-btn" data-module-id="${module.id}" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
+            ${ICONS.Users} Añadir / Actualizar Alumnos
+          </button>
+        </div>
       </div>
-    `;
-  }
+    </div>
+  `;
+}
+
+function renderModuloDetalle(module, moduleStudents) {
+  const gestionAlumnosHtml = renderGestionAlumnos(module, moduleStudents);
 
   const { moduleView } = getUI();
   const classTabla = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -245,17 +300,23 @@ Marta Pérez Padillo`;
       }`;
       
   let contentHtml = '';
-  if (moduleView === 'tabla') {
-      contentHtml = renderCuadernoCalificaciones(module, moduleStudents);
+  if (moduleStudents.length > 0) {
+    if (moduleView === 'tabla') {
+        contentHtml = renderCuadernoCalificaciones(module, moduleStudents);
+    } else {
+        contentHtml = renderAlumnoView(module, moduleStudents);
+    }
   } else {
-      contentHtml = renderAlumnoView(module, moduleStudents);
+    contentHtml = `<p class="text-center text-gray-500 dark:text-gray-400 my-10">Añade alumnos en la sección de gestión para empezar a calificar.</p>`;
   }
   
   return `
     <div>
+      ${gestionAlumnosHtml}
+      <hr class="my-8 border-gray-300 dark:border-gray-700">
       <!-- Selector de Vista -->
       <div class="mb-6 flex justify-center gap-2 p-2 bg-gray-200 dark:bg-gray-800 rounded-lg">
-        <button id="view-tabla-btn" class="${classTabla}">
+        <button id="view-tabla-btn" class="${classTabla}" ${moduleStudents.length === 0 ? 'disabled' : ''}>
           ${ICONS.Table} Vista Tabla
         </button>
         <button id="view-alumno-btn" class="${classAlumno}">

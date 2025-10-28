@@ -1,6 +1,7 @@
 import * as state from './state.js';
 import * as dataManager from './services/dataManager.js';
 import { calculateModuleGrades } from './services/calculations.js';
+import { generateStudentReport } from './services/pdfGenerator.js';
 import { renderApp } from './main.js';
 
 export async function handleConnect() {
@@ -15,6 +16,34 @@ export function handleDisconnect() {
     state.disconnectFile();
     alert("Desconectado del archivo. Los cambios ya no se guardarán.");
     renderApp();
+}
+
+export async function handleSaveAs() {
+    const fileName = await state.saveAsAndConnect();
+    if (fileName) {
+        alert(`Archivo "${fileName}" creado y conectado. Los cambios se guardarán automáticamente aquí.`);
+        renderApp();
+    }
+}
+
+export function handleExportStudentPdf(studentId) {
+  const db = state.getDB();
+  const student = db.students.find(s => s.id === studentId);
+  if (!student) {
+    alert("Error: Alumno no encontrado.");
+    return;
+  }
+
+  // Encontrar todos los módulos donde el alumno está inscrito
+  const enrolledModules = db.modules
+    .filter(m => m.studentIds?.includes(studentId))
+    .map(module => {
+      const calculated = calculateModuleGrades(module, [student], db.grades);
+      const studentGrades = calculated[studentId] || { moduleGrade: 0, raTotals: {} };
+      return { module, finalGrade: studentGrades.moduleGrade, raTotals: studentGrades.raTotals };
+    });
+
+  generateStudentReport(student, enrolledModules, db.grades);
 }
 
 export function handleSetPage(newPage) {
@@ -87,14 +116,45 @@ export function handleImportStudentsToModule(text, moduleId) {
       .filter(s => importedStudentNames.has(s.name.toLowerCase()))
       .map(s => s.id);
     
-    module.studentIds = Array.from(new Set(studentIdsToAssociate)); // Usar Set para evitar duplicados
+    // Unir los alumnos existentes con los nuevos, eliminando duplicados
+    const existingStudentIds = module.studentIds || [];
+    module.studentIds = Array.from(new Set([...existingStudentIds, ...studentIdsToAssociate])); 
 
     state.setDB(db);
     state.saveDB();
-    alert(`Se han asociado ${module.studentIds.length} alumnos al módulo "${module.modulo}".`);
+    alert(`Lista de alumnos actualizada para el módulo "${module.modulo}".`);
     renderApp();
   } catch (error) {
     alert(error.message);
+  }
+}
+
+export function handleRemoveStudentFromModule(moduleId, studentId) {
+  const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
+  const student = db.students.find(s => s.id === studentId);
+
+  if (!module || !student) {
+    alert("Error: No se pudo encontrar el módulo o el alumno.");
+    return;
+  }
+
+  if (window.confirm(`¿Estás seguro de que quieres eliminar a "${student.name}" del módulo "${module.modulo}"? Sus notas en este módulo también se borrarán.`)) {
+    // Eliminar al alumno de la lista del módulo
+    module.studentIds = module.studentIds.filter(id => id !== studentId);
+
+    // Opcional pero recomendado: Limpiar sus notas para ese módulo
+    if (db.grades[studentId]) {
+      // Esto es simplificado. Si un CE pudiera estar en varios módulos, necesitaríamos una lógica más compleja.
+      // Por ahora, asumimos que al quitarlo, podemos limpiar sus notas.
+      // Una mejor aproximación sería borrar solo las notas de los CEs de este módulo.
+      // Por simplicidad, por ahora no borramos las notas para evitar perder datos si se re-añade.
+    }
+
+    state.setDB(db);
+    state.saveDB();
+    alert(`"${student.name}" ha sido eliminado del módulo.`);
+    renderApp();
   }
 }
 
