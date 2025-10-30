@@ -545,6 +545,33 @@ function attachEventListeners() {
         handlers.handleDeleteActividadGradeAttempt(studentId, actividadId, attemptId);
       });
     });
+
+    // Listener para el botón de copiar detalles de actividad
+    const copyBtn = document.getElementById('copy-details-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', (ev) => {
+        const button = ev.currentTarget;
+        const textToCopy = decodeURIComponent(button.dataset.copyText);
+        
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          const originalText = button.querySelector('.btn-text').textContent;
+          const originalIcon = button.querySelector('.btn-icon').innerHTML;
+          
+          button.querySelector('.btn-text').textContent = '¡Copiado!';
+          button.querySelector('.btn-icon').innerHTML = '✔️';
+          button.classList.replace('bg-indigo-600', 'bg-green-600');
+
+          setTimeout(() => {
+            button.querySelector('.btn-text').textContent = originalText;
+            button.querySelector('.btn-icon').innerHTML = originalIcon;
+            button.classList.replace('bg-green-600', 'bg-indigo-600');
+          }, 2000);
+        }).catch(err => {
+          console.error('Error al copiar al portapapeles:', err);
+          alert('No se pudo copiar al portapapeles.');
+        });
+      });
+    }
   }
 }
 

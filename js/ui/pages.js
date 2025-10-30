@@ -854,6 +854,7 @@ export function renderActividadDetailPage() {
                 <button type="button" class="delete-actividad-btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg" data-actividad-id="${actividad.id}">Eliminar</button>
               </div>
             </form>
+            ${renderClipboardPanel(actividad, module)}
         </div>
 
         <!-- Columna de Calificaciones -->
@@ -914,6 +915,61 @@ export function renderActividadDetailPage() {
           </div>
         </div>
       </div>
+    </div>
+  `;
+}
+
+function renderClipboardPanel(actividad, module) {
+  // 1. Obtener los CEs completos de la actividad
+  const ceIds = new Set(actividad.ceIds);
+  const allModuleCes = module.resultados_de_aprendizaje.flatMap(ra => 
+    ra.criterios_de_evaluacion.map(ce => ({ ...ce, ra_id: ra.ra_id, ra_descripcion: ra.ra_descripcion }))
+  );
+  const actividadCes = allModuleCes.filter(ce => ceIds.has(ce.ce_id));
+
+  // 2. Agrupar CEs por RA
+  const rasMap = new Map();
+  actividadCes.forEach(ce => {
+    if (!rasMap.has(ce.ra_id)) {
+      rasMap.set(ce.ra_id, {
+        ra_id: ce.ra_id,
+        ra_descripcion: ce.ra_descripcion,
+        ces: []
+      });
+    }
+    rasMap.get(ce.ra_id).ces.push(ce);
+  });
+
+  // 3. Generar el texto para copiar
+  let textToCopy = `Actividad: ${actividad.name} (T${actividad.trimestre})\n`;
+  textToCopy += `Módulo: ${module.modulo}\n\n`;
+  textToCopy += "========================================\n\n";
+
+  rasMap.forEach(ra => {
+    textToCopy += `RA: ${ra.ra_id} - ${ra.ra_descripcion}\n`;
+    ra.ces.forEach(ce => {
+      textToCopy += `  - CE: ${ce.ce_id} - ${ce.ce_descripcion}\n`;
+    });
+    textToCopy += "\n";
+  });
+
+  // 4. Generar el HTML
+  return `
+    <div class="mt-6 border-t pt-6 border-gray-200 dark:border-gray-700">
+      <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+        ${ICONS.ClipboardList} Información para Portapapeles
+      </h3>
+      <div class="bg-gray-100 dark:bg-gray-900 p-3 rounded-md text-sm max-h-60 overflow-y-auto">
+        <pre class="whitespace-pre-wrap font-sans">${textToCopy}</pre>
+      </div>
+      <button 
+        id="copy-details-btn" 
+        class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-all"
+        data-copy-text="${encodeURIComponent(textToCopy)}"
+      >
+        <span class="btn-icon">${ICONS.ClipboardList}</span>
+        <span class="btn-text">Copiar al Portapapeles</span>
+      </button>
     </div>
   `;
 }
