@@ -5,15 +5,7 @@ import { getDB, getUI, getCalculatedGrades } from '../state.js';
 
 // Renderiza la página de Configuración
 export function renderConfiguracionPage() {
-  const studentText = `David Palomeque Aguilera
-Adrián Manchado Moreno
-Marta Pérez Padillo
-María Ávila González
-Mª de la Sierra Jiménez Castro
-Manuel Baena Bueno
-Abel Morales Barranco
-Rosa Pavón Aguilera
-Judith Fernández Porras`;
+  const studentText = ``;
 
   const moduleText = `{
   "modulo": "Operaciones Auxiliares de Gestión de Tesorería",
@@ -161,9 +153,12 @@ export function renderAlumnosPage() {
           return `
             <div key="${student.id}" draggable="true" data-student-id="${student.id}" class="student-draggable bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 border-l-4 border-blue-500 transition-opacity">
               <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center gap-2">
-                    <span class="drag-handle cursor-move text-gray-400" title="Arrastrar para reordenar">${ICONS.GripVertical}</span>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">${student.name}</h3>
+                <div class="flex items-center gap-4">
+                    <input type="checkbox" class="student-select-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" data-student-id="${student.id}">
+                    <div class="flex items-center gap-2">
+                      <span class="drag-handle cursor-move text-gray-400" title="Arrastrar para reordenar">${ICONS.GripVertical}</span>
+                      <h3 class="text-xl font-bold text-gray-900 dark:text-white">${student.name}</h3>
+                    </div>
                 </div>
                 <div class="flex gap-2">
                     <button class="view-history-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-500 hover:bg-gray-600 text-white rounded-lg" data-student-id="${student.id}">
@@ -171,6 +166,9 @@ export function renderAlumnosPage() {
                     </button>
                     <button class="export-full-student-report-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg" data-student-id="${student.id}" title="Exportar informe completo de todos los módulos">
                       ${ICONS.DownloadCloud} Informe Completo
+                    </button>
+                    <button class="delete-student-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg" data-student-id="${student.id}" title="Eliminar alumno/a del sistema">
+                      ${ICONS.Trash2} Eliminar
                     </button>
                 </div>
               </div>
@@ -202,9 +200,15 @@ export function renderAlumnosPage() {
     <div class="container mx-auto px-6 py-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <h2 class="text-3xl font-bold">Panel General de Alumnos/as (${studentsToDisplay.length})</h2>
-            <div class="flex gap-2">
-                <button id="sort-all-asc-btn" class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar A-Z">${ICONS.ArrowDownAZ}</button>
-                <button id="sort-all-desc-btn" class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar Z-A">${ICONS.ArrowUpAZ}</button>
+            <div class="flex items-center gap-4">
+                <div class="flex gap-2">
+                  <button id="sort-all-asc-btn" class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar A-Z">${ICONS.ArrowDownAZ}</button>
+                  <button id="sort-all-desc-btn" class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar Z-A">${ICONS.ArrowUpAZ}</button>
+                </div>
+                <div class="h-8 border-l border-gray-300 dark:border-gray-600"></div>
+                <button id="bulk-delete-students-btn" class="flex items-center gap-2 px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:bg-red-400 disabled:cursor-not-allowed" disabled>
+                  ${ICONS.Trash2} Eliminar Seleccionados (<span id="selected-students-count">0</span>)
+                </button>
             </div>
         </div>
 
@@ -217,6 +221,14 @@ export function renderAlumnosPage() {
               <option value="${m.id}" ${m.id === ui.studentPageModuleFilter ? 'selected' : ''}>${m.modulo}</option>
             `).join('')}
           </select>
+        </div>
+
+        <!-- Checkbox para seleccionar todos -->
+        <div class="mb-4">
+          <label class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <input type="checkbox" id="select-all-students-checkbox" class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+            <span>Seleccionar Todos los Alumnos/as Visibles</span>
+          </label>
         </div>
 
       ${studentListHtml}
@@ -764,7 +776,7 @@ export function renderActividadesManagement(module) {
                         <label class="flex items-center gap-2 text-sm">
                           <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-ud-${ud.replace(/ /g, '-')}">
                           <span class="${usedCeIds.has(ce.ce_id) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} flex items-center gap-1">
-                            ${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...
+                            ${ce.ce_id} - ${ce.ce_descripcion}
                             ${ceUdInfo[ce.ce_id]?.length > 1 ? `
                               <span class="text-xs font-semibold text-blue-500" title="Este CE pertenece a: ${ceUdInfo[ce.ce_id].join(', ')}">(${ceUdInfo[ce.ce_id].join(', ')})</span>
                             ` : ''}

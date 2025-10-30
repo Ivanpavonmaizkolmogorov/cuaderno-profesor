@@ -407,6 +407,87 @@ export function handleRemoveStudentFromModule(moduleId, studentId) {
   }
 }
 
+export function handleDeleteStudent(studentId) {
+  const db = state.getDB();
+  const student = db.students.find(s => s.id === studentId);
+
+  if (!student) {
+    alert("Error: No se pudo encontrar al alumno/a para eliminar.");
+    return;
+  }
+
+  if (window.confirm(`¿Estás seguro de que quieres eliminar a "${student.name}" PERMANENTEMENTE del sistema?\n\n¡ATENCIÓN! Esta acción es irreversible y borrará:\n- El registro del alumno/a.\n- TODAS sus calificaciones en TODOS los módulos.\n- TODOS sus comentarios.\n- Su matrícula en todos los módulos.`)) {
+    // 1. Eliminar al alumno/a de la lista principal de alumnos
+    db.students = db.students.filter(s => s.id !== studentId);
+
+    // 2. Eliminar todas las calificaciones del alumno/a
+    delete db.grades[studentId];
+
+    // 3. Eliminar todos los comentarios del alumno/a
+    Object.keys(db.comments).forEach(moduleId => {
+      if (db.comments[moduleId] && db.comments[moduleId][studentId]) {
+        delete db.comments[moduleId][studentId];
+      }
+    });
+
+    // 4. Eliminar al alumno/a de las listas `studentIds` de todos los módulos
+    db.modules.forEach(module => {
+      if (module.studentIds) {
+        module.studentIds = module.studentIds.filter(id => id !== studentId);
+      }
+    });
+
+    state.setDB(db);
+    state.saveDB();
+    alert(`El alumno/a "${student.name}" ha sido eliminado del sistema.`);
+    renderApp();
+  }
+}
+
+export function handleBulkDeleteStudents(studentIds) {
+  const db = state.getDB();
+  if (!studentIds || studentIds.length === 0) {
+    alert("No hay alumnos/as seleccionados para eliminar.");
+    return;
+  }
+
+  const studentsToDelete = db.students.filter(s => studentIds.includes(s.id));
+  const studentNames = studentsToDelete.map(s => s.name).join('\n - ');
+
+  if (window.confirm(`¿Estás seguro de que quieres eliminar a los siguientes ${studentsToDelete.length} alumnos/as PERMANENTEMENTE del sistema?\n\n - ${studentNames}\n\n¡ATENCIÓN! Esta acción es irreversible y borrará TODOS sus datos (calificaciones, comentarios, etc.).`)) {
+    const studentIdSet = new Set(studentIds);
+
+    // 1. Filtrar la lista principal de alumnos
+    db.students = db.students.filter(s => !studentIdSet.has(s.id));
+
+    // 2. Eliminar todas las calificaciones de los alumnos borrados
+    studentIds.forEach(studentId => {
+      delete db.grades[studentId];
+    });
+
+    // 3. Eliminar todos los comentarios de los alumnos borrados
+    Object.keys(db.comments).forEach(moduleId => {
+      if (db.comments[moduleId]) {
+        studentIds.forEach(studentId => {
+          delete db.comments[moduleId][studentId];
+        });
+      }
+    });
+
+    // 4. Eliminar a los alumnos de las listas `studentIds` de todos los módulos
+    db.modules.forEach(module => {
+      if (module.studentIds) {
+        module.studentIds = module.studentIds.filter(id => !studentIdSet.has(id));
+      }
+    });
+
+    state.setDB(db);
+    state.saveDB();
+    alert(`${studentsToDelete.length} alumno(s)/alumna(s) han sido eliminados del sistema.`);
+    renderApp();
+  }
+}
+
 export function handleImportModule(text) {
   try {
     let data = JSON.parse(text);

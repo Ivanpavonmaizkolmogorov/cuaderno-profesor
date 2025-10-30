@@ -240,6 +240,44 @@ function attachEventListeners() {
       });
     });
 
+    // Listeners para la selección masiva de alumnos
+    const selectAllCheckbox = document.getElementById('select-all-students-checkbox');
+    const studentCheckboxes = document.querySelectorAll('.student-select-checkbox');
+    const bulkDeleteBtn = document.getElementById('bulk-delete-students-btn');
+    const selectedCountSpan = document.getElementById('selected-students-count');
+
+    const updateBulkDeleteButtonState = () => {
+      const selectedCheckboxes = document.querySelectorAll('.student-select-checkbox:checked');
+      const count = selectedCheckboxes.length;
+      if (bulkDeleteBtn) {
+        bulkDeleteBtn.disabled = count === 0;
+        selectedCountSpan.textContent = count;
+      }
+    };
+
+    selectAllCheckbox?.addEventListener('change', (e) => {
+      studentCheckboxes.forEach(checkbox => {
+        checkbox.checked = e.target.checked;
+      });
+      updateBulkDeleteButtonState();
+    });
+
+    studentCheckboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', updateBulkDeleteButtonState);
+    });
+
+    bulkDeleteBtn?.addEventListener('click', () => {
+      const selectedIds = Array.from(document.querySelectorAll('.student-select-checkbox:checked')).map(cb => cb.dataset.studentId);
+      handlers.handleBulkDeleteStudents(selectedIds);
+    });
+
+    // Listener para el botón de eliminar alumno/a
+    document.querySelectorAll('.delete-student-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const studentId = e.currentTarget.dataset.studentId;
+        handlers.handleDeleteStudent(studentId);
+      });
+    });
 
     // Listener para los acordeones de Módulo por Alumno
     document.querySelectorAll('.student-module-toggle').forEach(button => {
