@@ -186,25 +186,41 @@ function attachEventListeners() {
   document.getElementById('connect-btn')?.addEventListener('click', handlers.handleConnect);
   document.getElementById('disconnect-btn')?.addEventListener('click', handlers.handleDisconnect);
   
+  // EN main.js -> function attachEventListeners()
+
   if (ui.page === 'configuracion') {
-    document.getElementById('import-module-btn')?.addEventListener('click', () => handlers.handleImportModule(document.getElementById('module-textarea').value));
-    document.getElementById('import-module-file-input')?.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+      document.getElementById('import-module-btn')?.addEventListener('click', () => handlers.handleImportModule(document.getElementById('module-textarea').value));
+      
+      document.getElementById('import-module-file-input')?.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target.result;
-        handlers.handleImportModule(text);
-      };
-      reader.readAsText(file);
-      e.target.value = ''; // Reset para poder seleccionar el mismo archivo de nuevo
-    });
+          const reader = new FileReader();
+          reader.onload = (event) => {
+              const text = event.target.result;
+              handlers.handleImportModule(text);
+          };
+          reader.readAsText(file);
+          e.target.value = ''; // Reset
+      });
 
-    document.getElementById('download-module-template-btn')?.addEventListener('click', handlers.handleDownloadModuleTemplate);
-    document.getElementById('save-as-btn')?.addEventListener('click', handlers.handleSaveAs);
-    document.getElementById('export-data-btn')?.addEventListener('click', handlers.handleExportData);
-    document.getElementById('clear-data-btn')?.addEventListener('click', handlers.handleClearData);
+      document.getElementById('download-module-template-btn')?.addEventListener('click', handlers.handleDownloadModuleTemplate);
+      document.getElementById('save-as-btn')?.addEventListener('click', handlers.handleSaveAs);
+      document.getElementById('export-data-btn')?.addEventListener('click', handlers.handleExportData);
+      document.getElementById('clear-data-btn')?.addEventListener('click', handlers.handleClearData);
+
+      // --- AQUÍ ESTÁ EL CÓDIGO CORREGIDO Y EN SU SITIO ---
+      const excelButton = document.getElementById('export-excel-btn');
+      
+      // Chivato 1: Comprobar que el botón existe al cargar la página
+      console.log("Buscando botón de Excel:", excelButton); 
+
+      excelButton?.addEventListener('click', () => {
+          // Chivato 2: Comprobar que el clic funciona
+          console.log("¡Clic en botón Excel detectado!"); 
+          handlers.handleExportExcel();
+      });
+      // --- FIN DEL CÓDIGO CORREGIDO ---
   }
   
   if (ui.page === 'alumnos') {
@@ -469,6 +485,29 @@ function attachEventListeners() {
       });
     });
 
+    // Listener para abrir el modal de CEs desde la vista tabla
+    document.querySelectorAll('.open-ce-list-modal-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const { raId, moduleId } = e.currentTarget.dataset;
+        const module = state.getDB().modules.find(m => m.id === moduleId);
+        if (module) {
+          const modalContainer = document.getElementById('ce-list-modal-container');
+          modalContainer.innerHTML = pages.renderCeListModal(module, raId);
+
+          const closeModal = () => modalContainer.innerHTML = '';
+          
+          modalContainer.querySelector('#close-ce-list-modal-btn').addEventListener('click', closeModal);
+          modalContainer.querySelector('#close-ce-list-modal-btn-footer').addEventListener('click', closeModal);
+
+          // Re-adjuntar listeners para los botones de dual dentro del modal
+          modalContainer.querySelectorAll('.toggle-dual-btn').forEach(btn => {
+            btn.addEventListener('click', (ev) => {
+              handlers.handleToggleCeDual(moduleId, ev.currentTarget.dataset.ceId);
+            });
+          });
+        }
+      });
+    });
 
     if (ui.moduleView === 'alumno') {
         document.getElementById('prev-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('prev'));
@@ -511,8 +550,8 @@ function attachEventListeners() {
     });
     
     // Listener para los checkboxes de Dual
-    document.querySelectorAll('.toggle-dual-btn').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => {
+    document.querySelectorAll('.toggle-dual-btn').forEach(button => { // Ahora es un botón
+        button.addEventListener('click', (e) => {
             const moduleId = ui.selectedModuleId; // El módulo activo
             const ceId = e.currentTarget.dataset.ceId;
             handlers.handleToggleCeDual(moduleId, ceId);

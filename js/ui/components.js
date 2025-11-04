@@ -84,9 +84,11 @@ export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentI
             return `
             <div key="${ce.ce_id}" class="grid grid-cols-1 md:grid-cols-4 gap-4 py-4 items-center">
               <div class="md:col-span-3 flex flex-col gap-2">
-                <div>
+                <div class="flex items-center gap-2">
+                  <button class="toggle-dual-btn p-1 rounded-md ${ce.dual ? 'bg-blue-100 dark:bg-blue-900 text-blue-600' : 'bg-gray-200 dark:bg-gray-600 text-gray-500'} hover:bg-blue-200 dark:hover:bg-blue-800" data-ce-id="${ce.ce_id}" title="Marcar/Desmarcar como evaluado en empresa (Dual)">
+                    ${ICONS.Briefcase}
+                  </button>
                   <span class="font-bold text-gray-900 dark:text-white">${ce.ce_id}</span>
-                  ${ce.dual ? `<span class="inline-block ml-2 text-blue-500" title="Evaluado en empresa (Dual)">${ICONS.Briefcase}</span>` : ''}
                 </div>
                 <span class="text-sm text-gray-600 dark:text-gray-400"> (Peso: ${ce.peso}%)</span>
                 <p class="text-sm text-gray-700 dark:text-gray-300 mt-1">${ce.ce_descripcion}</p>

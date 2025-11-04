@@ -106,6 +106,11 @@ export function renderConfiguracionPage() {
         <button id="export-data-btn" class="w-full text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors bg-blue-600 hover:bg-blue-700 mt-2">
           ${ICONS.DownloadCloud} Exportar Backup (Descarga)
         </button>
+        <hr class="my-4 border-gray-300 dark:border-gray-700">
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Descarga un informe detallado con cálculos y fórmulas en formato Excel.</p>
+        <button id="export-excel-btn" class="w-full text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors bg-green-700 hover:bg-green-800 mt-2">
+          ${ICONS.Table} Exportar a Excel (con Fórmulas)
+        </button>
       </div>
 
       <!-- Zona de Peligro -->
@@ -572,6 +577,7 @@ function renderModuloDetalle(module, moduleStudents) {
       <!-- Contenido de la vista -->
       ${contentHtml}
     </div>
+    <div id="ce-list-modal-container"></div>
   `;
 }
 
@@ -606,8 +612,10 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
           `;
         }).join('')}
         ${ras.map(ra => `
-          <th key="${ra.ra_id}" scope="col" class="px-6 py-3 text-center text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider bg-blue-50 dark:bg-blue-900" title="${ra.ra_descripcion}">
-            ${ra.ra_id}
+          <th key="${ra.ra_id}" scope="col" class="px-2 py-3 text-center text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider bg-blue-50 dark:bg-blue-900" title="${ra.ra_descripcion}">
+            <button class="open-ce-list-modal-btn p-2 rounded-md hover:bg-blue-100 dark:hover:bg-blue-800 w-full h-full" data-ra-id="${ra.ra_id}" data-module-id="${module.id}">
+              ${ra.ra_id}
+            </button>
           </th>
         `).join('')}
         <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-green-700 dark:text-green-300 uppercase tracking-wider bg-green-50 dark:bg-green-900">
@@ -675,6 +683,52 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
         ${headerHtml}
         ${bodyHtml}
       </table>
+    </div>
+  `;
+}
+
+export function renderCeListModal(module, raId) {
+  const ra = module.resultados_de_aprendizaje.find(r => r.ra_id === raId);
+  if (!ra) return '';
+
+  return `
+    <div id="ce-list-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div class="p-6 border-b dark:border-gray-700 flex justify-between items-start">
+          <div>
+            <h3 class="text-xl font-bold">Criterios de Evaluación de ${ra.ra_id}</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">${ra.ra_descripcion}</p>
+          </div>
+          <button id="close-ce-list-modal-btn" class="text-gray-500 hover:text-gray-800 dark:hover:text-white">&times;</button>
+        </div>
+        <div class="p-6 overflow-y-auto">
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Haz clic en el icono del maletín (💼) para marcar un CE como evaluado en empresa (Dual). El cambio se guarda automáticamente.
+          </p>
+          <div class="space-y-3">
+            ${ra.criterios_de_evaluacion.map(ce => `
+              <div class="flex items-center gap-4 p-3 rounded-md ${ce.dual ? 'bg-blue-50 dark:bg-blue-900/50' : 'bg-gray-50 dark:bg-gray-900/20'}">
+                <button 
+                  class="toggle-dual-btn p-2 rounded-md ${ce.dual ? 'bg-blue-100 dark:bg-blue-900 text-blue-600' : 'bg-gray-200 dark:bg-gray-600 text-gray-500'} hover:bg-blue-200 dark:hover:bg-blue-800" 
+                  data-ce-id="${ce.ce_id}" 
+                  title="Marcar/Desmarcar como evaluado en empresa (Dual)"
+                >
+                  ${ICONS.Briefcase}
+                </button>
+                <div>
+                  <p class="font-bold text-gray-900 dark:text-white">${ce.ce_id}</p>
+                  <p class="text-sm text-gray-700 dark:text-gray-300">${ce.ce_descripcion}</p>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        <div class="p-4 border-t dark:border-gray-700 text-right">
+          <button id="close-ce-list-modal-btn-footer" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">
+            Cerrar
+          </button>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -843,7 +897,10 @@ export function renderActividadDetailPage() {
                       ${ra.criterios_de_evaluacion.map(ce => `
                         <label class="flex items-center gap-2 text-sm">
                           <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-${ra.ra_id}" ${actividad.ceIds.includes(ce.ce_id) ? 'checked' : ''}>
-                          <span>${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...</span>
+                          <span class="flex items-center gap-1">
+                            ${ce.dual ? `<span class="text-blue-500" title="Evaluado en empresa (Dual)">${ICONS.Briefcase}</span>` : ''}
+                            ${ce.ce_id} - ${ce.ce_descripcion.substring(0, 40)}...
+                          </span>
                         </label>
                       `).join('')}
                     </div>

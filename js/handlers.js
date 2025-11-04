@@ -5,6 +5,7 @@ import { parseStudentNames } from './services/nameParser.js';
 import { calculateModuleGrades } from './services/calculations.js';
 import { generateStudentReport } from './services/pdfGenerator.js';
 import { renderApp } from './main.js';
+import { exportToExcel } from './services/excelGenerator.js'; // <-- AÑADE ESTA LÍNEA
 
 export async function handleConnect() {
     const fileName = await state.connectToFile();
@@ -770,4 +771,30 @@ export function handleDeleteActividadGradeAttempt(studentId, actividadId, attemp
   state.saveDB();
   // Volvemos a renderizar la página para que la nota desaparezca
   renderApp();
+}
+
+// al final de js/handlers.js
+
+// en js/handlers.js
+
+export function handleExportExcel() {
+  console.log("--- handleExportExcel INICIADO ---"); // Chivato 3
+  
+  try {
+    const db = state.getDB();
+    console.log("Base de datos obtenida:", db); // Chivato 4
+
+    if (db.modules.length === 0 || db.students.length === 0) {
+      console.warn("Datos insuficientes para exportar. Módulos:", db.modules.length, "Alumnos:", db.students.length);
+      alert("No hay suficientes datos (módulos y alumnos) para generar el Excel.");
+      return;
+    }
+
+    console.log("Datos suficientes. Llamando a exportToExcel..."); // Chivato 5
+    exportToExcel(db); // Esta es la función del otro archivo
+  
+  } catch (error) {
+    console.error("Error CATASTRÓFICO al generar el Excel:", error); // Chivato 6
+    alert(`Se produjo un error al generar el Excel: ${error.message}`);
+  }
 }
