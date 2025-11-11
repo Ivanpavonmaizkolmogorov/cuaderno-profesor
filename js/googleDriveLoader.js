@@ -38,10 +38,10 @@ function enableDriveButtonIfReady() {
 function pickerCallback(data, accessToken) {
   console.log('[LOG] Callback del Picker ejecutado.', data);
   if (data.action === window.google.picker.Action.PICKED) {
-    console.log('[LOG] Archivo seleccionado. ID:', data.docs[0].id);
-    const fileId = data.docs[0].id;
+    const file = data.docs[0];
+    console.log('[LOG] Archivo seleccionado. ID:', file.id, 'Nombre:', file.name);
     // Con el ID del archivo, procedemos a descargar su contenido.
-    fetchFileContent(fileId, accessToken);
+    fetchFileContent(file.id, file.name, accessToken);
   }
 }
 
@@ -68,9 +68,10 @@ function createPicker(accessToken) {
  * Utiliza la API de Google Drive para descargar el contenido de un archivo.
  * @param {string} fileId - El ID del archivo a descargar.
  * @param {string} accessToken - El token de OAuth2 para autorizar la descarga.
+ * @param {string} fileName - El nombre del archivo.
  */
-async function fetchFileContent(fileId, accessToken) {
-  console.log(`[LOG] Descargando contenido del archivo con ID: ${fileId}`);
+async function fetchFileContent(fileId, fileName, accessToken) {
+  console.log(`[LOG] Descargando contenido del archivo con ID: ${fileId} (${fileName})`);
   try {
     const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
       headers: {
@@ -87,7 +88,7 @@ async function fetchFileContent(fileId, accessToken) {
     // Si se especificó una función de callback, la llamamos con el contenido del JSON.
     if (onJsonLoadedCallback) {
       console.log('[LOG] Llamando al callback principal de la aplicación.');
-      onJsonLoadedCallback(content);
+      onJsonLoadedCallback({ content, fileId, fileName });
     }
   } catch (err) {
     console.error("Error al procesar el archivo JSON:", err);

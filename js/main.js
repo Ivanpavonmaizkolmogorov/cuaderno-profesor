@@ -1,6 +1,7 @@
 import * as state from './state.js';
 import * as handlers from './handlers.js';
 import { renderHeader } from './ui/components.js';
+import { ICONS } from './ui/constants.js';
 import { renderStudentFormatModal } from './ui/pages.js';
 import * as pages from './ui/pages.js';
 import { calculateModuleGrades } from './services/calculations.js';
@@ -8,6 +9,9 @@ import { initGoogleDriveButton } from './googleDriveLoader.js';
 
 // Función principal que dibuja la UI
 export function renderApp() {
+  // Renderizar el botón de Google Drive
+  renderDriveButton();
+
   const { db, ui } = { db: state.getDB(), ui: state.getUI() };
 
   // Recalcular notas para el módulo seleccionado (T1, T2, T3 y Final)
@@ -131,6 +135,35 @@ export function renderApp() {
       });
 
     }
+  }
+}
+
+function renderDriveButton() {
+  const driveState = state.getDriveState();
+  const container = document.getElementById('drive-connection-container');
+  if (!container) return;
+
+  if (driveState.isConnected) {
+    container.innerHTML = `
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+          <img src="https://www.google.com/images/branding/product/1x/drive_2020q4_48dp.png" alt="Google Drive" class="w-5 h-5">
+          ${driveState.fileName}
+        </span>
+        <button id="disconnect-drive-btn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm" title="Desconectar de Google Drive">
+          ${ICONS.Unplug}
+        </button>
+      </div>
+    `;
+    document.getElementById('disconnect-drive-btn')?.addEventListener('click', handlers.handleDisconnectDrive);
+  } else {
+    container.innerHTML = `
+      <button id="load-from-drive-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded inline-flex items-center">
+        <img src="https://www.google.com/images/branding/product/1x/drive_2020q4_48dp.png" alt="Google Drive" class="w-5 h-5 mr-2">
+        <span class="btn-text">Conectar con Drive</span>
+      </button>
+    `;
+    initGoogleDriveButton('load-from-drive-btn', handleDriveConnection);
   }
 }
 
@@ -629,6 +662,20 @@ function getDragAfterElement(container, y) {
   }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
+function handleDriveConnection({ content, fileId, fileName }) {
+  // 1. Validar que el JSON tiene la estructura esperada.
+  if (content && content.modules && content.students) {
+    // 2. Guardar los datos y el estado de la conexión.
+    state.setDB(content);
+    state.setDriveConnection(fileId, fileName);
+    // 3. Renderizar la aplicación para mostrar los nuevos datos y el botón actualizado.
+    renderApp();
+    alert(`¡Conectado a "${fileName}" desde Google Drive!`);
+  } else {
+    alert('Error: El archivo JSON seleccionado no tiene el formato correcto.');
+  }
+}
+
 function init() {
   // La carga inicial ahora es manual. El usuario debe conectar un archivo.
   // Por defecto, empezamos en la página de configuración.
@@ -636,19 +683,6 @@ function init() {
 
   // Activa el botón de Google Drive y le dice qué hacer cuando se carga un JSON.
   // Usaremos la función handleConnect existente para procesar los datos.
-  initGoogleDriveButton('load-from-drive-btn', (jsonData) => {
-    // 1. Validar que el JSON tiene la estructura esperada.
-    if (jsonData && jsonData.modules && jsonData.students) {
-      // 2. Guardar los datos en el estado de la aplicación.
-      state.setDB(jsonData); // CORRECCIÓN: La función correcta es setDB, no loadDB.
-      // 3. Renderizar la aplicación para mostrar los nuevos datos.
-      renderApp();
-      alert('¡Datos cargados correctamente desde Google Drive!');
-    } else {
-      alert('Error: El archivo JSON seleccionado no tiene el formato correcto.');
-    }
-  });
-
   renderApp();
 }
 

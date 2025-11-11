@@ -27,12 +27,31 @@ let state = {
   calculatedGrades: {},
 };
 
+let driveState = {
+  isConnected: false,
+  fileId: null,
+  fileName: null,
+}
+
 // --- GETTERS (para leer el estado) ---
 export const getDB = () => state.db;
 export const getUI = () => state.ui;
 export const getCalculatedGrades = () => state.calculatedGrades;
 
 // --- SETTERS (para modificar el estado) ---
+
+export const setDriveConnection = (fileId, fileName) => {
+  driveState.isConnected = true;
+  driveState.fileId = fileId;
+  driveState.fileName = fileName;
+};
+
+export const getDriveState = () => driveState;
+
+export const disconnectDrive = () => {
+  driveState = { isConnected: false, fileId: null, fileName: null };
+};
+
 export const setDB = (newDb) => {
   state.db = newDb;
 };
