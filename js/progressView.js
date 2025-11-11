@@ -18,6 +18,14 @@ const statusConfig = {
  * @param {function} onDataChange - Callback que se ejecuta para guardar los datos tras un cambio.
  */
 export function renderProgressView(container, moduleData, onDataChange) {
+  // --- COMIENZO DE LA CORRECCIÓN ---
+  // Comprobación de seguridad: si no se pasan datos del módulo, mostramos un error y salimos.
+  if (!moduleData) {
+    container.innerHTML = `<div class="p-4 text-center text-red-500">Error: No se pudo cargar la vista de progreso porque no se proporcionaron los datos del módulo.</div>`;
+    console.error("Se intentó renderizar la vista de progreso sin datos del módulo (moduleData es undefined).");
+    return;
+  }
+  // --- FIN DE LA CORRECCIÓN ---
   // --- INICIO: Lógica para construir el árbol jerárquico ---
   const pointTree = new Map(); // Mapa para almacenar la jerarquía: idPunto -> { point, children: [idPunto] }
 

@@ -42,8 +42,8 @@ export function formatStudentNames(text) {
  * Prepara la estructura de datos de un módulo para el seguimiento de progreso del temario.
  * Añade IDs únicos a las unidades y puntos del temario si no existen.
  * Inicializa y sincroniza el objeto `progresoTemario`.
+ * Esta función muta el objeto del módulo directamente.
  * @param {object} moduleData - El objeto completo de datos del módulo.
- * @returns {object} El objeto del módulo modificado.
  */
 export function prepareModuleForProgressTracking(moduleData) {
   // Si no hay temario, simplemente nos aseguramos de que la propiedad exista como un array vacío.
@@ -76,5 +76,4 @@ export function prepareModuleForProgressTracking(moduleData) {
     });
   });
 
-  return moduleData;
 }

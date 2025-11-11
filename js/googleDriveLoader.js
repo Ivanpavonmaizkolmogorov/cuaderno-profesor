@@ -10,7 +10,9 @@ import { CREDENTIALS } from './credentials.js';
 const isElectron = navigator.userAgent.toLowerCase().includes('electron');
 const CLIENT_ID = isElectron ? CREDENTIALS.CLIENT_ID_DESKTOP : CREDENTIALS.CLIENT_ID_WEB;
 
-const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
+// Se amplían los permisos para permitir la escritura en archivos abiertos por la app.
+// Esto es necesario para poder guardar los cambios en la nube.
+const SCOPES = "https://www.googleapis.com/auth/drive.file";
 
 // --- Variables de estado del módulo ---
 let tokenClient;
@@ -88,11 +90,58 @@ async function fetchFileContent(fileId, fileName, accessToken) {
     // Si se especificó una función de callback, la llamamos con el contenido del JSON.
     if (onJsonLoadedCallback) {
       console.log('[LOG] Llamando al callback principal de la aplicación.');
-      onJsonLoadedCallback({ content, fileId, fileName });
+      onJsonLoadedCallback({ content, fileId, fileName, accessToken });
     }
   } catch (err) {
     console.error("Error al procesar el archivo JSON:", err);
     alert(`Hubo un problema al leer el archivo: ${err.message}`);
+  }
+}
+
+/**
+ * Actualiza el contenido de un archivo en Google Drive usando una petición PATCH.
+ * @param {string} fileId - El ID del archivo a actualizar.
+ * @param {object} content - El objeto de la base de datos que se convertirá en el nuevo contenido del JSON.
+ * @param {string} accessToken - El token de acceso para autorizar la petición.
+ * @returns {Promise<boolean>} True si la actualización fue exitosa, false en caso contrario.
+ */
+export async function updateFileInDrive(fileId, content, accessToken) {
+  if (!fileId) {
+    console.error("No se proporcionó un fileId para la actualización en Drive.");
+    return false;
+  }
+  if (!accessToken) {
+    console.error("No se proporcionó un token de acceso para la actualización en Drive.");
+    // Podríamos intentar solicitar uno nuevo, pero por ahora fallamos.
+    return false;
+  }
+
+  console.log(`[LOG] Iniciando actualización del archivo ${fileId} en Google Drive...`);
+
+  const metadata = {
+    mimeType: 'application/json',
+  };
+
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  form.append('file', new Blob([JSON.stringify(content, null, 2)], { type: 'application/json' }));
+
+  try {
+    const response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: form,
+    });
+
+    if (!response.ok) throw new Error(`Falló la subida: ${response.statusText}`);
+    
+    console.log(`[LOG] Archivo ${fileId} actualizado correctamente en Google Drive.`);
+    return true;
+  } catch (error) {
+    console.error('Error al actualizar el archivo en Google Drive:', error);
+    return false;
   }
 }
 

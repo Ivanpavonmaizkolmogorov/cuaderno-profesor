@@ -445,8 +445,9 @@ function attachEventListeners() {
         progressContainer.style.display = 'block';
 
         // Preparar los datos y renderizar la vista del índice
-        const preparedData = prepareModuleForProgressTracking(selectedModule);
-        renderProgressView(progressContainer, preparedData, () => {
+        // La función ahora muta el objeto 'selectedModule' directamente, no devuelve nada.
+        prepareModuleForProgressTracking(selectedModule);
+        renderProgressView(progressContainer, selectedModule, () => {
             // La función de guardado que se pasa como callback
             state.saveDB();
         });
@@ -707,12 +708,12 @@ function getDragAfterElement(container, y) {
   }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-function handleDriveConnection({ content, fileId, fileName }) {
+function handleDriveConnection({ content, fileId, fileName, accessToken }) {
   // 1. Validar que el JSON tiene la estructura esperada.
   if (content && content.modules && content.students) {
     // 2. Guardar los datos y el estado de la conexión.
     state.setDB(content);
-    state.setDriveConnection(fileId, fileName);
+    state.setDriveConnection(fileId, fileName, accessToken);
     // 3. Renderizar la aplicación para mostrar los nuevos datos y el botón actualizado.
     renderApp();
     alert(`¡Conectado a "${fileName}" desde Google Drive!`);
