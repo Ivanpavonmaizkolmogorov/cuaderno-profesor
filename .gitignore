@@ -1,0 +1,7 @@
+# Dependencias de Node, no deben subirse
+node_modules
+
+# Archivos de credenciales y entorno
+js/credentials.js
+.env
+*.env.local

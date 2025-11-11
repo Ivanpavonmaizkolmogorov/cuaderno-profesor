@@ -39,7 +39,13 @@
 <body class="min-h-screen bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-white">
 
   <!-- Contenedor para la Cabecera (Header) -->
-  <header id="header-container"></header>
+  <div class="bg-white dark:bg-gray-900 shadow-md p-4 flex items-center justify-between">
+    <div id="header-container" class="flex-grow"></div>
+    <button id="load-from-drive-btn" class="ml-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded inline-flex items-center">
+      <img src="https://www.google.com/images/branding/product/1x/drive_2020q4_48dp.png" alt="Google Drive" class="w-5 h-5 mr-2">
+      <span class="btn-text">Conectar con Drive</span>
+    </button>
+  </div>
 
   <!-- Contenedor principal para el contenido de la página -->
   <main id="content-container"></main>
@@ -47,9 +53,8 @@
   <!-- Punto de entrada de la aplicación refactorizada -->
   <!-- Librería para generar PDFs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- Librería para generar Excel -->
-  <script src="https://cdn.sheetjs.com/xlsx/latest/xlsx.full.min.js"></script>
-  <script src="./js/xlsx.full.min.js"></script>
+  <!-- Librería para generar Excel (SheetJS) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <script type="module" src="./js/main.js"></script>
   

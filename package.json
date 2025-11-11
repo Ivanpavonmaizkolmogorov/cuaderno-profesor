@@ -1,0 +1,14 @@
+{
+  "name": "cuaderno-profesor",
+  "version": "1.0.0",
+  "description": "Aplicación Cuaderno del Profesor con conexión a Google Drive",
+  "main": "js/main.js",
+  "scripts": {
+    "start": "live-server --port=3000"
+  },
+  "author": "ivanpavonmaiz",
+  "license": "ISC",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}

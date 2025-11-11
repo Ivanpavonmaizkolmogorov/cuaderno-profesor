@@ -4,6 +4,7 @@ import { renderHeader } from './ui/components.js';
 import { renderStudentFormatModal } from './ui/pages.js';
 import * as pages from './ui/pages.js';
 import { calculateModuleGrades } from './services/calculations.js';
+import { initGoogleDriveButton } from './googleDriveLoader.js';
 
 // Función principal que dibuja la UI
 export function renderApp() {
@@ -632,6 +633,13 @@ function init() {
   // La carga inicial ahora es manual. El usuario debe conectar un archivo.
   // Por defecto, empezamos en la página de configuración.
   state.setPage('configuracion');
+
+  // Activa el botón de Google Drive y le dice qué hacer cuando se carga un JSON.
+  // Usaremos la función handleConnect existente para procesar los datos.
+  initGoogleDriveButton('load-from-drive-btn', (jsonData) => {
+    handlers.handleConnect(jsonData);
+  });
+
   renderApp();
 }
 
