@@ -23,6 +23,7 @@ let driveButton;
  * Habilita el botón de Drive una vez que ambas APIs (GAPI y GIS) están listas.
  */
 function enableDriveButtonIfReady() {
+  console.log(`[LOG] Verificando si las APIs están listas: GAPI=${gapiInited}, GIS=${gisInited}`);
   if (gapiInited && gisInited && driveButton) {
     driveButton.disabled = false;
     driveButton.querySelector('.btn-text').textContent = 'Conectar con Drive';
@@ -35,7 +36,9 @@ function enableDriveButtonIfReady() {
  * @param {string} accessToken - Token de acceso para realizar peticiones a la API.
  */
 function pickerCallback(data, accessToken) {
+  console.log('[LOG] Callback del Picker ejecutado.', data);
   if (data.action === window.google.picker.Action.PICKED) {
+    console.log('[LOG] Archivo seleccionado. ID:', data.docs[0].id);
     const fileId = data.docs[0].id;
     // Con el ID del archivo, procedemos a descargar su contenido.
     fetchFileContent(fileId, accessToken);
@@ -47,6 +50,7 @@ function pickerCallback(data, accessToken) {
  * @param {string} accessToken - El token de OAuth2 necesario para autorizar al Picker.
  */
 function createPicker(accessToken) {
+  console.log('[LOG] Creando el Picker de Google...');
   const view = new window.google.picker.View(window.google.picker.ViewId.DOCS);
   // Filtramos para que solo se puedan seleccionar archivos JSON.
   view.setMimeTypes("application/json,text/plain");
@@ -55,6 +59,7 @@ function createPicker(accessToken) {
     .setAppId(CLIENT_ID.split('-')[0]) // El App ID es la primera parte del Client ID.
     .setOAuthToken(accessToken)
     .addView(view)
+    .setCallback((data) => pickerCallback(data, accessToken))
     .build();
   picker.setVisible(true);
 }
@@ -65,6 +70,7 @@ function createPicker(accessToken) {
  * @param {string} accessToken - El token de OAuth2 para autorizar la descarga.
  */
 async function fetchFileContent(fileId, accessToken) {
+  console.log(`[LOG] Descargando contenido del archivo con ID: ${fileId}`);
   try {
     const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
       headers: {
@@ -77,8 +83,10 @@ async function fetchFileContent(fileId, accessToken) {
     }
 
     const content = await response.json();
+    console.log('[LOG] Contenido del JSON descargado:', content);
     // Si se especificó una función de callback, la llamamos con el contenido del JSON.
     if (onJsonLoadedCallback) {
+      console.log('[LOG] Llamando al callback principal de la aplicación.');
       onJsonLoadedCallback(content);
     }
   } catch (err) {
@@ -107,23 +115,36 @@ function loadScript(src) {
  * Carga e inicializa las APIs de Google (GAPI y GIS).
  */
 async function initializeGoogleApis() {
+  console.log('[LOG] 1. Iniciando la carga de las APIs de Google.');
   try {
     // Cargar los scripts en paralelo
     await Promise.all([
       loadScript('https://apis.google.com/js/api.js'),
       loadScript('https://accounts.google.com/gsi/client')
     ]);
+    console.log('[LOG] 2. Scripts de Google cargados correctamente.');
 
-    // Ahora que los scripts están cargados, inicializamos los clientes
-    await new Promise(resolve => window.gapi.load('client:picker', resolve));
+    // Ahora que los scripts están cargados, inicializamos los clientes de GAPI.
+    // Es crucial inicializar 'client' junto con 'picker'.
+    await new Promise((resolve, reject) => {
+      window.gapi.load('client:picker', { callback: resolve, onerror: reject });
+    });
+    console.log('[LOG] 3. Módulos GAPI \'client\' y \'picker\' cargados.');
+
+    await window.gapi.client.init({}); // Inicializa el cliente GAPI.
+    console.log('[LOG] 4. Cliente GAPI inicializado.');
     gapiInited = true;
 
     tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
       scope: SCOPES,
       callback: (tokenResponse) => {
+        console.log('[LOG] 6. Callback del TokenClient recibido.', tokenResponse);
         if (tokenResponse && tokenResponse.access_token) {
+          console.log('[LOG] 7. Token de acceso obtenido. Procediendo a crear el Picker.');
           createPicker(tokenResponse.access_token);
+        } else {
+          console.error('[ERROR] No se pudo obtener el token de acceso en el callback.');
         }
       },
     });
@@ -159,8 +180,10 @@ export function initGoogleDriveButton(buttonId, onJsonLoaded) {
 
   // Añadimos el evento de clic al botón.
   driveButton.addEventListener('click', () => {
+    console.log('[LOG] 5. Botón "Conectar con Drive" clickeado.');
     if (tokenClient) {
       // Al hacer clic, solicitamos un token de acceso.
+      console.log('[LOG] Solicitando token de acceso...');
       // El callback de `initTokenClient` se encargará del resto.
       tokenClient.requestAccessToken({ prompt: '' });
     } else {

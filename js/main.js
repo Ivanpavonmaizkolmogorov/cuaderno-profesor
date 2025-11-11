@@ -637,7 +637,16 @@ function init() {
   // Activa el botón de Google Drive y le dice qué hacer cuando se carga un JSON.
   // Usaremos la función handleConnect existente para procesar los datos.
   initGoogleDriveButton('load-from-drive-btn', (jsonData) => {
-    handlers.handleConnect(jsonData);
+    // 1. Validar que el JSON tiene la estructura esperada.
+    if (jsonData && jsonData.modules && jsonData.students) {
+      // 2. Guardar los datos en el estado de la aplicación.
+      state.setDB(jsonData); // CORRECCIÓN: La función correcta es setDB, no loadDB.
+      // 3. Renderizar la aplicación para mostrar los nuevos datos.
+      renderApp();
+      alert('¡Datos cargados correctamente desde Google Drive!');
+    } else {
+      alert('Error: El archivo JSON seleccionado no tiene el formato correcto.');
+    }
   });
 
   renderApp();
