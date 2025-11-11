@@ -46,49 +46,10 @@ export function formatStudentNames(text) {
  * @returns {object} El objeto del módulo modificado.
  */
 export function prepareModuleForProgressTracking(moduleData) {
-  // Si no existe 'temario' pero sí 'resultados_de_aprendizaje', lo construimos desde ud_ref.
-  if (!moduleData.temario && moduleData.resultados_de_aprendizaje) {
-    console.log("Construyendo 'temario' desde 'ud_ref' en los Criterios de Evaluación.");
-    const udMap = new Map(); // Mapa para agrupar puntos por nombre de unidad
-
-    moduleData.resultados_de_aprendizaje.forEach(ra => {
-      ra.criterios_de_evaluacion.forEach(ce => {
-        if (!ce.ud_ref) return;
-
-        // Manejar múltiples referencias en un solo string, ej: "UD 2, UD 3"
-        const udRefs = ce.ud_ref.split(',').map(ref => ref.trim());
-
-        udRefs.forEach(ref => {
-          // Separar la UD del punto del temario. Ej: "UD 10: 1. La gestión"
-          const parts = ref.split(/:(.*)/s); // Divide en el primer ':'
-          const unitName = parts[0].trim();
-          const pointText = parts[1] ? parts[1].trim() : ce.ce_descripcion; // <-- ¡LA CLAVE ESTÁ AQUÍ!
-
-          // Usamos el texto del punto como clave para agrupar CEs que apunten al mismo punto
-          const pointKey = pointText;
-
-          if (!udMap.has(unitName)) {
-            udMap.set(unitName, new Map());
-          }
-          if (!udMap.get(unitName).has(pointKey)) {
-            udMap.get(unitName).set(pointKey, { texto: pointText, ce_ids: [] });
-          }
-          // Añadimos el ce_id al punto correspondiente
-          udMap.get(unitName).get(pointKey).ce_ids.push(ce.ce_id);
-        });
-      });
-    });
-
-    // Convertir el mapa a la estructura final de 'temario'
-    moduleData.temario = Array.from(udMap.entries()).map(([unitName, pointsMap]) => ({
-      idUnidad: `u-${generateUUID()}`, // Generamos ID nuevo ya que se basa en texto
-      unidad: unitName,
-      puntos: Array.from(pointsMap.values()).map(pointData => ({
-        idPunto: `p-${generateUUID()}`, // Generamos ID nuevo
-        texto: pointData.texto,
-        ce_ids: pointData.ce_ids // Guardamos los CE IDs asociados
-      }))
-    })).sort((a, b) => a.unidad.localeCompare(b.unidad, undefined, { numeric: true })); // Ordenar UDs
+  // Si no hay temario, simplemente nos aseguramos de que la propiedad exista como un array vacío.
+  // NO lo auto-generamos. Esto permitirá que la UI muestre el botón de importar.
+  if (!moduleData.temario) {
+    moduleData.temario = [];
   }
 
   if (!moduleData.progresoTemario) {

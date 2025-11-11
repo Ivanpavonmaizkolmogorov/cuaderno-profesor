@@ -1,6 +1,7 @@
 /**
  * Módulo para renderizar y gestionar la vista de "Progreso del Temario".
  */
+import { prepareModuleForProgressTracking } from './utils.js';
 
 // Mapa de estados a iconos para la UI.
 const statusConfig = {
@@ -57,8 +58,20 @@ export function renderProgressView(container, moduleData, onDataChange) {
   listContainer.className = 'progress-view-container space-y-6';
 
   if (!moduleData.temario || moduleData.temario.length === 0) {
-    listContainer.innerHTML = '<p class="text-gray-500">No hay temario definido para este módulo.</p>';
+    listContainer.innerHTML = `
+      <div class="text-center py-10 px-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <p class="text-gray-500 dark:text-gray-400 mb-4">No hay temario definido para este módulo.</p>
+        <button id="import-temario-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+          Importar Índice
+        </button>
+      </div>
+    `;
     container.appendChild(listContainer);
+
+    document.getElementById('import-temario-btn').addEventListener('click', () => {
+      showImportTemarioModal(container, moduleData, onDataChange);
+    });
+
     return;
   }
 
@@ -146,4 +159,68 @@ function handleStatusChange(pointId, moduleData, onDataChange) {
     console.log(`Estado de ${pointId} cambiado a ${nextStatus}. Guardando datos...`);
     onDataChange();
   }
+}
+
+/**
+ * Muestra un modal para importar el temario desde un JSON.
+ * @param {HTMLElement} container - El contenedor principal para re-renderizar.
+ * @param {object} moduleData - El objeto de datos del módulo.
+ * @param {function} onDataChange - Callback para guardar los datos.
+ */
+function showImportTemarioModal(container, moduleData, onDataChange) {
+  const modalContainer = document.createElement('div');
+  modalContainer.id = 'import-temario-modal';
+  modalContainer.className = 'fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4';
+
+  const templateJSON = JSON.stringify([
+    {
+      "unidad": "UD 1: Título de la Unidad",
+      "puntos": [
+        "1.1. Primer punto",
+        "1.2. Segundo punto"
+      ]
+    },
+    {
+      "unidad": "UD 2: Otra Unidad",
+      "puntos": [
+        "2.1. Subapartado A",
+        "2.2. Subapartado B"
+      ]
+    }
+  ], null, 2);
+
+  modalContainer.innerHTML = `
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div class="p-6 border-b dark:border-gray-700">
+        <h3 class="text-xl font-bold">Importar Índice de Contenidos</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Pega el JSON del temario con la estructura de Unidades y Puntos.</p>
+      </div>
+      <div class="p-6 overflow-y-auto">
+        <textarea id="temario-json-textarea" class="w-full h-64 p-3 font-mono text-xs border rounded-md dark:bg-gray-900">${templateJSON}</textarea>
+      </div>
+      <div class="p-6 border-t dark:border-gray-700 flex justify-end gap-4">
+        <button id="cancel-import-temario" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+        <button id="confirm-import-temario" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Índice</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modalContainer);
+
+  const closeModal = () => document.body.removeChild(modalContainer);
+
+  document.getElementById('cancel-import-temario').addEventListener('click', closeModal);
+  document.getElementById('confirm-import-temario').addEventListener('click', () => {
+    try {
+      const newTemario = JSON.parse(document.getElementById('temario-json-textarea').value);
+      moduleData.temario = newTemario; // Actualizamos el temario en el objeto del módulo
+      prepareModuleForProgressTracking(moduleData); // Preparamos la nueva estructura
+      onDataChange(); // Guardamos los cambios
+      closeModal();
+      renderProgressView(container, moduleData, onDataChange); // Re-renderizamos la vista
+    } catch (error) {
+      alert('Error en el formato JSON. Por favor, revisa el texto introducido.');
+      console.error("Error al parsear JSON del temario:", error);
+    }
+  });
 }

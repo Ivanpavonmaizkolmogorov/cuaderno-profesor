@@ -15,31 +15,29 @@ export function renderConfiguracionPage() {
       "ra_id": "RA1",
       "ra_descripcion": "Aplica métodos de control de tesorería.",
       "criterios_de_evaluacion": [
-        { "ce_id": "RA1-a", "ce_descripcion": "Describe función y métodos de control.", "peso": 1.11, "ud_ref": "UD 10: 1. La gestión de la tesorería" },
-        { "ce_id": "RA1-b", "ce_descripcion": "Diferencia flujos de entrada y salida.", "peso": 1.11, "ud_ref": "UD 10: 2. Los flujos de tesorería" },
-        { "ce_id": "RA1-c", "ce_descripcion": "Cumplimenta libros y registros.", "peso": 1.11, "ud_ref": "UD 10: 4.1. Libro registro de caja" },
-        { "ce_id": "RA1-d", "ce_descripcion": "Ejecuta arqueo y cuadre de caja.", "peso": 1.11, "ud_ref": "UD 10: 4. El control de la tesorería" },
-        { "ce_id": "RA1-e", "ce_descripcion": "Coteja extractos bancarios.", "peso": 1.11, "ud_ref": "UD 10: 4.2. Libro registro de cuentas bancarias" },
-        { "ce_id": "RA1-f", "ce_descripcion": "Describe utilidades de calendario de vencimientos.", "peso": 1.11, "ud_ref": "UD 10: 3.1. El presupuesto de tesorería" },
-        { "ce_id": "RA1-g", "ce_descripcion": "Relaciona tesorería con otros deptos.", "peso": 1.11, "ud_ref": "UD 10: 1.1. El área de tesorería" },
-        { "ce_id": "RA1-h", "ce_descripcion": "Utiliza medios telemáticos.", "peso": 1.11, "ud_ref": "UD 10: 5. Aplicaciones Informáticas" },
-        { "ce_id": "RA1-i", "ce_descripcion": "Aplica principios de responsabilidad y confidencialidad.", "peso": 1.11, "ud_ref": "UD 10: (General)" }
+        { "ce_id": "RA1-a", "ce_descripcion": "Describe función y métodos de control.", "peso": 10, "ud_ref": "UD 10: 1. La gestión de la tesorería" },
+        { "ce_id": "RA1-b", "ce_descripcion": "Diferencia flujos de entrada y salida.", "peso": 10, "ud_ref": "UD 10: 2. Los flujos de tesorería" },
+        { "ce_id": "RA1-c", "ce_descripcion": "Cumplimenta libros y registros.", "peso": 10, "ud_ref": "UD 10: 4.1. Libro registro de caja" },
+        { "ce_id": "RA1-d", "ce_descripcion": "Ejecuta arqueo y cuadre de caja.", "peso": 10, "ud_ref": "UD 10: 4. El control de la tesorería" },
+        { "ce_id": "RA1-e", "ce_descripcion": "Coteja extractos bancarios.", "peso": 10, "ud_ref": "UD 10: 4.2. Libro registro de cuentas bancarias" },
+        { "ce_id": "RA1-f", "ce_descripcion": "Describe utilidades de calendario de vencimientos.", "peso": 10, "ud_ref": "UD 10: 3.1. El presupuesto de tesorería" },
+        { "ce_id": "RA1-g", "ce_descripcion": "Relaciona tesorería con otros deptos.", "peso": 10, "ud_ref": "UD 10: 1.1. El área de tesorería" },
+        { "ce_id": "RA1-h", "ce_descripcion": "Utiliza medios telemáticos.", "peso": 10, "ud_ref": "UD 10: 5. Aplicaciones Informáticas" },
+        { "ce_id": "RA1-i", "ce_descripcion": "Aplica principios de responsabilidad y confidencialidad.", "peso": 10, "ud_ref": "UD 10" }
       ]
     },
     {
       "ra_id": "RA2",
       "ra_descripcion": "Realiza trámites de instrumentos financieros.",
       "criterios_de_evaluacion": [
-        { "ce_id": "RA2-a", "ce_descripcion": "Clasifica organizaciones del Sistema Financiero.", "peso": 2.50, "ud_ref": "UD 1: 1. El sistema financiero" },
-        { "ce_id": "RA2-b", "ce_descripcion": "Precisa instituciones bancarias y no bancarias.", "peso": 2.50, "ud_ref": "UD 1: 2. Agentes del sector bancario" },
-        { "ce_id": "RA2-c", "ce_descripcion": "Diferencia mercados del sistema financiero.", "peso": 2.50, "ud_ref": "UD 1: 1.4. Mercados financieros" },
-        { "ce_id": "RA2-d", "ce_descripcion": "Relaciona funciones de intermediarios.", "peso": 2.50, "ud_ref": "UD 1: 1.2. Intermediarios financieros" },
-        { "ce_id": "RA2-e", "ce_descripcion": "Diferencia instrumentos bancarios y no bancarios.", "peso": 5.00, "ud_ref": "UD 2 y UD 3" },
-        { "ce_id": "RA2-f", "ce_descripcion": "Clasifica tipos de seguros.", "peso": 3.33, "ud_ref": "UD 3: 4. Los productos de seguro" },
-        { "ce_id": "RA2-g", "ce_descripcion": "Identifica servicios básicos de intermediarios.", "peso": 3.33, "ud_ref": "UD 2: 4. Los servicios bancarios" },
-        { "ce_id": "RA2-h", "ce_descripcion": "Calcula rentabilidad y coste financiero.", "peso": 3.33, "ud_ref": "UD 3: 1. Los valores mobiliarios" },
-        { "ce_id": "RA2-i", "ce_descripcion": "Opera medios telemáticos de banca on-line.", "peso": 1.67, "ud_ref": "UD 2: 4.4. La banca Electrónica" },
-        { "ce_id": "RA2-j", "ce_descripcion": "Cumplimenta documentos de contratación.", "peso": 1.67, "ud_ref": "UD 2: 2.1. Contrato de cuenta" }
+        { "ce_id": "RA2-a", "ce_descripcion": "Clasifica organizaciones del Sistema Financiero.", "peso": 12.5, "ud_ref": "UD 1: 1. El sistema financiero" },
+        { "ce_id": "RA2-b", "ce_descripcion": "Precisa instituciones bancarias y no bancarias.", "peso": 12.5, "ud_ref": "UD 1: 2. Agentes del sector bancario" },
+        { "ce_id": "RA2-c", "ce_descripcion": "Diferencia mercados del sistema financiero.", "peso": 12.5, "ud_ref": "UD 1: 1.4. Mercados financieros" },
+        { "ce_id": "RA2-d", "ce_descripcion": "Relaciona funciones de intermediarios.", "peso": 12.5, "ud_ref": "UD 1: 1.2. Intermediarios financieros" },
+        { "ce_id": "RA2-e", "ce_descripcion": "Diferencia instrumentos bancarios y no bancarios.", "peso": 10, "ud_ref": "UD 2, UD 3" },
+        { "ce_id": "RA2-f", "ce_descripcion": "Clasifica tipos de seguros.", "peso": 10, "ud_ref": "UD 3: 4. Los productos de seguro" },
+        { "ce_id": "RA2-g", "ce_descripcion": "Identifica servicios básicos de intermediarios.", "peso": 10, "ud_ref": "UD 2: 4. Los servicios bancarios" },
+        { "ce_id": "RA2-h", "ce_descripcion": "Calcula rentabilidad y coste financiero.", "peso": 10, "ud_ref": "UD 3: 1. Los valores mobiliarios" }
       ]
     },
     {
