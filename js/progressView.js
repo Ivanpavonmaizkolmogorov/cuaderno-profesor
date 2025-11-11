@@ -18,6 +18,31 @@ const statusConfig = {
  * @param {function} onDataChange - Callback que se ejecuta para guardar los datos tras un cambio.
  */
 export function renderProgressView(container, moduleData, onDataChange) {
+  // --- INICIO: Lógica para construir el árbol jerárquico ---
+  const pointTree = new Map(); // Mapa para almacenar la jerarquía: idPunto -> { point, children: [idPunto] }
+
+  moduleData.temario?.forEach(unit => {
+    // Primero, poblamos el mapa con todos los puntos
+    unit.puntos.forEach(point => {
+      pointTree.set(point.idPunto, { point, children: [] });
+    });
+
+    // Segundo, establecemos las relaciones padre-hijo
+    unit.puntos.forEach(potentialParent => {
+      const parentNumber = potentialParent.texto.match(/^([\d\.]+)/)?.[0];
+      if (!parentNumber) return;
+
+      unit.puntos.forEach(potentialChild => {
+        if (potentialParent.idPunto === potentialChild.idPunto) return;
+        const childNumber = potentialChild.texto.match(/^([\d\.]+)/)?.[0];
+        if (childNumber && childNumber.startsWith(parentNumber) && childNumber.length > parentNumber.length) {
+          pointTree.get(potentialParent.idPunto)?.children.push(potentialChild.idPunto);
+        }
+      });
+    });
+  });
+  // --- FIN: Lógica del árbol ---
+
   // 1. Crear un mapa para buscar rápidamente qué actividades evalúan cada CE.
   const ceToActivityMap = new Map();
   const moduleActivities = moduleData.actividades || []; // Usar las actividades del módulo si existen
@@ -109,8 +134,8 @@ export function renderProgressView(container, moduleData, onDataChange) {
       
       // Añadimos el listener para cambiar el estado al hacer clic
       pointItem.addEventListener('click', () => {
-        handleStatusChange(point.idPunto, moduleData, onDataChange);
-        // Re-renderizamos para reflejar el cambio al instante
+        // Pasamos el árbol jerárquico a la función de cambio de estado
+        handleStatusChange(point.idPunto, moduleData, onDataChange, pointTree);
         renderProgressView(container, moduleData, onDataChange);
       });
 
@@ -130,8 +155,9 @@ export function renderProgressView(container, moduleData, onDataChange) {
  * @param {string} pointId - El ID del punto que se está actualizando.
  * @param {object} moduleData - El objeto de datos del módulo.
  * @param {function} onDataChange - Callback para guardar los datos.
+ * @param {Map} pointTree - El mapa que representa la jerarquía del temario.
  */
-function handleStatusChange(pointId, moduleData, onDataChange) {
+function handleStatusChange(pointId, moduleData, onDataChange, pointTree) {
   const currentStatus = moduleData.progresoTemario[pointId] || 'no-visto';
   let nextStatus;
 
@@ -152,7 +178,18 @@ function handleStatusChange(pointId, moduleData, onDataChange) {
       nextStatus = 'no-visto';
   }
 
-  moduleData.progresoTemario[pointId] = nextStatus;
+  // Función recursiva para actualizar el estado de un punto y todos sus descendientes
+  const updateStatusRecursively = (currentPointId, status) => {
+    moduleData.progresoTemario[currentPointId] = status;
+    const node = pointTree.get(currentPointId);
+    if (node && node.children.length > 0) {
+      node.children.forEach(childId => {
+        updateStatusRecursively(childId, status);
+      });
+    }
+  };
+
+  updateStatusRecursively(pointId, nextStatus);
 
   // Ejecutamos el callback de guardado que nos pasaron.
   if (onDataChange) {
