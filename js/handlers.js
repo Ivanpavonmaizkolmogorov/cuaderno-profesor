@@ -21,6 +21,12 @@ export function handleDisconnect() {
     renderApp();
 }
 
+export function handleDisconnectDrive() {
+    state.disconnectDrive();
+    alert("Desconectado de Google Drive.");
+    renderApp();
+}
+
 export async function handleSaveAs() {
     const fileName = await state.saveAsAndConnect();
     if (fileName) {
