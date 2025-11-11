@@ -120,18 +120,16 @@ export function renderProgressView(container, moduleData, onDataChange) {
       const pointStatus = moduleData.progresoTemario[point.idPunto] || 'no-visto';
       const { icon } = statusConfig[pointStatus];
 
-      // --- INICIO: LÓGICA DE INDENTACIÓN MEJORADA ---
-      // Extraemos el prefijo numérico (ej: "1.1" o "2.3.4.") del texto, sin requerir un espacio después.
-      const numberPrefix = point.texto.match(/^[\d\.]+/)?.[0] || '';
-      // Contamos los segmentos numéricos para determinar el nivel de anidación.
-      // "1" o "1." -> 1 segmento -> nivel 0
-      // "1.1" o "1.1." -> 2 segmentos -> nivel 1
-      // "1.1.1" o "1.1.1." -> 3 segmentos -> nivel 2
-      const segments = numberPrefix.split('.').filter(Boolean); // Filtramos para eliminar strings vacíos si termina en punto.
-      const level = Math.max(0, segments.length - 1);
-      // Calculamos la sangría a aplicar. Usamos 1.5rem por cada nivel de profundidad.
+      // --- INICIO: LÓGICA DE INDENTACIÓN ---
+      // Extraemos el prefijo numérico (ej: "1.1.", "2.3.4.") del texto.
+      const numberPrefix = point.texto.match(/^([\d\.]+)\s/)?.[1] || '';
+      // Contamos el número de puntos en el prefijo para determinar el nivel de anidación.
+      // "1." -> nivel 0, "1.1." -> nivel 1, etc.
+      const level = (numberPrefix.match(/\./g) || []).length - 1;
+      // Calculamos la sangría. Usamos 1.5rem por cada nivel de profundidad.
       const indentationStyle = level > 0 ? `padding-left: ${level * 1.5}rem;` : '';
       // --- FIN: LÓGICA DE INDENTACIÓN ---
+
 
       // 2. Buscar las actividades asociadas a este punto del temario
       const associatedActivities = (point.ce_ids || [])
@@ -145,9 +143,9 @@ export function renderProgressView(container, moduleData, onDataChange) {
       }
 
       const pointItem = document.createElement('li');
-      pointItem.className = 'point-item flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors';
+      pointItem.className = 'point-item flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors'; // Clases base
       pointItem.dataset.pointId = point.idPunto; // ID para identificar el punto
-      pointItem.style.cssText = indentationStyle; // Aplicamos la sangría calculada
+      pointItem.style.cssText = indentationStyle; // Aplicamos la sangría
       pointItem.innerHTML = `
         <span class="point-status-icon mr-3">${icon}</span>
         <span class="point-text flex-grow">${point.texto}</span>
