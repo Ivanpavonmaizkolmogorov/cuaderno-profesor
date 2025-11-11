@@ -6,6 +6,8 @@ import { renderStudentFormatModal } from './ui/pages.js';
 import * as pages from './ui/pages.js';
 import { calculateModuleGrades } from './services/calculations.js';
 import { initGoogleDriveButton } from './googleDriveLoader.js';
+import { prepareModuleForProgressTracking } from './utils.js';
+import { renderProgressView } from './progressView.js';
 
 // Función principal que dibuja la UI
 export function renderApp() {
@@ -45,6 +47,10 @@ export function renderApp() {
   // 2. Renderizar contenido de la página
   const contentContainer = document.getElementById('content-container');
   if (contentContainer) {
+      // Limpiamos el contenedor principal y ocultamos el del progreso
+      contentContainer.innerHTML = '';
+      document.getElementById('progress-view-container').style.display = 'none';
+
       switch (ui.page) {
         case 'configuracion':
           contentContainer.innerHTML = pages.renderConfiguracionPage();
@@ -169,7 +175,7 @@ function renderDriveButton() {
 
 // Función para añadir todos los event listeners
 function attachEventListeners() {
-  const { ui } = { ui: state.getUI() };
+  const { ui, db } = { ui: state.getUI(), db: state.getDB() };
 
   document.getElementById('header-container').addEventListener('click', (e) => {
     const button = e.target.closest('button[data-page]');
@@ -404,8 +410,47 @@ function attachEventListeners() {
 
   if (ui.page === 'modulos') {
     document.getElementById('module-select')?.addEventListener('change', (e) => handlers.handleSelectModule(e.target.value || null));
-    document.getElementById('view-tabla-btn')?.addEventListener('click', () => handlers.handleSetModuleView('tabla'));
-    document.getElementById('view-alumno-btn')?.addEventListener('click', () => handlers.handleSetModuleView('alumno'));
+    
+    // Listeners para el selector de vistas del módulo
+    // Lógica de seguridad: si la vista es 'alumno' pero no hay alumno seleccionado, forzar 'tabla'
+    const selectedModule = db.modules.find(m => m.id === ui.selectedModuleId);
+    if (ui.moduleView === 'alumno' && (!ui.selectedStudentIdForView || !selectedModule?.studentIds?.includes(ui.selectedStudentIdForView))) {
+      console.log("Forzando cambio a vista 'tabla' por seguridad.");
+      handlers.handleSetModuleView('tabla');
+    }
+
+    document.getElementById('view-tabla-btn')?.addEventListener('click', () => {
+      document.getElementById('progress-view-container').style.display = 'none';
+      document.getElementById('module-detail-content').style.display = 'block';
+      handlers.handleSetModuleView('tabla');
+    });
+    document.getElementById('view-alumno-btn')?.addEventListener('click', () => {
+      document.getElementById('progress-view-container').style.display = 'none';
+      document.getElementById('module-detail-content').style.display = 'block';
+      handlers.handleSetModuleView('alumno');
+    });
+    
+    // Listener para la nueva vista de Índice de Contenidos
+    document.getElementById('view-progress-btn')?.addEventListener('click', () => {
+        const selectedModule = db.modules.find(m => m.id === ui.selectedModuleId);
+        if (!selectedModule) return;
+
+        // Actualizamos el estado de la UI para que el botón se marque como activo
+        handlers.handleSetModuleView('indice');
+
+        // Ocultar las otras vistas del módulo
+        document.getElementById('module-detail-content').style.display = 'none';
+        // Mostrar el contenedor de la vista de progreso
+        const progressContainer = document.getElementById('progress-view-container');
+        progressContainer.style.display = 'block';
+
+        // Preparar los datos y renderizar la vista del índice
+        const preparedData = prepareModuleForProgressTracking(selectedModule);
+        renderProgressView(progressContainer, preparedData, () => {
+            // La función de guardado que se pasa como callback
+            state.saveDB();
+        });
+    });
     
     // Listener para el botón de importación directa (el original)
     document.getElementById('import-students-to-module-btn')?.addEventListener('click', (e) => {

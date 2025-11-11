@@ -45,7 +45,11 @@
   </div>
 
   <!-- Contenedor principal para el contenido de la página -->
-  <main id="content-container"></main>
+  <main>
+    <div id="content-container"></div>
+    <!-- El contenedor del índice ahora está fuera de 'content-container' para que no se borre -->
+    <div id="progress-view-container" class="p-4 md:p-6" style="display: none;"></div>
+  </main>
 
   <!-- Punto de entrada de la aplicación refactorizada -->
   <!-- Librería para generar PDFs -->

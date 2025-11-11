@@ -528,11 +528,12 @@ function renderModuloDetalle(module, moduleStudents) {
   const gestionAlumnosHtml = renderGestionAlumnos(module, moduleStudents);
   const gestionActividadesHtml = renderActividadesManagement(module);
   const uiState = getUI();
-  let moduleView = uiState.moduleView;
+  let moduleView = uiState.moduleView || 'tabla'; // Asegurarse de que siempre haya una vista
 
   // Lógica de seguridad: si estamos en vista 'alumno' pero no hay alumnos o ninguno está seleccionado,
   // forzamos el cambio a la vista 'tabla' para evitar errores.
-  if (moduleView === 'alumno' && (moduleStudents.length === 0 || !uiState.selectedStudentIdForView)) {
+  const studentExists = moduleStudents.some(s => s.id === uiState.selectedStudentIdForView);
+  if (moduleView === 'alumno' && (moduleStudents.length === 0 || !uiState.selectedStudentIdForView || !studentExists)) {
     moduleView = 'tabla';
     // Opcional: podrías llamar a un handler para actualizar el estado global aquí, pero para la UI es suficiente.
   }
@@ -547,15 +548,22 @@ function renderModuloDetalle(module, moduleStudents) {
           ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
           : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
       }`;
+  const classIndice = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+        moduleView === 'indice'
+          ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
+          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
+      }`;
       
   let contentHtml = '';
   if (moduleStudents.length > 0) {
     if (moduleView === 'tabla') {
         contentHtml = renderCuadernoCalificaciones(module, moduleStudents);
-    } else {
+    } else if (moduleView === 'alumno') {
         contentHtml = renderAlumnoView(module, moduleStudents);
     }
-  } else {
+    // Si la vista es 'indice', el contenido se renderizará en un contenedor diferente,
+    // por lo que aquí no asignamos nada a contentHtml.
+  } else { // Este 'else' corresponde a if (moduleStudents.length > 0)
     contentHtml = `<p class="text-center text-gray-500 dark:text-gray-400 my-10">Añade alumnos/as en la sección de gestión para empezar a calificar.</p>`;
   }
   
@@ -572,10 +580,15 @@ function renderModuloDetalle(module, moduleStudents) {
         <button id="view-alumno-btn" class="${classAlumno}" ${moduleStudents.length === 0 ? 'disabled' : ''}>
           ${ICONS.User} Vista Alumnos/as
         </button>
+        <button id="view-progress-btn" class="${classIndice}">
+          ${ICONS.ClipboardList} Índice Contenidos
+        </button>
       </div>
 
       <!-- Contenido de la vista -->
-      ${contentHtml}
+      <div id="module-detail-content">
+        ${contentHtml}
+      </div>
     </div>
     <div id="ce-list-modal-container"></div>
   `;
