@@ -4,10 +4,10 @@
 
 // Mapa de estados a iconos para la UI.
 const statusConfig = {
-  'visto': { icon: '✅', text: 'Visto' },
-  'no-visto': { icon: '🔲', text: 'No Visto' },
-  'pendiente': { icon: '❗', text: 'Pendiente' },
-  'omitido': { icon: '❌', text: 'Omitido' }
+  'visto': { icon: '✅', text: 'Visto', description: 'Tema impartido y completado.' },
+  'no-visto': { icon: '🔲', text: 'No Visto', description: 'Tema aún no abordado en clase (estado por defecto).' },
+  'pendiente': { icon: '❗', text: 'Pendiente', description: 'Tema iniciado pero no completado, o que requiere un repaso.' },
+  'omitido': { icon: '❌', text: 'Omitido', description: 'Decidido activamente no impartir este punto del temario.' }
 };
 
 /**
@@ -32,11 +32,23 @@ export function renderProgressView(container, moduleData, onDataChange) {
   container.innerHTML = `
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-2xl font-bold">Índice de Contenidos</h2>
-      <div class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-        <span>${statusConfig['visto'].icon} Visto</span>
-        <span>${statusConfig['pendiente'].icon} Pendiente</span>
-        <span>${statusConfig['omitido'].icon} Omitido</span>
-        <span>${statusConfig['no-visto'].icon} No Visto</span>
+      <div class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400"
+        <div class="tooltip">
+          <span class="cursor-help">${statusConfig['visto'].icon} ${statusConfig['visto'].text}</span>
+          <span class="tooltip-text">${statusConfig['visto'].description}</span>
+        </div>
+        <div class="tooltip">
+          <span class="cursor-help">${statusConfig['pendiente'].icon} ${statusConfig['pendiente'].text}</span>
+          <span class="tooltip-text">${statusConfig['pendiente'].description}</span>
+        </div>
+        <div class="tooltip">
+          <span class="cursor-help">${statusConfig['omitido'].icon} ${statusConfig['omitido'].text}</span>
+          <span class="tooltip-text">${statusConfig['omitido'].description}</span>
+        </div>
+        <div class="tooltip">
+          <span class="cursor-help">${statusConfig['no-visto'].icon} ${statusConfig['no-visto'].text}</span>
+          <span class="tooltip-text">${statusConfig['no-visto'].description}</span>
+        </div>
       </div>
     </div>
   `;

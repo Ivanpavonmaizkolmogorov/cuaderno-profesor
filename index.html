@@ -34,6 +34,31 @@
         top: 0;
         z-index: 10;
     }
+    /* Estilos para el tooltip personalizado */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+    .tooltip .tooltip-text {
+      visibility: hidden;
+      width: 220px;
+      background-color: #334155; /* slate-700 */
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 8px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%; /* Posicionar encima del elemento */
+      left: 50%;
+      margin-left: -110px; /* Centrar el tooltip */
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
   </style>
 </head>
 <body class="min-h-screen bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-white">
