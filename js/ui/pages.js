@@ -1266,6 +1266,11 @@ function renderAlumnoView(module, moduleStudents) {
   
   const finalGrades = (calculatedGrades[module.id]?.Final?.[currentStudent.id]) || { raTotals: {}, moduleGrade: 0, ceFinalGrades: {} };
   const finalModuleGrade = (typeof finalGrades.moduleGrade === 'number') ? finalGrades.moduleGrade.toFixed(2) : '0.00';
+  const baseFinalModuleGrade = (typeof finalGrades.baseModuleGrade === 'number') ? finalGrades.baseModuleGrade.toFixed(2) : '0.00';
+
+  const t1Grades = calculatedGrades[module.id]?.T1?.[currentStudent.id];
+  const t2Grades = calculatedGrades[module.id]?.T2?.[currentStudent.id];
+  const t3Grades = calculatedGrades[module.id]?.T3?.[currentStudent.id];
   const studentGrades = db.grades[currentStudent.id] || {};
 
   return ` 
@@ -1313,22 +1318,38 @@ function renderAlumnoView(module, moduleStudents) {
               ${ICONS.DownloadCloud} Exportar
             </button>
           </div>
-          <div class="space-y-2">
-            ${finalGrades.breakdown && finalGrades.breakdown.totalAdjustment !== 0 ? `
-              <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg text-sm">
-                <div class="flex justify-between">
-                  <span class="text-gray-600 dark:text-gray-400">Nota Base (CEs)</span>
-                  <span class="font-semibold">${finalGrades.breakdown.baseGrade.toFixed(2)}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600 dark:text-gray-400">Ajuste por Aptitud</span>
-                  <span class="font-semibold ${finalGrades.breakdown.totalAdjustment >= 0 ? 'text-green-500' : 'text-red-500'}">${finalGrades.breakdown.totalAdjustment.toFixed(2)}</span>
-                </div>
+          <div class="space-y-4">
+            <!-- Nota Final -->
+            <div class="p-4 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-200 dark:border-green-800">
+              <div class="flex justify-between items-center">
+                <span class="text-lg font-bold text-green-800 dark:text-green-200">Nota Final Módulo</span>
+                <span class="text-2xl font-bold text-green-700 dark:text-green-100">${finalModuleGrade}</span>
               </div>
-            ` : ''}
-            <div class="flex justify-between items-center p-4 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-200 dark:border-green-800">
-              <span class="text-lg font-bold text-green-800 dark:text-green-200">Nota Final del Módulo</span>
-              <span class="text-2xl font-bold text-green-700 dark:text-green-100">${finalModuleGrade}</span>
+              ${baseFinalModuleGrade !== finalModuleGrade ? `
+                <div class="text-right text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  (Nota base sin ajuste: <span class="font-semibold">${baseFinalModuleGrade}</span>)
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Notas Trimestrales -->
+            <div class="space-y-2 text-sm p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+              <h4 class="font-semibold mb-2">Desglose Trimestral</h4>
+              ${[t1Grades, t2Grades, t3Grades].map((trimestre, i) => `
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600 dark:text-gray-400">Nota T${i + 1}</span>
+                  ${trimestre ? `
+                    <div class="text-right">
+                      <span class="font-bold">${trimestre.moduleGrade.toFixed(2)}</span>
+                      ${trimestre.baseModuleGrade.toFixed(2) !== trimestre.moduleGrade.toFixed(2) ? `
+                        <span class="text-xs text-gray-500 ml-1">(base ${trimestre.baseModuleGrade.toFixed(2)})</span>
+                      ` : ''}
+                    </div>
+                  ` : `
+                    <span class="text-gray-400">-</span>
+                  `}
+                </div>
+              `).join('')}
             </div>
             <div class="space-y-3 mt-4">
               ${module.resultados_de_aprendizaje.map(ra => 

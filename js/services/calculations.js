@@ -62,6 +62,7 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
     }
 
     let moduleGrade;
+    let baseGrade; // Declaramos la variable aquí, en un ámbito superior.
 
     if (trimestre) { // Si estamos calculando para un trimestre específico
       // Para cálculos trimestrales, la nota del módulo es la media ponderada de TODOS los CEs
@@ -83,7 +84,7 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
       }
       moduleGrade = (trimesterCeTotalWeight > 0) ? (trimesterCeWeightedTotal / trimesterCeTotalWeight) : 0;
 
-      const baseGrade = moduleGrade;
+      baseGrade = moduleGrade; // Asignamos el valor, ya no la declaramos.
       // --- INICIO: APLICAR AJUSTE POR APTITUD ---
       const studentAptitudes = aptitudes[module.id]?.[student.id];
       if (trimestre && studentAptitudes) {
@@ -131,7 +132,7 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
       });
       moduleGrade = (finalCeTotalWeight > 0) ? (finalCeWeightedTotal / finalCeTotalWeight) : 0;
 
-      const baseGrade = moduleGrade;
+      baseGrade = moduleGrade; // Asignamos el valor, ya no la declaramos.
       // --- INICIO: APLICAR AJUSTE POR APTITUD A LA NOTA FINAL ---
       // Se calcula la SUMA de los ajustes de los tres trimestres.
       const studentAptitudes = aptitudes[module.id]?.[student.id];
@@ -168,6 +169,7 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
       studentData[student.id] = {};
     }
     studentData[student.id].raTotals = raTotals;
+    studentData[student.id].baseModuleGrade = parseFloat(baseGrade.toFixed(2)); // Guardamos la nota base
     studentData[student.id].moduleGrade = parseFloat(moduleGrade.toFixed(2));
     studentData[student.id].ceFinalGrades = ceFinalGrades;
   }
