@@ -758,6 +758,14 @@ function attachEventListeners() {
       });
     }
 
+    // Listener para el nuevo botón de importar aptitudes
+    const importAptitudesBtn = document.getElementById('open-import-aptitudes-modal-btn');
+    if (importAptitudesBtn) {
+      importAptitudesBtn.addEventListener('click', (e) => {
+        handlers.showImportAptitudesModal(e.currentTarget.dataset.moduleId);
+      });
+    }
+
     // Listeners para añadir/eliminar positivos/negativos
     document.querySelectorAll('.add-aptitud-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {

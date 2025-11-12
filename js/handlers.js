@@ -1078,6 +1078,77 @@ export function handleSaveDiversityTags(studentId, tagsString) {
   }
 }
 
+export function showImportAptitudesModal(moduleId) {
+  const modalContainer = document.getElementById('modal-container');
+  if (!modalContainer) return;
+
+  modalContainer.innerHTML = pages.renderImportAptitudesModal(moduleId);
+
+  const closeModal = () => modalContainer.innerHTML = '';
+
+  document.getElementById('cancel-import-aptitudes')?.addEventListener('click', closeModal);
+  document.getElementById('confirm-import-aptitudes')?.addEventListener('click', (e) => {
+    const jsonText = document.getElementById('aptitudes-json-textarea').value;
+    handleImportAptitudes(e.currentTarget.dataset.moduleId, jsonText);
+    closeModal();
+  });
+}
+
+export function handleImportAptitudes(moduleId, jsonText) {
+  const VALID_TYPES = ['positive', 'negative'];
+  const VALID_TRIMESTERS = [1, 2, 3];
+
+  try {
+    const dataToImport = JSON.parse(jsonText);
+    if (!Array.isArray(dataToImport)) {
+      throw new Error("El JSON debe ser un array de objetos.");
+    }
+
+    const db = state.getDB();
+    const module = db.modules.find(m => m.id === moduleId);
+    if (!module) throw new Error("Módulo no encontrado.");
+
+    const studentsMap = new Map(db.students.map(s => [s.name.trim().toLowerCase(), s.id]));
+    let importedCount = 0;
+    const notFoundNames = [];
+    const invalidEntries = [];
+
+    dataToImport.forEach(item => {
+      const studentNameKey = item.studentName?.trim().toLowerCase();
+      const studentId = studentsMap.get(studentNameKey);
+
+      if (studentId && VALID_TYPES.includes(item.type) && VALID_TRIMESTERS.includes(item.trimester)) {
+        const trimesterKey = `T${item.trimester}`;
+        const typeKey = item.type === 'positive' ? 'positives' : 'negatives';
+
+        const newEntry = {
+          id: crypto.randomUUID(),
+          dateAdded: new Date().toISOString(),
+          effectiveDate: item.effectiveDate ? new Date(item.effectiveDate).toISOString() : new Date().toISOString(),
+          reason: item.reason || 'Importado desde JSON',
+          baseValue: typeof item.baseValue === 'number' ? item.baseValue : (item.type === 'positive' ? (module.aptitudBasePositiva || 1.1) : (module.aptitudBaseNegativa || 1.1))
+        };
+
+        if (!db.aptitudes[moduleId]) db.aptitudes[moduleId] = {};
+        if (!db.aptitudes[moduleId][studentId]) db.aptitudes[moduleId][studentId] = {};
+        if (!db.aptitudes[moduleId][studentId][trimesterKey]) db.aptitudes[moduleId][studentId][trimesterKey] = { positives: [], negatives: [] };
+        db.aptitudes[moduleId][studentId][trimesterKey][typeKey].push(newEntry);
+        importedCount++;
+      } else if (studentNameKey) {
+        notFoundNames.push(item.studentName);
+      }
+    });
+
+    state.setDB(db);
+    state.saveDB();
+    renderApp();
+
+    alert(`Importación completada.\n\n- Entradas importadas: ${importedCount}\n- Alumnos no encontrados: ${notFoundNames.length}${notFoundNames.length > 0 ? `\n  (${notFoundNames.join(', ')})` : ''}`);
+  } catch (error) {
+    alert(`Error al importar datos de aptitud: ${error.message}`);
+  }
+}
+
 export function handleUpdateAptitudConfig(moduleId, form) {
   const basePositiva = parseFloat(form.basePositiva.value);
   const baseNegativa = parseFloat(form.baseNegativa.value);

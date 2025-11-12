@@ -665,8 +665,8 @@ function renderAptitudConfig(module) {
 
   return `
     <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mt-6">
-      <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Configuración de Aptitud Trimestral</h3>
-      <form id="aptitud-config-form" data-module-id="${module.id}" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+      <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Configuración e Importación de Aptitud</h3>
+      <form id="aptitud-config-form" data-module-id="${module.id}" class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
         <div>
           <label for="basePositiva" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Base para Positivos</label>
           <input type="number" id="basePositiva" name="basePositiva" value="${basePositiva}" step="0.01" min="1" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900">
@@ -675,10 +675,57 @@ function renderAptitudConfig(module) {
           <label for="baseNegativa" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Base para Negativos</label>
           <input type="number" id="baseNegativa" name="baseNegativa" value="${baseNegativa}" step="0.01" min="1" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900">
         </div>
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
-          Guardar Configuración de Aptitud
-        </button>
       </form>
+      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <button type="submit" form="aptitud-config-form" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Configuración</button>
+        <button id="open-import-aptitudes-modal-btn" data-module-id="${module.id}" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Importar Pos./Neg. (JSON)</button>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Renderiza el modal para importar positivos/negativos desde un JSON.
+ * @param {string} moduleId - El ID del módulo al que se importarán los datos.
+ * @returns {string} El HTML del modal.
+ */
+export function renderImportAptitudesModal(moduleId) {
+  const templateJSON = JSON.stringify([
+    {
+      "studentName": "Apellidos Completos, Nombre",
+      "trimester": 1,
+      "type": "positive",
+      "reason": "Participación destacada en Tema 3",
+      "baseValue": 1.1,
+      "effectiveDate": "2025-10-25"
+    },
+    {
+      "studentName": "Otro Alumno, Nombre",
+      "trimester": 1,
+      "type": "negative",
+      "reason": "Falta de entrega Actividad 2",
+      "baseValue": 1.2,
+      "effectiveDate": "2025-11-12"
+    }
+  ], null, 2);
+
+  return `
+    <div id="import-aptitudes-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div class="p-6 border-b dark:border-gray-700">
+          <h3 class="text-xl font-bold">Importar Positivos y Negativos (JSON)</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Pega un array de objetos JSON con los datos de aptitud. El nombre del alumno debe coincidir exactamente.
+          </p>
+        </div>
+        <div class="p-6 overflow-y-auto">
+          <textarea id="aptitudes-json-textarea" class="w-full h-64 p-3 font-mono text-xs border rounded-md dark:bg-gray-900">${templateJSON}</textarea>
+        </div>
+        <div class="p-6 border-t dark:border-gray-700 flex justify-end gap-4">
+          <button id="cancel-import-aptitudes" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+          <button id="confirm-import-aptitudes" data-module-id="${moduleId}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Importar Datos</button>
+        </div>
+      </div>
     </div>
   `;
 }
