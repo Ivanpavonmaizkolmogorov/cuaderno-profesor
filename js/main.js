@@ -750,6 +750,22 @@ function attachEventListeners() {
           e.preventDefault();
           handlers.showImportTemarioModal();
         }
+
+        // Listener para el botón de eliminar unidad
+        const deleteUnitBtn = e.target.closest('.delete-unit-btn');
+        if (deleteUnitBtn) {
+          e.preventDefault();
+          const { moduleId, unitId } = deleteUnitBtn.dataset;
+          handlers.handleDeleteTemarioUnit(moduleId, unitId);
+        }
+
+        // Listener para el botón de eliminar punto
+        const deletePointBtn = e.target.closest('.delete-point-btn');
+        if (deletePointBtn) {
+          e.preventDefault();
+          const { unitId, pointId } = deletePointBtn.dataset;
+          handlers.handleDeleteTemarioPoint(ui.selectedModuleId, unitId, pointId);
+        }
       });
     }
 
