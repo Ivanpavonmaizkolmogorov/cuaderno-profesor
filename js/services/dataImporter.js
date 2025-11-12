@@ -53,6 +53,14 @@ export function mergeItems(
  * @returns {Array<object>} El array de temario fusionado.
  */
 export function mergeTemario(existingTemario, newTemario) {
+  // Objeto para llevar la cuenta de las acciones realizadas durante la fusión.
+  const stats = {
+    unitsAdded: 0,
+    unitsMerged: 0,
+    pointsAdded: 0,
+    pointsUpdated: 0,
+  };
+
   const finalTemario = [...existingTemario];
   const existingUnitsMap = new Map(existingTemario.map(u => [u.unidad.trim().toLowerCase(), u]));
 
@@ -62,6 +70,7 @@ export function mergeTemario(existingTemario, newTemario) {
 
     // Si la unidad no existe por título, la añadimos como nueva.
     if (!existingUnit) {
+      stats.unitsAdded++;
       // Aseguramos que la nueva unidad y sus puntos tengan IDs.
       if (!newUnit.idUnidad) newUnit.idUnidad = `u-${generateUUID()}`;
       (newUnit.puntos || []).forEach(p => {
@@ -71,6 +80,7 @@ export function mergeTemario(existingTemario, newTemario) {
       finalTemario.push(newUnit);
       existingUnitsMap.set(unitTitleKey, newUnit); // La añadimos al mapa para futuras referencias
     } else {
+      stats.unitsMerged++;
       // La unidad ya existe. Fusionamos sus puntos.
       const existingPointsMap = new Map((existingUnit.puntos || []).map(p => [p.texto.trim().toLowerCase(), p]));
 
@@ -85,8 +95,10 @@ export function mergeTemario(existingTemario, newTemario) {
         if (existingPoint) {
           // El punto existe, actualizamos sus propiedades (como ce_ids)
           // pero mantenemos el ID original.
+          stats.pointsUpdated++;
           existingPoint.ce_ids = newPoint.ce_ids || existingPoint.ce_ids || [];
         } else {
+          stats.pointsAdded++;
           // El punto es nuevo para esta unidad, lo añadimos.
           if (!newPoint.idPunto) {
             newPoint.idPunto = `p-${generateUUID()}`;
@@ -105,5 +117,5 @@ export function mergeTemario(existingTemario, newTemario) {
     }
   });
 
-  return finalTemario;
+  return { mergedTemario: finalTemario, stats };
 }

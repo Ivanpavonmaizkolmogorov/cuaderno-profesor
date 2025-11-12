@@ -628,8 +628,21 @@ export function handleImportTemario(moduleId, jsonText, mode) {
     } else {
       // Modo Fusionar (por defecto): usa nuestra nueva función.
       const existingTemario = module.temario || [];
-      module.temario = mergeTemario(existingTemario, newTemarioData);
-      alert("Índice fusionado y actualizado con éxito.");
+      const { mergedTemario, stats } = mergeTemario(existingTemario, newTemarioData);
+      module.temario = mergedTemario;
+
+      // Construir un mensaje de feedback detallado para el usuario.
+      let feedbackMessage = "Índice fusionado con éxito.\n\nResumen de la operación:\n";
+      if (stats.unitsMerged > 0) {
+        feedbackMessage += `- Se han fusionado y actualizado ${stats.unitsMerged} unidad(es) existentes.\n`;
+      }
+      if (stats.unitsAdded > 0) {
+        feedbackMessage += `- Se han añadido ${stats.unitsAdded} unidad(es) nuevas.\n`;
+      }
+      if (stats.pointsAdded > 0 || stats.pointsUpdated > 0) {
+        feedbackMessage += `- Dentro de las unidades, se han añadido ${stats.pointsAdded} puntos nuevos y se han actualizado ${stats.pointsUpdated}.\n`;
+      }
+      alert(feedbackMessage);
     }
 
     // Preparamos los IDs y el progreso para el nuevo temario.
