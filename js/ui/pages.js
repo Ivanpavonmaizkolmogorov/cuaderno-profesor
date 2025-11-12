@@ -1324,8 +1324,9 @@ function renderAptitudPanel(student, module) {
             <p class="text-xs italic mb-2">Ajuste: +${ajustePositivo.toFixed(3)}</p>
             <div class="space-y-1 text-xs max-h-24 overflow-y-auto">
               ${data.positives.map(p => `
-                <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-1 rounded">
-                  <span>${new Date(p.effectiveDate).toLocaleDateString()}</span>
+                <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-1 rounded group">
+                  <span class="truncate" title="${p.reason}">${p.reason}</span>
+                  <button class="edit-aptitud-btn text-blue-500 opacity-0 group-hover:opacity-100" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="positives" data-id="${p.id}">✏️</button>
                   <button class="delete-aptitud-btn text-red-500" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="positives" data-id="${p.id}">&times;</button>
                 </div>
               `).join('') || '<p class="text-gray-500">Sin positivos.</p>'}
@@ -1340,8 +1341,9 @@ function renderAptitudPanel(student, module) {
             <p class="text-xs italic mb-2">Ajuste: -${ajusteNegativo.toFixed(3)}</p>
             <div class="space-y-1 text-xs max-h-24 overflow-y-auto">
               ${data.negatives.map(n => `
-                <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-1 rounded">
-                  <span>${new Date(n.effectiveDate).toLocaleDateString()}</span>
+                <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-1 rounded group">
+                  <span class="truncate" title="${n.reason}">${n.reason}</span>
+                  <button class="edit-aptitud-btn text-blue-500 opacity-0 group-hover:opacity-100" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="negatives" data-id="${n.id}">✏️</button>
                   <button class="delete-aptitud-btn text-red-500" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="negatives" data-id="${n.id}">&times;</button>
                 </div>
               `).join('') || '<p class="text-gray-500">Sin negativos.</p>'}
@@ -1360,6 +1362,68 @@ function renderAptitudPanel(student, module) {
       ${renderTrimesterAptitud(1)}
       ${renderTrimesterAptitud(2)}
       ${renderTrimesterAptitud(3)}
+    </div>
+  `;
+}
+
+export function renderAptitudEntryModal(module, student, trimester, type, entryId = null) {
+  const { db } = { db: getDB() };
+  const moduleActivities = db.actividades.filter(a => a.moduleId === module.id);
+  const isEdit = entryId !== null;
+  const title = `${isEdit ? 'Editar' : 'Añadir'} ${type === 'positives' ? 'Positivo' : 'Negativo'}`;
+
+  let existingEntry = null;
+  let selectedActivity = '';
+  let freeText = '';
+  let effectiveDate = new Date().toISOString().split('T')[0];
+
+  if (isEdit) {
+    const trimesterKey = `T${trimester}`;
+    existingEntry = db.aptitudes?.[module.id]?.[student.id]?.[trimesterKey]?.[type]?.find(e => e.id === entryId);
+    if (existingEntry) {
+      effectiveDate = new Date(existingEntry.effectiveDate).toISOString().split('T')[0];
+      // Descomponer el motivo
+      const reasonParts = existingEntry.reason.split(' - ');
+      if (reasonParts[0].startsWith('Actividad: ')) {
+        selectedActivity = reasonParts[0].replace('Actividad: ', '');
+        freeText = reasonParts.slice(1).join(' - ');
+      } else {
+        freeText = existingEntry.reason;
+      }
+    }
+  }
+
+  return `
+    <div id="aptitud-entry-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
+        <form id="aptitud-entry-form" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="${type}" data-entry-id="${entryId || ''}">
+          <div class="p-6 border-b dark:border-gray-700">
+            <h3 class="text-xl font-bold">${title}</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Para: ${student.name}</p>
+          </div>
+          <div class="p-6 space-y-4">
+            <div>
+              <label for="aptitud-activity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asociar a Actividad (Opcional)</label>
+              <select id="aptitud-activity" name="activity" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900">
+                <option value="">-- Ninguna --</option>
+                ${moduleActivities.map(act => `<option value="${act.name}" ${act.name === selectedActivity ? 'selected' : ''}>${act.name}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label for="aptitud-reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Motivo / Comentario</label>
+              <input type="text" id="aptitud-reason" name="reason" value="${freeText}" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900" placeholder="Ej: Buen trabajo en el ejercicio 3">
+            </div>
+            <div>
+              <label for="aptitud-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha de Efecto</label>
+              <input type="date" id="aptitud-date" name="effectiveDate" value="${effectiveDate}" required class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900">
+            </div>
+          </div>
+          <div class="p-6 border-t dark:border-gray-700 flex justify-end gap-4">
+            <button type="button" id="cancel-aptitud-entry" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">${isEdit ? 'Guardar Cambios' : 'Añadir'}</button>
+          </div>
+        </form>
+      </div>
     </div>
   `;
 }

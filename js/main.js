@@ -731,7 +731,7 @@ function attachEventListeners() {
     document.querySelectorAll('.add-aptitud-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const { moduleId, studentId, trimester, type } = e.currentTarget.dataset;
-        handlers.handleAddAptitud(moduleId, studentId, trimester, type);
+        handlers.showAptitudEntryModal(moduleId, studentId, trimester, type);
       });
     });
 
@@ -740,6 +740,14 @@ function attachEventListeners() {
       btn.addEventListener('click', (e) => {
         const { moduleId, studentId, trimester, type, id } = e.currentTarget.dataset;
         handlers.handleDeleteAptitud(moduleId, studentId, trimester, type, id);
+      });
+    });
+
+    // Listeners para editar entradas de aptitud
+    document.querySelectorAll('.edit-aptitud-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const { moduleId, studentId, trimester, type, id } = e.currentTarget.dataset;
+        handlers.showAptitudEntryModal(moduleId, studentId, trimester, type, id);
       });
     });
 

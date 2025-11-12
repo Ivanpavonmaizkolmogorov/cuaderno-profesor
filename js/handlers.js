@@ -6,8 +6,7 @@ import { calculateModuleGrades } from './services/calculations.js';
 import { generateStudentReport } from './services/pdfGenerator.js';
 import { prepareModuleForProgressTracking, deleteTemarioPoint, deleteTemarioUnit } from './utils.js';
 import { renderImportTemarioModal } from './progressView.js';
-import { renderApp } from './main.js';
-import { renderImportGradesModal } from './ui/pages.js';
+import { renderApp } from './main.js';import * as pages from './ui/pages.js';
 import { mergeTemario } from './services/dataImporter.js'; // Import the new mergeTemario function
 import { exportToExcel } from './services/excelGenerator.js'; // <-- AÑADE ESTA LÍNEA
 
@@ -107,14 +106,7 @@ export function handleExportSingleModuleReport(studentId, moduleId) {
 
   // Forzamos el cálculo de las notas finales para este alumno y módulo en el momento de la exportación.
   // Esto asegura que los datos son siempre correctos e independientes del estado de la UI.
-  const finalGrades = calculateModuleGrades(
-    module, 
-    [student], 
-    db.grades, 
-    db.actividades, 
-    null, // trimestre final
-    db.aptitudes
-  )[studentId] || { moduleGrade: 0, raTotals: {}, ceFinalGrades: {} };
+  const finalGrades = calculateModuleGrades(module, [student], db.grades, db.actividades, null, db.aptitudes)[studentId] || { moduleGrade: 0, raTotals: {}, ceFinalGrades: {} };
 
   const moduleDataForPdf = [{
     module,
@@ -700,7 +692,7 @@ export function showImportGradesModal(actividadId) {
   const actividad = state.getDB().actividades.find(a => a.id === actividadId);
   if (!modalContainer || !actividad) return;
 
-  modalContainer.innerHTML = renderImportGradesModal(actividadId, actividad.name);
+  modalContainer.innerHTML = pages.renderImportGradesModal(actividadId, actividad.name);
 
   const closeModal = () => modalContainer.innerHTML = '';
 
@@ -1107,22 +1099,64 @@ export function handleUpdateAptitudConfig(moduleId, form) {
   }
 }
 
-export function handleAddAptitud(moduleId, studentId, trimester, type) {
+export function showAptitudEntryModal(moduleId, studentId, trimester, type, entryId = null) {
+  const modalContainer = document.getElementById('modal-container');
+  if (!modalContainer) return;
+
+  const { db } = { db: state.getDB() };
+  const module = db.modules.find(m => m.id === moduleId);
+  const student = db.students.find(s => s.id === studentId);
+
+  if (!module || !student) return;
+
+  modalContainer.innerHTML = pages.renderAptitudEntryModal(module, student, trimester, type, entryId);
+
+  const closeModal = () => modalContainer.innerHTML = '';
+
+  document.getElementById('cancel-aptitud-entry')?.addEventListener('click', closeModal);
+  document.getElementById('aptitud-entry-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    handleSaveAptitudEntry(e.currentTarget);
+    closeModal();
+  });
+}
+
+export function handleSaveAptitudEntry(form) {
+  const { moduleId, studentId, trimester, type, entryId } = form.dataset;
+  const isEdit = entryId !== '';
+
+  const selectedActivity = form.activity.value;
+  const freeText = form.reason.value.trim();
+  const effectiveDate = new Date(form.effectiveDate.value).toISOString();
+
+  let finalReason = freeText;
+  if (selectedActivity) {
+    finalReason = `Actividad: ${selectedActivity}${freeText ? ' - ' + freeText : ''}`;
+  }
+  if (!finalReason) {
+    finalReason = `Añadido el ${new Date(effectiveDate).toLocaleDateString()}`;
+  }
+
   const db = state.getDB();
   const trimesterKey = `T${trimester}`;
 
-  if (!db.aptitudes[moduleId]) db.aptitudes[moduleId] = {};
-  if (!db.aptitudes[moduleId][studentId]) db.aptitudes[moduleId][studentId] = {};
-  if (!db.aptitudes[moduleId][studentId][trimesterKey]) db.aptitudes[moduleId][studentId][trimesterKey] = { positives: [], negatives: [] };
+  if (isEdit) {
+    // Lógica de edición
+    const entry = db.aptitudes?.[moduleId]?.[studentId]?.[trimesterKey]?.[type]?.find(e => e.id === entryId);
+    if (entry) {
+      console.log(`[LOG] Guardando cambios para la entrada de aptitud existente: ${entryId}`);
+      entry.effectiveDate = effectiveDate;
+      entry.reason = finalReason;
+    }
+  } else {
+    // Lógica de añadir
+    const newEntry = { id: crypto.randomUUID(), dateAdded: new Date().toISOString(), effectiveDate, reason: finalReason };
+    if (!db.aptitudes[moduleId]) db.aptitudes[moduleId] = {};
+    if (!db.aptitudes[moduleId][studentId]) db.aptitudes[moduleId][studentId] = {};
+    if (!db.aptitudes[moduleId][studentId][trimesterKey]) db.aptitudes[moduleId][studentId][trimesterKey] = { positives: [], negatives: [] };
+    db.aptitudes[moduleId][studentId][trimesterKey][type].push(newEntry);
+  }
 
-  const newEntry = {
-    id: crypto.randomUUID(),
-    dateAdded: new Date().toISOString(),
-    effectiveDate: new Date().toISOString(),
-    reason: `Añadido el ${new Date().toLocaleDateString()}`
-  };
-
-  db.aptitudes[moduleId][studentId][trimesterKey][type].push(newEntry);
   state.setDB(db);
   state.saveDB();
   renderApp();
