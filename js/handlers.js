@@ -804,3 +804,24 @@ export function handleExportExcel() {
     alert(`Se produjo un error al generar el Excel: ${error.message}`);
   }
 }
+
+/**
+ * Guarda las etiquetas de atención a la diversidad para un alumno.
+ * @param {string} studentId - El ID del alumno a modificar.
+ * @param {string} tagsString - Un string con las etiquetas separadas por comas.
+ */
+export function handleSaveDiversityTags(studentId, tagsString) {
+  const db = state.getDB();
+  const student = db.students.find(s => s.id === studentId);
+
+  if (student) {
+    // Convertimos el string a un array de etiquetas, limpiando espacios y eliminando las vacías.
+    const tags = tagsString.split(',')
+      .map(tag => tag.trim())
+      .filter(Boolean);
+
+    student.diversityTags = tags;
+    state.saveDB();
+    renderApp();
+  }
+}

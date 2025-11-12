@@ -123,6 +123,37 @@ export function renderConfiguracionPage() {
   `;
 }
 
+/**
+ * Renderiza el contenido del modal para editar las etiquetas de diversidad de un alumno.
+ * @param {string} studentId - El ID del alumno.
+ * @param {string} studentName - El nombre del alumno.
+ * @param {Array<string>} currentTags - Las etiquetas actuales del alumno.
+ * @returns {string} El HTML del contenido del modal.
+ */
+export function renderDiversityTagsModal(studentId, studentName, currentTags) {
+  const tagsAsString = currentTags.join(', ');
+
+  return `
+    <div id="diversity-tags-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
+        <div class="p-6 border-b dark:border-gray-700">
+          <h3 class="text-xl font-bold">Atención a la Diversidad</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Editando etiquetas para: <span class="font-semibold">${studentName}</span></p>
+        </div>
+        <div class="p-6">
+          <label for="diversity-tags-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Etiquetas (separadas por comas)</label>
+          <input type="text" id="diversity-tags-input" value="${tagsAsString}" class="w-full p-2 border rounded-md dark:bg-gray-900 dark:border-gray-600" placeholder="Ej: Apoyo visual, Tiempo extendido...">
+        </div>
+        <div class="p-6 border-t dark:border-gray-700 flex justify-end gap-4">
+          <button id="cancel-diversity-tags-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+          <button id="save-diversity-tags-btn" data-student-id="${studentId}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+
 // Renderiza la página de Alumnos/as
 export function renderAlumnosPage() {
   const { db, ui } = { db: getDB(), ui: getUI() };
@@ -153,6 +184,13 @@ export function renderAlumnosPage() {
               return { name: module.modulo, grade: finalGrade };
             });
 
+          // --- INICIO: LÓGICA DE ETIQUETAS DE DIVERSIDAD ---
+          const diversityTags = student.diversityTags || [];
+          const tagsHtml = diversityTags.map(tag => `
+            <span class="ml-2 text-xs font-semibold text-purple-800 bg-purple-100 dark:text-purple-100 dark:bg-purple-800 px-2 py-0.5 rounded-full">${tag}</span>
+          `).join('');
+          // --- FIN: LÓGICA DE ETIQUETAS DE DIVERSIDAD ---
+
           return `
             <div key="${student.id}" draggable="true" data-student-id="${student.id}" class="student-draggable bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 border-l-4 border-blue-500 transition-opacity">
               <div class="flex justify-between items-center mb-4">
@@ -161,6 +199,7 @@ export function renderAlumnosPage() {
                     <div class="flex items-center gap-2">
                       <span class="drag-handle cursor-move text-gray-400" title="Arrastrar para reordenar">${ICONS.GripVertical}</span>
                       <h3 class="text-xl font-bold text-gray-900 dark:text-white">${student.name}</h3>
+                      ${tagsHtml}
                     </div>
                 </div>
                 <div class="flex gap-2">
@@ -169,6 +208,9 @@ export function renderAlumnosPage() {
                     </button>
                     <button class="export-full-student-report-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg" data-student-id="${student.id}" title="Exportar informe completo de todos los módulos">
                       ${ICONS.DownloadCloud} Informe Completo
+                    </button>
+                    <button data-student-id="${student.id}" data-student-name="${student.name}" class="edit-diversity-tags-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg" title="Editar atención a la diversidad">
+                      ${ICONS.Tag} Diversidad
                     </button>
                     <button class="delete-student-btn flex items-center gap-2 px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg" data-student-id="${student.id}" title="Eliminar alumno/a del sistema">
                       ${ICONS.Trash2} Eliminar

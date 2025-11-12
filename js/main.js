@@ -296,6 +296,35 @@ function attachEventListeners() {
       });
     });
 
+    // Listener para el botón de editar etiquetas de diversidad
+    document.querySelectorAll('.edit-diversity-tags-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        console.log('[LOG] Botón "Diversidad" clickeado.');
+        const studentId = e.currentTarget.dataset.studentId;
+        const studentName = e.currentTarget.dataset.studentName;
+        const student = state.getDB().students.find(s => s.id === studentId);
+        const currentTags = student?.diversityTags || [];
+        console.log(`[LOG] - Student ID: ${studentId}, Nombre: ${studentName}`);
+
+        const modalContainer = document.getElementById('modal-container'); // Usamos un contenedor genérico
+        console.log('[LOG] Buscando #modal-container...', modalContainer ? '¡Encontrado!' : '¡NO ENCONTRADO!');
+        if (modalContainer) {
+          console.log('[LOG] Renderizando modal de diversidad...');
+          modalContainer.innerHTML = pages.renderDiversityTagsModal(studentId, studentName, currentTags);
+
+          // Listeners para el modal
+          document.getElementById('save-diversity-tags-btn').addEventListener('click', () => {
+            const tagsInput = document.getElementById('diversity-tags-input').value;
+            handlers.handleSaveDiversityTags(studentId, tagsInput);
+            modalContainer.innerHTML = ''; // Cerrar modal
+          });
+          document.getElementById('cancel-diversity-tags-btn').addEventListener('click', () => {
+            modalContainer.innerHTML = ''; // Cerrar modal
+          });
+        }
+      });
+    });
+
     // Listeners para la selección masiva de alumnos
     const selectAllCheckbox = document.getElementById('select-all-students-checkbox');
     const studentCheckboxes = document.querySelectorAll('.student-select-checkbox');
