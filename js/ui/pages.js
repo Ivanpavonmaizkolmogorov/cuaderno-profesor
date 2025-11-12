@@ -748,12 +748,12 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
         <th scope="col" class="sticky left-0 z-10 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider bg-gray-50 dark:bg-gray-800">
           Alumno/a
         </th>
-        <!-- Columnas de notas trimestrales guardadas -->
+        <!-- INICIO: CORRECCIÓN - Columnas de notas trimestrales y final -->
         <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T1</th>
         <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T2</th>
         <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T3</th>
         <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">Final</th>
-        
+        <!-- FIN: CORRECCIÓN -->
         <!-- Columnas de Actividades Evaluables -->
         ${moduleActividades.map(act => {
           return `
@@ -791,18 +791,40 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
         const t1Breakdown = studentAllCalcs.T1?.[student.id]?.breakdown;
         const t2Breakdown = studentAllCalcs.T2?.[student.id]?.breakdown;
         const t3Breakdown = studentAllCalcs.T3?.[student.id]?.breakdown;
-        const finalCalcs = studentAllCalcs.Final?.[student.id] || { raTotals: {}, moduleGrade: 0 };
+        const finalCalcs = studentAllCalcs.Final?.[student.id] || { raTotals: {}, moduleGrade: 0, breakdown: {} };
         
         return `
           <tr key="${student.id}" class="hover:bg-gray-50 dark:hover:bg-gray-800">
             <td class="sticky left-0 z-10 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800">
               ${student.name}
             </td>
-            <!-- Celdas de notas trimestrales -->
-            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700" title="${t1Breakdown ? `Base: ${t1Breakdown.baseGrade.toFixed(2)}\nAjuste: ${t1Breakdown.totalAdjustment.toFixed(2)}` : ''}">${t1Grade?.toFixed(2) || '-'}</td>
-            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700" title="${t2Breakdown ? `Base: ${t2Breakdown.baseGrade.toFixed(2)}\nAjuste: ${t2Breakdown.totalAdjustment.toFixed(2)}` : ''}">${t2Grade?.toFixed(2) || '-'}</td>
-            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700" title="${t3Breakdown ? `Base: ${t3Breakdown.baseGrade.toFixed(2)}\nAjuste: ${t3Breakdown.totalAdjustment.toFixed(2)}` : ''}">${t3Grade?.toFixed(2) || '-'}</td>
-            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${finalCalcs.moduleGrade?.toFixed(2) || '-'}</td>
+            <!-- INICIO: CORRECCIÓN - Celdas de notas trimestrales con colores según aptitud -->
+            ${[
+              { grade: t1Grade, breakdown: t1Breakdown },
+              { grade: t2Grade, breakdown: t2Breakdown },
+              { grade: t3Grade, breakdown: t3Breakdown }
+            ].map(data => {
+              let bgColor = 'bg-gray-100 dark:bg-gray-700';
+              let title = '';
+              if (data.breakdown) {
+                title = `Base: ${data.breakdown.baseGrade.toFixed(2)}\nAjuste: ${data.breakdown.totalAdjustment.toFixed(2)}`;
+                if (data.breakdown.positiveAdjustment > data.breakdown.negativeAdjustment) {
+                  bgColor = 'bg-green-100 dark:bg-green-900/50';
+                } else if (data.breakdown.negativeAdjustment > data.breakdown.positiveAdjustment) {
+                  bgColor = 'bg-red-100 dark:bg-red-900/50';
+                }
+              }
+              return `<td class="px-3 py-4 text-center text-sm font-semibold ${bgColor}" title="${title}">${data.grade?.toFixed(2) || '-'}</td>`;
+            }).join('')}
+            
+            <!-- Celda para la nota final -->
+            <td 
+              class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700" 
+              title="${finalCalcs.breakdown ? `Base: ${finalCalcs.breakdown.baseGrade.toFixed(2)}\nAjuste Total: ${finalCalcs.breakdown.totalAdjustment.toFixed(2)}` : ''}"
+            >
+              ${finalCalcs.moduleGrade?.toFixed(2) || '-'}
+            </td>
+            <!-- FIN: CORRECCIÓN -->
 
             ${moduleActividades.map(act => {
               const attempts = studentGrades[act.id] || [];
