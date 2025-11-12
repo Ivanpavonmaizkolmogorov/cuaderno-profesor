@@ -205,6 +205,9 @@ function renderDriveButton() {
   }
 }
 
+// Variable para asegurar que el listener de la vista de progreso se añade una sola vez.
+let progressContainerListenerAttached = false;
+
 // Función para añadir todos los event listeners
 function attachEventListeners() {
   const { ui, db } = { ui: state.getUI(), db: state.getDB() };
@@ -742,31 +745,34 @@ function attachEventListeners() {
 
     // Listener para el botón de importar temario (usando delegación de eventos)
     // Esto asegura que funcione aunque el botón se renderice dinámicamente.
-    const progressContainer = document.getElementById('progress-view-container');
-    if (progressContainer) {
-      progressContainer.addEventListener('click', (e) => {
-        // Usamos .closest() para detectar el clic en el botón o en un hijo del botón.
-        if (e.target.closest('#import-temario-btn')) {
-          e.preventDefault();
-          handlers.showImportTemarioModal();
-        }
-
-        // Listener para el botón de eliminar unidad
-        const deleteUnitBtn = e.target.closest('.delete-unit-btn');
-        if (deleteUnitBtn) {
-          e.preventDefault();
-          const { moduleId, unitId } = deleteUnitBtn.dataset;
-          handlers.handleDeleteTemarioUnit(moduleId, unitId);
-        }
-
-        // Listener para el botón de eliminar punto
-        const deletePointBtn = e.target.closest('.delete-point-btn');
-        if (deletePointBtn) {
-          e.preventDefault();
-          const { unitId, pointId } = deletePointBtn.dataset;
-          handlers.handleDeleteTemarioPoint(ui.selectedModuleId, unitId, pointId);
-        }
-      });
+    if (!progressContainerListenerAttached) {
+      const progressContainer = document.getElementById('progress-view-container');
+      if (progressContainer) {
+        progressContainer.addEventListener('click', (e) => {
+          // Usamos .closest() para detectar el clic en el botón o en un hijo del botón.
+          if (e.target.closest('#import-temario-btn')) {
+            e.preventDefault();
+            handlers.showImportTemarioModal();
+          }
+  
+          // Listener para el botón de eliminar unidad
+          const deleteUnitBtn = e.target.closest('.delete-unit-btn');
+          if (deleteUnitBtn) {
+            e.preventDefault();
+            const { moduleId, unitId } = deleteUnitBtn.dataset;
+            handlers.handleDeleteTemarioUnit(moduleId, unitId);
+          }
+  
+          // Listener para el botón de eliminar punto
+          const deletePointBtn = e.target.closest('.delete-point-btn');
+          if (deletePointBtn) {
+            e.preventDefault();
+            const { unitId, pointId } = deletePointBtn.dataset;
+            handlers.handleDeleteTemarioPoint(ui.selectedModuleId, unitId, pointId);
+          }
+        });
+        progressContainerListenerAttached = true;
+      }
     }
 
   }

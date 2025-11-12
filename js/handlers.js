@@ -661,25 +661,40 @@ export function handleDeleteTemario(moduleId) {
 }
 
 export function handleDeleteTemarioUnit(moduleId, unitId) {
-  if (window.confirm("¿Seguro que quieres eliminar esta unidad y todos sus puntos?")) {
-    const db = state.getDB();
-    const module = db.modules.find(m => m.id === moduleId);
-    if (module && module.temario) {
-      module.temario = module.temario.filter(unit => unit.idUnidad !== unitId);
-      // Aquí podríamos limpiar los puntos del `progresoTemario`, pero no es estrictamente necesario.
-      state.setDB(db);
-      state.saveDB();
-      renderApp();
-    }
+  console.log(`[handleDeleteTemarioUnit] ==> INICIO de borrado de UNIDAD. ModuleID: ${moduleId}, UnitID: ${unitId}`);
+
+  // 1. Pedir confirmación UNA SOLA VEZ.
+  console.log('[handleDeleteTemarioUnit] Mostrando diálogo de confirmación AHORA...');
+  if (!window.confirm("¿Estás seguro de que quieres eliminar esta unidad y todos sus puntos? Esta acción no se puede deshacer.")) {
+    console.log('[handleDeleteTemarioUnit] El usuario CANCELÓ el borrado.');
+    return; // Si el usuario cancela, no hacemos nada.
+  }
+  console.log('[handleDeleteTemarioUnit] El usuario CONFIRMÓ el borrado.');
+
+  const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
+
+  if (module && module.temario) {
+    console.log(`[handleDeleteTemarioUnit] Unidad encontrada. Procediendo a filtrar el temario para eliminar la unidad.`);
+    // 2. Eliminar la unidad del temario.
+    module.temario = module.temario.filter(unit => unit.idUnidad !== unitId);
+    // 3. Guardar los cambios y volver a renderizar la aplicación.
+    state.setDB(db);
+    state.saveDB();
+    console.log('[handleDeleteTemarioUnit] DB guardada y renderApp() llamado. Fin del proceso de borrado de unidad.');
+    renderApp();
+  } else {
+    console.error('[handleDeleteTemarioUnit] No se encontró el módulo o el temario para la unidad a borrar.');
   }
 }
 
 export function handleDeleteTemarioPoint(moduleId, unitId, pointId) {
-  // No pedimos confirmación para algo tan pequeño, es fácil de rehacer.
+  console.log(`[handleDeleteTemarioPoint] ==> INICIO de borrado de PUNTO. ModuleID: ${moduleId}, UnitID: ${unitId}, PointID: ${pointId}`);
   const db = state.getDB();
   deleteTemarioPoint(db, moduleId, unitId, pointId);
   state.setDB(db);
   state.saveDB();
+  console.log('[handleDeleteTemarioPoint] DB guardada y renderApp() llamado. Fin del proceso de borrado de punto.');
   renderApp();
 }
 
