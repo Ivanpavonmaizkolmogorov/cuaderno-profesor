@@ -7,6 +7,7 @@ import { generateStudentReport } from './services/pdfGenerator.js';
 import { prepareModuleForProgressTracking, deleteTemarioPoint, deleteTemarioUnit } from './utils.js';
 import { renderImportTemarioModal } from './progressView.js';
 import { renderApp } from './main.js';
+import { renderImportGradesModal } from './ui/pages.js';
 import { mergeTemario } from './services/dataImporter.js'; // Import the new mergeTemario function
 import { exportToExcel } from './services/excelGenerator.js'; // <-- AÑADE ESTA LÍNEA
 
@@ -655,6 +656,93 @@ export function handleImportTemario(moduleId, jsonText, mode) {
   } catch (error) {
     console.error("Error al importar el temario:", error);
     alert(`Error al importar el índice: ${error.message}`);
+  }
+}
+
+/**
+ * Muestra el modal para importar calificaciones para una actividad.
+ * @param {string} actividadId - El ID de la actividad.
+ */
+export function showImportGradesModal(actividadId) {
+  const modalContainer = document.getElementById('modal-container');
+  const actividad = state.getDB().actividades.find(a => a.id === actividadId);
+  if (!modalContainer || !actividad) return;
+
+  modalContainer.innerHTML = renderImportGradesModal(actividadId, actividad.name);
+
+  const closeModal = () => modalContainer.innerHTML = '';
+
+  document.getElementById('cancel-import-grades')?.addEventListener('click', closeModal);
+  document.getElementById('confirm-import-grades')?.addEventListener('click', (e) => {
+    const jsonText = document.getElementById('grades-json-textarea').value;
+    handleImportGrades(e.currentTarget.dataset.actividadId, jsonText);
+    closeModal();
+  });
+}
+
+/**
+ * Procesa e importa un JSON con calificaciones para una actividad.
+ * @param {string} actividadId - El ID de la actividad a la que se importan las notas.
+ * @param {string} jsonText - El string JSON con los datos de las notas.
+ */
+export function handleImportGrades(actividadId, jsonText) {
+  // Opciones válidas para el tipo de calificación, obtenidas del formulario de la UI.
+  const VALID_GRADE_TYPES = ['Ordinaria', 'Recuperación', 'Mejora de nota'];
+
+  try {
+    const gradesToImport = JSON.parse(jsonText);
+    if (!Array.isArray(gradesToImport)) {
+      throw new Error("El JSON debe ser un array de objetos de calificación.");
+    }
+
+    const db = state.getDB();
+    const actividad = db.actividades.find(a => a.id === actividadId);
+    if (!actividad) throw new Error("Actividad no encontrada.");
+
+    const studentsMap = new Map(db.students.map(s => [s.name.trim().toLowerCase(), s.id]));
+    let importedCount = 0;
+    const notFoundNames = [];
+
+    gradesToImport.forEach(item => {
+      const studentNameKey = item.studentName?.trim().toLowerCase();
+      const studentId = studentsMap.get(studentNameKey);
+
+      if (studentId && typeof item.grade === 'number') {
+        let gradeType = 'Ordinaria'; // Valor por defecto.
+        let observation = item.observation || 'Calificación importada desde JSON.';
+
+        if (item.type) {
+          if (VALID_GRADE_TYPES.includes(item.type)) {
+            gradeType = item.type;
+          } else {
+            observation = `[Tipo inválido: '${item.type}'] ${observation}`;
+          }
+        }
+
+        const newAttempt = {
+          id: crypto.randomUUID(),
+          grade: Math.max(0, Math.min(10, item.grade)),
+          type: gradeType,
+          observation: observation,
+          date: new Date().toISOString(),
+        };
+
+        if (!db.grades[studentId]) db.grades[studentId] = {};
+        if (!db.grades[studentId][actividadId]) db.grades[studentId][actividadId] = [];
+        db.grades[studentId][actividadId].push(newAttempt);
+        importedCount++;
+      } else if (studentNameKey) {
+        notFoundNames.push(item.studentName);
+      }
+    });
+
+    state.setDB(db);
+    state.saveDB();
+    renderApp();
+
+    alert(`Importación completada.\n\n- Calificaciones importadas: ${importedCount}\n- Alumnos no encontrados: ${notFoundNames.length}${notFoundNames.length > 0 ? `\n  (${notFoundNames.join(', ')})` : ''}`);
+  } catch (error) {
+    alert(`Error al importar calificaciones: ${error.message}`);
   }
 }
 

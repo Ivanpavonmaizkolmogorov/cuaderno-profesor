@@ -525,11 +525,15 @@ function attachEventListeners() {
     
     // Listeners para el selector de vistas del módulo
     document.getElementById('view-tabla-btn')?.addEventListener('click', () => {
+      // Aseguramos que el contenedor principal sea visible
+      document.getElementById('content-container').style.display = 'block';
       document.getElementById('progress-view-container').style.display = 'none';
       document.getElementById('module-detail-content').style.display = 'block';
       handlers.handleSetModuleView('tabla');
     });
     document.getElementById('view-alumno-btn')?.addEventListener('click', () => {
+      // Aseguramos que el contenedor principal sea visible
+      document.getElementById('content-container').style.display = 'block';
       document.getElementById('progress-view-container').style.display = 'none';
       document.getElementById('module-detail-content').style.display = 'block';
       handlers.handleSetModuleView('alumno');
@@ -543,6 +547,8 @@ function attachEventListeners() {
         // Actualizamos el estado de la UI para que el botón se marque como activo
         handlers.handleSetModuleView('indice');
 
+        // Ocultamos el contenedor principal
+        document.getElementById('content-container').style.display = 'none';
         // Ocultar las otras vistas del módulo
         document.getElementById('module-detail-content').style.display = 'none';
         // Mostrar el contenedor de la vista de progreso
@@ -828,6 +834,13 @@ function attachEventListeners() {
         });
       });
     }
+
+    // Listener para el nuevo botón de importar notas (movido aquí para que se aplique correctamente)
+    document.getElementById('open-import-grades-modal-btn')?.addEventListener('click', (ev) => {
+      const actividadId = ev.currentTarget.dataset.actividadId;
+      handlers.showImportGradesModal(actividadId);
+    });
+
   }
 }
 
