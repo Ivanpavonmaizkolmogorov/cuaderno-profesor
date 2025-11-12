@@ -309,18 +309,59 @@ function attachEventListeners() {
         const modalContainer = document.getElementById('modal-container'); // Usamos un contenedor genérico
         console.log('[LOG] Buscando #modal-container...', modalContainer ? '¡Encontrado!' : '¡NO ENCONTRADO!');
         if (modalContainer) {
-          console.log('[LOG] Renderizando modal de diversidad...');
-          modalContainer.innerHTML = pages.renderDiversityTagsModal(studentId, studentName, currentTags);
+            console.log('[LOG] Renderizando modal de diversidad...');
+            modalContainer.innerHTML = pages.renderDiversityTagsModal(studentId, studentName, currentTags);
 
-          // Listeners para el modal
-          document.getElementById('save-diversity-tags-btn').addEventListener('click', () => {
-            const tagsInput = document.getElementById('diversity-tags-input').value;
-            handlers.handleSaveDiversityTags(studentId, tagsInput);
-            modalContainer.innerHTML = ''; // Cerrar modal
-          });
-          document.getElementById('cancel-diversity-tags-btn').addEventListener('click', () => {
-            modalContainer.innerHTML = ''; // Cerrar modal
-          });
+            // --- INICIO DE LA CORRECCIÓN ---
+            // Los listeners deben añadirse DESPUÉS de que el HTML del modal exista.
+            const modalElement = document.getElementById('diversity-tags-modal');
+            if (!modalElement) return;
+
+            const saveBtn = modalElement.querySelector('#save-diversity-tags-btn');
+            const cancelBtn = modalElement.querySelector('#cancel-diversity-tags-btn');
+            const addTagBtn = modalElement.querySelector('#add-diversity-tag-btn');
+            const addTagInput = modalElement.querySelector('#add-diversity-tag-input');
+            const tagsContainer = modalElement.querySelector('#diversity-tags-container');
+
+            const closeModal = () => modalContainer.innerHTML = '';
+
+            const addTag = () => {
+                const tagText = addTagInput.value.trim();
+                if (tagText) {
+                    const newTagPill = document.createElement('span');
+                    newTagPill.className = 'diversity-tag-pill flex items-center gap-2 bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-100 text-sm font-medium px-2.5 py-0.5 rounded-full';
+                    newTagPill.innerHTML = `
+                        <span class="tag-text">${tagText}</span>
+                        <button type="button" class="delete-tag-btn text-purple-600 dark:text-purple-200 hover:text-purple-800 dark:hover:text-purple-50" title="Eliminar etiqueta">&times;</button>
+                    `;
+                    tagsContainer.appendChild(newTagPill);
+                    addTagInput.value = '';
+                }
+                addTagInput.focus();
+            };
+
+            addTagBtn.addEventListener('click', addTag);
+            addTagInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag();
+                }
+            });
+
+            tagsContainer.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-tag-btn')) {
+                    e.target.closest('.diversity-tag-pill').remove();
+                }
+            });
+
+            saveBtn.addEventListener('click', () => {
+                const finalTags = Array.from(tagsContainer.querySelectorAll('.tag-text')).map(span => span.textContent);
+                handlers.handleSaveDiversityTags(studentId, finalTags.join(', '));
+                closeModal();
+            });
+
+            cancelBtn.addEventListener('click', closeModal);
+            // --- FIN DE LA CORRECCIÓN ---
         }
       });
     });

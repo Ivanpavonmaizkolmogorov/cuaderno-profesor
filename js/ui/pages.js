@@ -131,8 +131,6 @@ export function renderConfiguracionPage() {
  * @returns {string} El HTML del contenido del modal.
  */
 export function renderDiversityTagsModal(studentId, studentName, currentTags) {
-  const tagsAsString = currentTags.join(', ');
-
   return `
     <div id="diversity-tags-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
@@ -141,8 +139,29 @@ export function renderDiversityTagsModal(studentId, studentName, currentTags) {
           <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Editando etiquetas para: <span class="font-semibold">${studentName}</span></p>
         </div>
         <div class="p-6">
-          <label for="diversity-tags-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Etiquetas (separadas por comas)</label>
-          <input type="text" id="diversity-tags-input" value="${tagsAsString}" class="w-full p-2 border rounded-md dark:bg-gray-900 dark:border-gray-600" placeholder="Ej: Apoyo visual, Tiempo extendido...">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Etiquetas Actuales</label>
+          <div id="diversity-tags-container" class="flex flex-wrap gap-2 p-2 border rounded-md bg-gray-50 dark:bg-gray-900 min-h-[40px]">
+            ${currentTags.map(tag => `
+              <span 
+                class="diversity-tag-pill flex items-center gap-2 bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-100 text-sm font-medium px-2.5 py-0.5 rounded-full"
+                onmouseover="console.log('Mouse ENCIMA de la etiqueta: ${tag}')"
+                onmouseout="console.log('Mouse FUERA de la etiqueta: ${tag}')"
+              >
+                <span class="tag-text">${tag}</span>
+                <button 
+                  type="button" 
+                  class="delete-tag-btn text-xl font-bold leading-none text-purple-600 dark:text-purple-200 hover:text-purple-900 dark:hover:text-purple-50" 
+                  title="Eliminar etiqueta">&times;</button>
+              </span>
+            `).join('')}
+          </div>
+          <div class="mt-4">
+            <label for="add-diversity-tag-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Añadir nueva etiqueta</label>
+            <div class="flex gap-2">
+              <input type="text" id="add-diversity-tag-input" class="flex-grow p-2 border rounded-md dark:bg-gray-900 dark:border-gray-600" placeholder="Escribe una etiqueta y pulsa Enter...">
+              <button type="button" id="add-diversity-tag-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Añadir</button>
+            </div>
+          </div>
         </div>
         <div class="p-6 border-t dark:border-gray-700 flex justify-end gap-4">
           <button id="cancel-diversity-tags-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
