@@ -741,6 +741,9 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
         const t1Grade = studentAllCalcs.T1?.[student.id]?.moduleGrade;
         const t2Grade = studentAllCalcs.T2?.[student.id]?.moduleGrade;
         const t3Grade = studentAllCalcs.T3?.[student.id]?.moduleGrade;
+        const t1Breakdown = studentAllCalcs.T1?.[student.id]?.breakdown;
+        const t2Breakdown = studentAllCalcs.T2?.[student.id]?.breakdown;
+        const t3Breakdown = studentAllCalcs.T3?.[student.id]?.breakdown;
         const finalCalcs = studentAllCalcs.Final?.[student.id] || { raTotals: {}, moduleGrade: 0 };
         
         return `
@@ -749,9 +752,9 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
               ${student.name}
             </td>
             <!-- Celdas de notas trimestrales -->
-            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${t1Grade?.toFixed(2) || '-'}</td>
-            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${t2Grade?.toFixed(2) || '-'}</td>
-            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${t3Grade?.toFixed(2) || '-'}</td>
+            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700" title="${t1Breakdown ? `Base: ${t1Breakdown.baseGrade.toFixed(2)}\nAjuste: ${t1Breakdown.totalAdjustment.toFixed(2)}` : ''}">${t1Grade?.toFixed(2) || '-'}</td>
+            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700" title="${t2Breakdown ? `Base: ${t2Breakdown.baseGrade.toFixed(2)}\nAjuste: ${t2Breakdown.totalAdjustment.toFixed(2)}` : ''}">${t2Grade?.toFixed(2) || '-'}</td>
+            <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700" title="${t3Breakdown ? `Base: ${t3Breakdown.baseGrade.toFixed(2)}\nAjuste: ${t3Breakdown.totalAdjustment.toFixed(2)}` : ''}">${t3Grade?.toFixed(2) || '-'}</td>
             <td class="px-3 py-4 text-center text-sm font-semibold bg-gray-100 dark:bg-gray-700">${finalCalcs.moduleGrade?.toFixed(2) || '-'}</td>
 
             ${moduleActividades.map(act => {

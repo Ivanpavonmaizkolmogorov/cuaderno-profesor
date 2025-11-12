@@ -107,8 +107,14 @@ export function handleExportSingleModuleReport(studentId, moduleId) {
 
   // Forzamos el cálculo de las notas finales para este alumno y módulo en el momento de la exportación.
   // Esto asegura que los datos son siempre correctos e independientes del estado de la UI.
-  const calculatedData = calculateModuleGrades(module, [student], db.grades, db.actividades, null);
-  const finalGrades = calculatedData[studentId] || { moduleGrade: 0, raTotals: {}, ceFinalGrades: {} };
+  const finalGrades = calculateModuleGrades(
+    module, 
+    [student], 
+    db.grades, 
+    db.actividades, 
+    null, // trimestre final
+    db.aptitudes
+  )[studentId] || { moduleGrade: 0, raTotals: {}, ceFinalGrades: {} };
 
   const moduleDataForPdf = [{
     module,

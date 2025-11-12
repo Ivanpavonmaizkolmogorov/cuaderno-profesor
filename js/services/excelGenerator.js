@@ -1,4 +1,5 @@
 // js/services/excelGenerator.js
+import { calculateModuleGrades } from './calculations.js';
 
 /**
  * Ayudante para obtener nombres de columnas de Excel (A, B, ..., Z, AA, AB, ...).
@@ -29,6 +30,10 @@ export function exportToExcel(db) {
   
   const wb = XLSX.utils.book_new();
 
+  // --- INICIO: CÁLCULO PREVIO DE NOTAS ---
+  // Calculamos todas las notas trimestrales y finales para tenerlas disponibles.
+  const allCalculatedGrades = {};
+
   console.log("Iniciando exportación a Excel...", db);
 
   // --- 1. Iterar por cada MÓDULO para crear una PESTAÑA ---
@@ -42,6 +47,15 @@ export function exportToExcel(db) {
     const students = (module.studentIds || [])
       .map(id => db.students.find(s => s.id === id))
       .filter(Boolean);
+
+    // Pre-cálculo para este módulo
+    allCalculatedGrades[module.id] = {
+      T1: calculateModuleGrades(module, students, db.grades, db.actividades, '1', db.aptitudes),
+      T2: calculateModuleGrades(module, students, db.grades, db.actividades, '2', db.aptitudes),
+      T3: calculateModuleGrades(module, students, db.grades, db.actividades, '3', db.aptitudes),
+      Final: calculateModuleGrades(module, students, db.grades, db.actividades, null, db.aptitudes)
+    };
+    // --- FIN: CÁLCULO PREVIO DE NOTAS ---
     
     // Ordenamos los elementos para tener un layout predecible
     const moduleActividades = db.actividades
@@ -65,6 +79,30 @@ export function exportToExcel(db) {
     // Columna A: Alumno/a
     ws['A1'] = { t: 's', v: 'Alumno/a' };
     colIndex++;
+
+    // --- INICIO: COLUMNAS DE DESGLOSE TRIMESTRAL ---
+    for (let i = 1; i <= 3; i++) {
+      const tBaseCol = getColName(colIndex++);
+      const tAdjCol = getColName(colIndex++);
+      const tFinalCol = getColName(colIndex++);
+      ws[`${tBaseCol}1`] = { t: 's', v: `T${i} Base` };
+      ws[`${tAdjCol}1`] = { t: 's', v: `T${i} Ajuste` };
+      ws[`${tFinalCol}1`] = { t: 's', v: `T${i} Final` };
+      colMap.set(`t${i}_base`, tBaseCol);
+      colMap.set(`t${i}_adj`, tAdjCol);
+      colMap.set(`t${i}_final`, tFinalCol);
+    }
+    // --- FIN: COLUMNAS DE DESGLOSE TRIMESTRAL ---
+
+    // Columna de Nota Final (calculada con CEs)
+    const finalModuleCol = getColName(colIndex++);
+    ws[`${finalModuleCol}1`] = { t: 's', v: 'Nota Final (CEs)' };
+    colMap.set('module_final_ces', finalModuleCol);
+
+    // Columna de Nota Final con Ajuste
+    const finalModuleWithAdjCol = getColName(colIndex++);
+    ws[`${finalModuleWithAdjCol}1`] = { t: 's', v: 'Nota Final (con Ajuste)' };
+    colMap.set('module_final_adj', finalModuleWithAdjCol);
 
     // Columnas para Actividades (B, C, D...)
     for (const act of moduleActividades) {
@@ -90,12 +128,6 @@ export function exportToExcel(db) {
       colIndex++;
     }
 
-    // Columna Final: Nota Módulo
-    const moduleCol = getColName(colIndex);
-    ws[`${moduleCol}1`] = { t: 's', v: 'Nota Final Módulo' };
-    colMap.set('module_final', moduleCol);
-    colIndex++;
-
     // --- 3. CONSTRUIR LAS FILAS DE DATOS (Fila 2 en adelante) ---
     let rowIndex = 2;
     for (const student of students) {
@@ -104,6 +136,24 @@ export function exportToExcel(db) {
 
       // Columna A: Nombre del Alumno
       ws[`A${rowNum}`] = { t: 's', v: student.name };
+
+      // --- INICIO: VALORES DE DESGLOSE TRIMESTRAL ---
+      for (let i = 1; i <= 3; i++) {
+        const trimesterKey = `T${i}`;
+        const studentTrimesterGrades = allCalculatedGrades[module.id]?.[trimesterKey]?.[student.id];
+        const baseGrade = studentTrimesterGrades?.breakdown?.baseGrade ?? 0;
+        const adjustment = studentTrimesterGrades?.breakdown?.totalAdjustment ?? 0;
+        const finalGrade = studentTrimesterGrades?.moduleGrade ?? 0;
+
+        const tBaseCol = colMap.get(`t${i}_base`);
+        const tAdjCol = colMap.get(`t${i}_adj`);
+        const tFinalCol = colMap.get(`t${i}_final`);
+
+        ws[`${tBaseCol}${rowNum}`] = { t: 'n', v: baseGrade, z: '0.00' };
+        ws[`${tAdjCol}${rowNum}`] = { t: 'n', v: adjustment, z: '0.00' };
+        ws[`${tFinalCol}${rowNum}`] = { t: 'n', v: finalGrade, z: '0.00' };
+      }
+      // --- FIN: VALORES DE DESGLOSE TRIMESTRAL ---
 
       // Columnas de Actividades (Valores brutos)
       // Aquí ponemos la nota máxima de la actividad
@@ -168,7 +218,7 @@ export function exportToExcel(db) {
 
       // Columna de Nota Final del Módulo (¡FORMULA!)
       // Lógica: Media ponderada de TODOS los CEs del módulo (los no evaluados cuentan como 0).
-      const moduleGradeCol = colMap.get('module_final');
+      const moduleGradeCol = colMap.get('module_final_ces');
       const allCeCells = [];
       const allCeWeights = [];
 
@@ -189,6 +239,16 @@ export function exportToExcel(db) {
          }
       }
       ws[`${moduleGradeCol}${rowNum}`] = { t: 'n', f: formula, z: '0.00' };
+
+      // Columna de Nota Final con Ajuste (¡FORMULA!)
+      // Lógica: Nota Final (CEs) + Ajuste T1 + Ajuste T2 + Ajuste T3
+      const moduleFinalAdjCol = colMap.get('module_final_adj');
+      const t1AdjCol = colMap.get('t1_adj');
+      const t2AdjCol = colMap.get('t2_adj');
+      const t3AdjCol = colMap.get('t3_adj');
+      const finalAdjFormula = `${moduleGradeCol}${rowNum}+${t1AdjCol}${rowNum}+${t2AdjCol}${rowNum}+${t3AdjCol}${rowNum}`;
+      ws[`${moduleFinalAdjCol}${rowNum}`] = { t: 'n', f: finalAdjFormula, z: '0.00' };
+
 
       rowIndex++;
     }

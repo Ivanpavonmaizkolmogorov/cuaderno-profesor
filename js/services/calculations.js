@@ -83,6 +83,7 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
       }
       moduleGrade = (trimesterCeTotalWeight > 0) ? (trimesterCeWeightedTotal / trimesterCeTotalWeight) : 0;
 
+      const baseGrade = moduleGrade;
       // --- INICIO: APLICAR AJUSTE POR APTITUD ---
       const studentAptitudes = aptitudes[module.id]?.[student.id];
       if (trimestre && studentAptitudes) {
@@ -102,7 +103,17 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
           if (numNegatives > 0) {
             ajusteNegativo = Math.pow(baseNegativa, numNegatives) - 1;
           }
-          moduleGrade = moduleGrade + ajustePositivo - ajusteNegativo;
+          const totalAdjustment = ajustePositivo - ajusteNegativo;
+          moduleGrade = baseGrade + totalAdjustment;
+
+          // Guardamos el desglose para usarlo en la UI, PDF y Excel
+          studentData[student.id] = studentData[student.id] || {};
+          studentData[student.id].breakdown = {
+            baseGrade: baseGrade,
+            totalAdjustment: totalAdjustment,
+            positiveAdjustment: ajustePositivo,
+            negativeAdjustment: ajusteNegativo
+          };
         }
       }
       // --- FIN: APLICAR AJUSTE POR APTITUD ---
@@ -110,24 +121,54 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
       // Para la nota final, la nota del módulo es la media ponderada de TODOS los CEs del módulo.
       // Los CEs no evaluados explícitamente (no presentes en ceFinalGrades) cuentan como 0.
       let finalCeWeightedTotal = 0;
-      let finalCeTotalWeight = 0;
+      let finalCeTotalWeight = 0;      
 
       // Iterar a través de todos los CEs del módulo (allCes ya contiene todos los CEs)
       allCes.forEach(ce => {
         const grade = ceFinalGrades[ce.ce_id] ?? 0; // Si no hay nota, es un 0 para la final
         const weight = ce.peso || 0;
         finalCeWeightedTotal += (grade * weight);
-        finalCeTotalWeight += weight;
+        finalCeTotalWeight += weight;        
       });
       moduleGrade = (finalCeTotalWeight > 0) ? (finalCeWeightedTotal / finalCeTotalWeight) : 0;
+
+      const baseGrade = moduleGrade;
+      // --- INICIO: APLICAR AJUSTE POR APTITUD A LA NOTA FINAL ---
+      // Se calcula la SUMA de los ajustes de los tres trimestres.
+      const studentAptitudes = aptitudes[module.id]?.[student.id];
+      let totalCumulativeAdjustment = 0;
+
+      if (studentAptitudes) {
+        ['T1', 'T2', 'T3'].forEach(trimestreKey => {
+          const trimesterAptitudes = studentAptitudes[trimestreKey];
+          if (trimesterAptitudes) {
+            const numPositives = trimesterAptitudes.positives?.length || 0;
+            const numNegatives = trimesterAptitudes.negatives?.length || 0;
+            const basePositiva = module.aptitudBasePositiva ?? 1.1;
+            const baseNegativa = module.aptitudBaseNegativa ?? 1.1;
+            const ajustePositivo = (numPositives > 0) ? Math.pow(basePositiva, numPositives) - 1 : 0;
+            const ajusteNegativo = (numNegatives > 0) ? Math.pow(baseNegativa, numNegatives) - 1 : 0;
+            totalCumulativeAdjustment += (ajustePositivo - ajusteNegativo);
+          }
+        });
+        moduleGrade = baseGrade + totalCumulativeAdjustment;
+      }
+      studentData[student.id] = studentData[student.id] || {};
+      studentData[student.id].breakdown = {
+        baseGrade: baseGrade,
+        totalAdjustment: totalCumulativeAdjustment,
+      };
+      // --- FIN: APLICAR AJUSTE POR APTITUD A LA NOTA FINAL ---
     }
 
 
-    studentData[student.id] = {
-      raTotals,
-      moduleGrade: parseFloat(moduleGrade.toFixed(2)),
-      ceFinalGrades, // Devolvemos las notas finales de los CEs
-    };
+    // Aseguramos que el objeto del estudiante exista antes de añadirle propiedades
+    if (!studentData[student.id]) {
+      studentData[student.id] = {};
+    }
+    studentData[student.id].raTotals = raTotals;
+    studentData[student.id].moduleGrade = parseFloat(moduleGrade.toFixed(2));
+    studentData[student.id].ceFinalGrades = ceFinalGrades;
   }
   return studentData;
 }

@@ -52,7 +52,16 @@ export function generateStudentReport(student, modulesData, allActividades, allG
       doc.setFillColor(230, 230, 230); // Gris claro
       doc.rect(pageMargin, yPosition - 5, contentWidth, 10, 'F');
       doc.text(moduleInfo.module.modulo, pageMargin + 2, yPosition);
-      doc.text(`Nota Final: ${moduleInfo.moduleGrade.toFixed(2)}`, pageMargin + contentWidth - 2, yPosition, { align: "right" });
+
+      // --- INICIO: DESGLOSE DE NOTA FINAL ---
+      if (moduleInfo.breakdown && moduleInfo.breakdown.totalAdjustment !== 0) {
+        const breakdownText = `Base: ${moduleInfo.breakdown.baseGrade.toFixed(2)} | Ajuste: ${moduleInfo.breakdown.totalAdjustment.toFixed(2)} | Final: ${moduleInfo.moduleGrade.toFixed(2)}`;
+        doc.setFontSize(9);
+        doc.text(breakdownText, pageMargin + contentWidth - 2, yPosition, { align: "right" });
+      } else {
+        doc.text(`Nota Final: ${moduleInfo.moduleGrade.toFixed(2)}`, pageMargin + contentWidth - 2, yPosition, { align: "right" });
+      }
+      // --- FIN: DESGLOSE DE NOTA FINAL ---
       yPosition += 12;
 
       // --- Tabla de Resultados de Aprendizaje (RAs) ---
