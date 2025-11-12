@@ -681,6 +681,37 @@ function attachEventListeners() {
           handlers.handleExportSingleModuleReport(studentId, moduleId);
         });
 
+        // --- INICIO: Lógica del Selector de Alumno ---
+        const toggleBtn = document.getElementById('student-selector-toggle');
+        const dropdown = document.getElementById('student-selector-dropdown');
+        const searchInput = document.getElementById('student-search-input');
+        const studentList = document.getElementById('student-selector-list');
+
+        toggleBtn?.addEventListener('click', () => {
+          dropdown.classList.toggle('hidden');
+          if (!dropdown.classList.contains('hidden')) {
+            searchInput.focus();
+          }
+        });
+
+        searchInput?.addEventListener('input', (e) => {
+          const filter = e.target.value.toLowerCase();
+          studentList.querySelectorAll('li').forEach(li => {
+            const name = li.textContent.toLowerCase();
+            li.style.display = name.includes(filter) ? '' : 'none';
+          });
+        });
+
+        studentList?.addEventListener('click', (e) => {
+          if (e.target.tagName === 'LI') {
+            const studentId = e.target.dataset.studentId;
+            state.setSelectedStudentIdForView(studentId);
+            dropdown.classList.add('hidden');
+            renderApp();
+          }
+        });
+        // --- FIN: Lógica del Selector de Alumno ---
+
     }
 
     // Listener para el formulario de comentarios

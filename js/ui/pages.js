@@ -1228,7 +1228,28 @@ function renderAlumnoView(module, moduleStudents) {
         <button id="prev-student-btn" ${isFirstStudent ? 'disabled' : ''} class="p-2 rounded-full transition-colors ${isFirstStudent ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" aria-label="Alumno/a anterior" title="Alumno/a anterior">
             ${ICONS.ArrowLeftCircle}
         </button>
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white text-center flex-grow mx-4">${currentStudent.name}</h2>
+        
+        <!-- INICIO: Selector de Alumno Desplegable -->
+        <div class="relative flex-grow mx-4">
+          <button id="student-selector-toggle" class="w-full text-center text-2xl font-bold text-gray-900 dark:text-white p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center gap-2">
+            ${currentStudent.name}
+            <span class="text-gray-500">${ICONS.ChevronRight}</span>
+          </button>
+          <div id="student-selector-dropdown" class="hidden absolute top-full mt-2 w-full bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg z-20">
+            <div class="p-2">
+              <input type="text" id="student-search-input" placeholder="Buscar alumno/a..." class="w-full p-2 border rounded-md dark:bg-gray-900">
+            </div>
+            <ul id="student-selector-list" class="max-h-60 overflow-y-auto">
+              ${moduleStudents.map(s => `
+                <li class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${s.id === selectedStudentIdForView ? 'bg-blue-100 dark:bg-blue-800' : ''}" data-student-id="${s.id}">
+                  ${s.name}
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        </div>
+        <!-- FIN: Selector de Alumno Desplegable -->
+
         <button id="next-student-btn" ${isLastStudent ? 'disabled' : ''} class="p-2 rounded-full transition-colors ${isLastStudent ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" aria-label="Alumno/a siguiente" title="Alumno/a siguiente">
             ${ICONS.ArrowRightCircle}
         </button>
