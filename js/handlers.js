@@ -646,10 +646,36 @@ export function handleImportTemario(moduleId, jsonText, mode) {
       alert(feedbackMessage);
     }
 
+    console.log('[LOG] handleImportTemario: Iniciando preparación y actualización de estados...');
     // Preparamos los IDs y el progreso para el nuevo temario.
     prepareModuleForProgressTracking(module);
 
+    // --- INICIO DE LA CORRECCIÓN ---
+    // Lógica para marcar automáticamente como "visto" los puntos evaluados.
+    // Se ejecuta una sola vez después de la importación para evitar bucles.
+    const ceToActivityMap = new Map();
+    db.actividades
+      .filter(act => act.moduleId === moduleId)
+      .forEach(activity => {
+        activity.ceIds.forEach(ceId => {
+          if (!ceToActivityMap.has(ceId)) ceToActivityMap.set(ceId, []);
+          ceToActivityMap.get(ceId).push(activity.name);
+        });
+      });
+
+    module.temario.forEach(unit => {
+      unit.puntos.forEach(point => {
+        if (!module.progresoTemario[point.idPunto]) module.progresoTemario[point.idPunto] = 'no-visto';
+        const isEvaluated = (point.ce_ids || []).some(ceId => ceToActivityMap.has(ceId));
+        if (isEvaluated && module.progresoTemario[point.idPunto] === 'no-visto') {
+          module.progresoTemario[point.idPunto] = 'visto';
+        }
+      });
+    });
+    // --- FIN DE LA CORRECCIÓN ---
+
     state.setDB(db);
+    console.log('[LOG] handleImportTemario: DB actualizada con nuevos estados. Guardando...');
     state.saveDB();
     renderApp();
 

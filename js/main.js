@@ -76,11 +76,13 @@ export function renderApp() {
   // DESPUÉS de que el contenedor principal haya sido creado por `renderModulosPage`.
   if (ui.page === 'modulos' && ui.moduleView === 'indice') {
     const selectedModule = db.modules.find(m => m.id === ui.selectedModuleId);
+    // El contenedor ahora es creado por `renderModuloDetalle`
     const progressContainer = document.getElementById('progress-view-container');
 
     if (selectedModule && progressContainer) {
       // Preparamos los datos y renderizamos la vista del índice.
       prepareModuleForProgressTracking(selectedModule);
+      // `renderProgressView` ahora rellena el contenedor y añade sus propios listeners.
       renderProgressView(progressContainer, selectedModule, db.actividades, () => {
         state.saveDB(); // Callback para guardar los datos cuando cambian.
       });

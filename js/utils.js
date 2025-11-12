@@ -64,7 +64,9 @@ export function prepareModuleForProgressTracking(moduleData) {
     unit.puntos.forEach((point, index) => {
       // Si el punto es un string, lo convertimos a objeto
       if (typeof point === 'string') {
-        point = unit.puntos[index] = { texto: point };
+        // --- CORRECCIÓN ---
+        // Modificamos el array original en lugar de reasignar una copia.
+        unit.puntos[index] = { texto: point };
       }
       if (!point.idPunto) {
         point.idPunto = `p-${generateUUID()}`;

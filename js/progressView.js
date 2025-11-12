@@ -170,6 +170,14 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
       if (evaluatedInActivities.length > 0) {
         const uniqueActivities = [...new Set(evaluatedInActivities)];
         evaluationBadge = `<span class="ml-2 text-xs font-semibold text-yellow-800 bg-yellow-100 dark:text-yellow-100 dark:bg-yellow-800 px-2 py-0.5 rounded-full" title="Evaluado en: ${uniqueActivities.join(', ')}">Evaluado</span>`;
+
+        // --- INICIO DE LA CORRECCIÓN ---
+        // Si el punto está evaluado y su estado es 'no-visto', lo actualizamos a 'visto'.
+        if (pointStatus === 'no-visto') {
+          pointStatus = 'visto'; // Actualizamos el estado para la renderización inmediata.
+          moduleData.progresoTemario[point.idPunto] = 'visto'; // Guardamos el cambio en el objeto de datos.
+        }
+        // --- FIN DE LA CORRECCIÓN ---
       }
       // --- FIN: LÓGICA DE ESTADO INTELIGENTE ---
 

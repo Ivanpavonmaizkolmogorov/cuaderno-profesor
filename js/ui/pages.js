@@ -1,6 +1,7 @@
 import { ICONS } from './constants.js';
 import { renderRaAccordion } from './components.js';
 import { calculateModuleGrades } from '../services/calculations.js';
+import { renderProgressView } from '../progressView.js';
 import { getDB, getUI, getCalculatedGrades } from '../state.js';
 
 // Renderiza la página de Configuración
@@ -656,6 +657,11 @@ function renderModuloDetalle(module, moduleStudents) {
   `;
 }
 
+/**
+ * Envuelve la lógica de renderizado de la vista de progreso para ser llamada desde `renderModuloDetalle`.
+ * @param {object} module - El objeto del módulo seleccionado.
+ * @returns {string} El HTML del contenedor que será llenado por `renderProgressView`.
+ */
 function renderCuadernoCalificaciones(module, moduleStudents) {
   const { grades, actividades } = getDB();
   const calculatedGrades = getCalculatedGrades();
