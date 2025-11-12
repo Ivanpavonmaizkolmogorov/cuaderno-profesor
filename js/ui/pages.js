@@ -1325,7 +1325,9 @@ function renderAptitudPanel(student, module) {
             <div class="space-y-1 text-xs max-h-24 overflow-y-auto">
               ${data.positives.map(p => `
                 <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-1 rounded group">
-                  <span class="truncate" title="${p.reason}">${p.reason}</span>
+                  <span class="truncate" title="${p.reason}">
+                    ${p.reason} ${p.baseValue ? `<span class="text-blue-500 font-semibold">(Base: ${p.baseValue})</span>` : ''}
+                  </span>
                   <button class="edit-aptitud-btn text-blue-500 opacity-0 group-hover:opacity-100" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="positives" data-id="${p.id}">✏️</button>
                   <button class="delete-aptitud-btn text-red-500" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="positives" data-id="${p.id}">&times;</button>
                 </div>
@@ -1342,7 +1344,9 @@ function renderAptitudPanel(student, module) {
             <div class="space-y-1 text-xs max-h-24 overflow-y-auto">
               ${data.negatives.map(n => `
                 <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-1 rounded group">
-                  <span class="truncate" title="${n.reason}">${n.reason}</span>
+                  <span class="truncate" title="${n.reason}">
+                    ${n.reason} ${n.baseValue ? `<span class="text-red-500 font-semibold">(Base: ${n.baseValue})</span>` : ''}
+                  </span>
                   <button class="edit-aptitud-btn text-blue-500 opacity-0 group-hover:opacity-100" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="negatives" data-id="${n.id}">✏️</button>
                   <button class="delete-aptitud-btn text-red-500" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="negatives" data-id="${n.id}">&times;</button>
                 </div>
@@ -1411,6 +1415,7 @@ export function renderAptitudEntryModal(module, student, trimester, type, entryI
 
   let existingEntry = null;
   let initialReason = '';
+  let baseValueForInput;
   let effectiveDate = new Date().toISOString().split('T')[0];
 
   if (isEdit) {
@@ -1419,7 +1424,11 @@ export function renderAptitudEntryModal(module, student, trimester, type, entryI
     if (existingEntry) {
       effectiveDate = new Date(existingEntry.effectiveDate).toISOString().split('T')[0];
       initialReason = existingEntry.reason;
+      baseValueForInput = existingEntry.baseValue;
     }
+  }
+  if (baseValueForInput === undefined) {
+    baseValueForInput = type === 'positives' ? (module.aptitudBasePositiva ?? 1.1) : (module.aptitudBaseNegativa ?? 1.1);
   }
 
   return `
@@ -1432,6 +1441,10 @@ export function renderAptitudEntryModal(module, student, trimester, type, entryI
           </div>
           <div class="p-6 space-y-4">
             ${renderReasonBuilder(initialReason)}
+            <div>
+              <label for="aptitud-base-value" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Valor Base para esta Entrada</label>
+              <input type="number" id="aptitud-base-value" name="baseValue" value="${baseValueForInput}" step="0.01" min="1" required class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900">
+            </div>
             <div>
               <label for="aptitud-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha de Efecto</label>
               <input type="date" id="aptitud-date" name="effectiveDate" value="${effectiveDate}" required class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900">

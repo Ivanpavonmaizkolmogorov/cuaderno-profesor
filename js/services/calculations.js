@@ -90,19 +90,18 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
         const trimesterKey = `T${trimestre}`;
         const trimesterAptitudes = studentAptitudes[trimesterKey];
         if (trimesterAptitudes) {
-          const numPositives = trimesterAptitudes.positives?.length || 0;
-          const numNegatives = trimesterAptitudes.negatives?.length || 0;
-          const basePositiva = module.aptitudBasePositiva ?? 1.1;
-          const baseNegativa = module.aptitudBaseNegativa ?? 1.1;
+          // --- INICIO: CÁLCULO GRANULAR ---
+          // Ahora calculamos el ajuste para cada entrada individualmente y lo sumamos.
+          const defaultBasePositiva = module.aptitudBasePositiva ?? 1.1;
+          const defaultBaseNegativa = module.aptitudBaseNegativa ?? 1.1;
 
-          let ajustePositivo = 0;
-          if (numPositives > 0) {
-            ajustePositivo = Math.pow(basePositiva, numPositives) - 1;
-          }
-          let ajusteNegativo = 0;
-          if (numNegatives > 0) {
-            ajusteNegativo = Math.pow(baseNegativa, numNegatives) - 1;
-          }
+          const ajustePositivo = (trimesterAptitudes.positives || []).reduce((sum, entry) => {
+            return sum + (Math.pow(entry.baseValue || defaultBasePositiva, 1) - 1);
+          }, 0);
+          const ajusteNegativo = (trimesterAptitudes.negatives || []).reduce((sum, entry) => {
+            return sum + (Math.pow(entry.baseValue || defaultBaseNegativa, 1) - 1);
+          }, 0);
+          // --- FIN: CÁLCULO GRANULAR ---
           const totalAdjustment = ajustePositivo - ajusteNegativo;
           moduleGrade = baseGrade + totalAdjustment;
 
@@ -142,12 +141,14 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
         ['T1', 'T2', 'T3'].forEach(trimestreKey => {
           const trimesterAptitudes = studentAptitudes[trimestreKey];
           if (trimesterAptitudes) {
-            const numPositives = trimesterAptitudes.positives?.length || 0;
-            const numNegatives = trimesterAptitudes.negatives?.length || 0;
-            const basePositiva = module.aptitudBasePositiva ?? 1.1;
-            const baseNegativa = module.aptitudBaseNegativa ?? 1.1;
-            const ajustePositivo = (numPositives > 0) ? Math.pow(basePositiva, numPositives) - 1 : 0;
-            const ajusteNegativo = (numNegatives > 0) ? Math.pow(baseNegativa, numNegatives) - 1 : 0;
+            const defaultBasePositiva = module.aptitudBasePositiva ?? 1.1;
+            const defaultBaseNegativa = module.aptitudBaseNegativa ?? 1.1;
+            const ajustePositivo = (trimesterAptitudes.positives || []).reduce((sum, entry) => {
+              return sum + (Math.pow(entry.baseValue || defaultBasePositiva, 1) - 1);
+            }, 0);
+            const ajusteNegativo = (trimesterAptitudes.negatives || []).reduce((sum, entry) => {
+              return sum + (Math.pow(entry.baseValue || defaultBaseNegativa, 1) - 1);
+            }, 0);
             totalCumulativeAdjustment += (ajustePositivo - ajusteNegativo);
           }
         });

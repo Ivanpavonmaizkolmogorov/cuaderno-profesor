@@ -1135,6 +1135,7 @@ export function handleSaveAptitudEntry(form) {
   const isEdit = entryId !== '';
 
   const finalReason = form.reason.value.trim();
+  const baseValue = parseFloat(form.baseValue.value);
   const effectiveDate = new Date(form.effectiveDate.value).toISOString();
   if (!finalReason) {
     finalReason = `Añadido el ${new Date(effectiveDate).toLocaleDateString()}`;
@@ -1150,10 +1151,11 @@ export function handleSaveAptitudEntry(form) {
       console.log(`[LOG] Guardando cambios para la entrada de aptitud existente: ${entryId}`);
       entry.effectiveDate = effectiveDate;
       entry.reason = finalReason;
+      entry.baseValue = baseValue;
     }
   } else {
     // Lógica de añadir
-    const newEntry = { id: crypto.randomUUID(), dateAdded: new Date().toISOString(), effectiveDate, reason: finalReason };
+    const newEntry = { id: crypto.randomUUID(), dateAdded: new Date().toISOString(), effectiveDate, reason: finalReason, baseValue };
     if (!db.aptitudes[moduleId]) db.aptitudes[moduleId] = {};
     if (!db.aptitudes[moduleId][studentId]) db.aptitudes[moduleId][studentId] = {};
     if (!db.aptitudes[moduleId][studentId][trimesterKey]) db.aptitudes[moduleId][studentId][trimesterKey] = { positives: [], negatives: [] };
