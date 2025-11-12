@@ -4,7 +4,10 @@ import * as dataManager from './services/dataManager.js';
 import { parseStudentNames } from './services/nameParser.js';
 import { calculateModuleGrades } from './services/calculations.js';
 import { generateStudentReport } from './services/pdfGenerator.js';
+import { prepareModuleForProgressTracking, deleteTemarioPoint, deleteTemarioUnit } from './utils.js';
+import { renderImportTemarioModal } from './progressView.js';
 import { renderApp } from './main.js';
+import { mergeTemario } from './services/dataImporter.js'; // Import the new mergeTemario function
 import { exportToExcel } from './services/excelGenerator.js'; // <-- AÑADE ESTA LÍNEA
 
 export async function handleConnect() {
@@ -332,6 +335,37 @@ export function handleToggleCeDual(moduleId, ceId) {
   }
 }
 
+export function showImportTemarioModal() {
+  const modalContainer = document.getElementById('modal-container');
+  if (!modalContainer) return;
+
+  // Obtenemos el módulo seleccionado directamente del estado
+  const { selectedModuleId } = state.getUI();
+  if (!selectedModuleId) return;
+
+  modalContainer.innerHTML = renderImportTemarioModal(selectedModuleId);
+
+  const closeModal = () => {
+    modalContainer.innerHTML = '';
+  };
+
+  document.getElementById('cancel-import-temario')?.addEventListener('click', closeModal);
+
+  document.getElementById('confirm-import-temario')?.addEventListener('click', () => {
+    try {
+      const jsonText = document.getElementById('temario-json-textarea').value;
+      const importMode = document.querySelector('input[name="importMode"]:checked').value;
+
+      handleImportTemario(selectedModuleId, jsonText, importMode);
+      closeModal();
+      // renderApp() será llamado por el manejador, lo que re-renderizará progressView
+    } catch (error) {
+      alert('Error en el formato JSON. Por favor, revisa el texto introducido.');
+      console.error("Error al parsear JSON del temario:", error);
+    }
+  });
+}
+
 export function handleImportStudentsToModule(text, moduleId) {
   try {
     if (!moduleId) {
@@ -569,6 +603,84 @@ export function handleDeleteModule(moduleId) {
     alert(`Módulo "${moduleToDelete.modulo}" y todos sus datos asociados han sido eliminados.`);
     handleSelectModule(null); // Deseleccionar y volver a la vista principal de módulos
   }
+}
+
+export function handleImportTemario(moduleId, jsonText, mode) {
+  console.log(`[LOG] Iniciando handleImportTemario. Módulo: ${moduleId}, Modo: ${mode}`);
+
+  try {
+    const newTemarioData = JSON.parse(jsonText);
+    if (!Array.isArray(newTemarioData)) {
+      throw new Error("El JSON debe ser un array de unidades.");
+    }
+
+    const db = state.getDB();
+    const module = db.modules.find(m => m.id === moduleId);
+    if (!module) {
+      throw new Error("Módulo no encontrado.");
+    }
+
+    if (mode === 'replace') {
+      // Modo Reemplazar: borra lo antiguo y pone lo nuevo.
+      module.temario = newTemarioData;
+      module.progresoTemario = {}; // Reiniciar el progreso
+      alert("Índice reemplazado con éxito.");
+    } else {
+      // Modo Fusionar (por defecto): usa nuestra nueva función.
+      const existingTemario = module.temario || [];
+      module.temario = mergeTemario(existingTemario, newTemarioData);
+      alert("Índice fusionado y actualizado con éxito.");
+    }
+
+    // Preparamos los IDs y el progreso para el nuevo temario.
+    prepareModuleForProgressTracking(module);
+
+    state.setDB(db);
+    state.saveDB();
+    renderApp();
+
+  } catch (error) {
+    console.error("Error al importar el temario:", error);
+    alert(`Error al importar el índice: ${error.message}`);
+  }
+}
+
+export function handleDeleteTemario(moduleId) {
+  if (window.confirm("¿Estás seguro de que quieres eliminar TODO el índice de contenidos de este módulo? Esta acción no se puede deshacer.")) {
+    const db = state.getDB();
+    const module = db.modules.find(m => m.id === moduleId);
+    if (module) {
+      module.temario = [];
+      module.progresoTemario = {};
+      state.setDB(db);
+      state.saveDB();
+      renderApp();
+      alert("El índice de contenidos ha sido eliminado.");
+    }
+  }
+}
+
+export function handleDeleteTemarioUnit(moduleId, unitId) {
+  if (window.confirm("¿Seguro que quieres eliminar esta unidad y todos sus puntos?")) {
+    const db = state.getDB();
+    const module = db.modules.find(m => m.id === moduleId);
+    if (module && module.temario) {
+      module.temario = module.temario.filter(unit => unit.idUnidad !== unitId);
+      // Aquí podríamos limpiar los puntos del `progresoTemario`, pero no es estrictamente necesario.
+      state.setDB(db);
+      state.saveDB();
+      renderApp();
+    }
+  }
+}
+
+export function handleDeleteTemarioPoint(moduleId, unitId, pointId) {
+  // No pedimos confirmación para algo tan pequeño, es fácil de rehacer.
+  const db = state.getDB();
+  deleteTemarioPoint(db, moduleId, unitId, pointId);
+  state.setDB(db);
+  state.saveDB();
+  renderApp();
 }
 
 export function handleClearData() {

@@ -75,6 +75,7 @@ export function renderApp() {
   // 4. Lógica para mostrar el modal de formato de estudiantes si hay datos para él
   const studentFormatData = ui.studentNameSuggestions;
   if (studentFormatData) {
+    // 4. Lógica para mostrar el modal de formato de estudiantes si hay datos para él
     const modalContainer = document.getElementById('student-format-modal-container');
     if (modalContainer) {
       modalContainer.innerHTML = renderStudentFormatModal(studentFormatData.suggestions, studentFormatData.moduleId);
@@ -142,6 +143,37 @@ export function renderApp() {
 
     }
   }
+
+  // --- INICIO DE LA CORRECCIÓN ---
+  // Si la vista activa es 'indice', debemos renderizarla explícitamente aquí.
+  // Esto soluciona el problema de que la vista del temario desaparezca después de una importación o borrado.
+  // Esta lógica se mueve FUERA del bloque `if (studentFormatData)`.
+  const selectedModuleForProgress = db.modules.find(m => m.id === ui.selectedModuleId);
+  if (ui.page === 'modulos' && ui.moduleView === 'indice' && selectedModuleForProgress) {
+      // Ocultamos el contenedor de detalles del módulo y mostramos el del progreso.
+      contentContainer.style.display = 'none';
+      const progressContainer = document.getElementById('progress-view-container');
+      progressContainer.style.display = 'block';
+
+      // Preparamos los datos y renderizamos la vista del índice.
+      prepareModuleForProgressTracking(selectedModuleForProgress);
+      renderProgressView(progressContainer, selectedModuleForProgress, db.actividades, () => {
+          // Callback para guardar los datos cuando cambian.
+          state.saveDB();
+      });
+  }
+  // --- FIN DE LA CORRECCIÓN ---
+}
+
+/**
+ * Muestra el modal para importar el temario.
+ * @param {string} moduleId - El ID del módulo actual.
+ */
+function showImportTemarioModal(moduleId) {
+  const modalContainer = document.getElementById('modal-container');
+  // La función `renderImportTemarioModal` no existe, pero `showImportTemarioModal` en `progressView.js` sí.
+  // La renombramos en el origen y la exportamos.
+  modalContainer.innerHTML = pages.renderImportTemarioModal(moduleId);
 }
 
 function renderDriveButton() {
@@ -480,15 +512,15 @@ function attachEventListeners() {
 
   if (ui.page === 'modulos') {
     document.getElementById('module-select')?.addEventListener('change', (e) => handlers.handleSelectModule(e.target.value || null));
-    
-    // Listeners para el selector de vistas del módulo
+
     // Lógica de seguridad: si la vista es 'alumno' pero no hay alumno seleccionado, forzar 'tabla'
     const selectedModule = db.modules.find(m => m.id === ui.selectedModuleId);
     if (ui.moduleView === 'alumno' && (!ui.selectedStudentIdForView || !selectedModule?.studentIds?.includes(ui.selectedStudentIdForView))) {
       console.log("Forzando cambio a vista 'tabla' por seguridad.");
       handlers.handleSetModuleView('tabla');
     }
-
+    
+    // Listeners para el selector de vistas del módulo
     document.getElementById('view-tabla-btn')?.addEventListener('click', () => {
       document.getElementById('progress-view-container').style.display = 'none';
       document.getElementById('module-detail-content').style.display = 'block';
@@ -522,13 +554,7 @@ function attachEventListeners() {
             state.saveDB();
         });
     });
-    
-    // Listener para el botón de importación directa (el original)
-    document.getElementById('import-students-to-module-btn')?.addEventListener('click', (e) => {
-      const text = document.getElementById('student-textarea').value;
-      handlers.handleImportStudentsToModule(text, e.target.dataset.moduleId);
-    });
-    // Listener para el nuevo botón que abre el modal de formato
+
     document.getElementById('process-students-btn')?.addEventListener('click', (e) => {
       const text = document.getElementById('student-textarea').value;
       handlers.handleProcessStudentNames(text, e.currentTarget.dataset.moduleId);
@@ -537,6 +563,12 @@ function attachEventListeners() {
     document.getElementById('delete-module-btn')?.addEventListener('click', (e) => {
       const moduleId = e.currentTarget.dataset.moduleId;
       handlers.handleDeleteModule(moduleId);
+    });
+
+    // Listener para el botón de importación directa (el original)
+    document.getElementById('import-students-to-module-btn')?.addEventListener('click', (e) => {
+      const text = document.getElementById('student-textarea').value;
+      handlers.handleImportStudentsToModule(text, e.target.dataset.moduleId);
     });
 
     document.getElementById('download-student-template-btn')?.addEventListener('click', handlers.handleDownloadStudentTemplate);
@@ -707,6 +739,19 @@ function attachEventListeners() {
             handlers.handleToggleCeDual(moduleId, ceId);
         });
     });
+
+    // Listener para el botón de importar temario (usando delegación de eventos)
+    // Esto asegura que funcione aunque el botón se renderice dinámicamente.
+    const progressContainer = document.getElementById('progress-view-container');
+    if (progressContainer) {
+      progressContainer.addEventListener('click', (e) => {
+        // Usamos .closest() para detectar el clic en el botón o en un hijo del botón.
+        if (e.target.closest('#import-temario-btn')) {
+          e.preventDefault();
+          handlers.showImportTemarioModal();
+        }
+      });
+    }
 
   }
 

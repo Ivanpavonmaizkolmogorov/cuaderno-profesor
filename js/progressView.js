@@ -1,6 +1,7 @@
 /**
  * Módulo para renderizar y gestionar la vista de "Progreso del Temario".
  */
+import * as handlers from './handlers.js';
 import { prepareModuleForProgressTracking } from './utils.js';
 
 // Mapa de estados a iconos para la UI.
@@ -9,7 +10,7 @@ const statusConfig = {
   'no-visto': { icon: '🔲', text: 'No Visto', description: 'Tema aún no abordado en clase (estado por defecto).' },
   'pendiente': { icon: '❗', text: 'Pendiente', description: 'Tema iniciado pero no completado, o que requiere un repaso.' },
   'omitido': { icon: '❌', text: 'Omitido', description: 'Decidido activamente no impartir este punto del temario.' },
-  'en-empresa': { icon: '🏢', text: 'En Empresa', description: 'Contenido de FP Dual que se imparte/evalúa en la empresa.' }
+  'en-empresa': { icon: '🏢', text: 'En Empresa', description: 'Contenido de FP Dual que se imparte/evalúa en la empresa.' },
 };
 
 /**
@@ -79,9 +80,15 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
     <div class="flex justify-between items-start mb-4">
       <div class="flex items-center gap-4">
         <h2 class="text-2xl font-bold">Índice de Contenidos</h2>
-        <button id="delete-temario-btn" class="hidden bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded" title="Eliminar el índice de contenidos actual">
-          Eliminar Índice
-        </button>
+        <!-- Contenedor para los botones de acción del índice -->
+        <div id="temario-actions-container" class="flex items-center gap-2">
+          <button id="import-temario-btn" class="bg-blue-500 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2 rounded" title="Importar y fusionar o reemplazar el índice">
+            Importar
+          </button>
+          <button id="delete-temario-btn" class="hidden bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded" title="Eliminar el índice de contenidos actual">
+            Eliminar
+          </button>
+        </div>
       </div>
       <div class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
         <div class="tooltip">
@@ -112,41 +119,27 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
   listContainer.className = 'progress-view-container space-y-6';
 
   if (!moduleData.temario || moduleData.temario.length === 0) {
-    listContainer.innerHTML = `
+    listContainer.innerHTML = /*html*/`
       <div class="text-center py-10 px-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-        <p class="text-gray-500 dark:text-gray-400 mb-4">No hay temario definido para este módulo.</p>
-        <button id="import-temario-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
-          Importar Índice
-        </button>
+        <p class="text-gray-500 dark:text-gray-400">No hay temario definido para este módulo. Usa el botón "Importar" de arriba para empezar.</p>
       </div>
     `;
     container.appendChild(listContainer);
 
-    document.getElementById('import-temario-btn').addEventListener('click', () => {
-      showImportTemarioModal(container, moduleData, onDataChange);
-    });
-
     return;
-  }
-
-  // Si hay temario, mostramos el botón de eliminar
-  const deleteBtn = document.getElementById('delete-temario-btn');
-  if (deleteBtn) {
-    deleteBtn.classList.remove('hidden');
-    deleteBtn.addEventListener('click', () => {
-      if (confirm('¿Estás seguro de que quieres eliminar todo el índice de contenidos de este módulo? Esta acción no se puede deshacer.')) {
-        moduleData.temario = [];
-        moduleData.progresoTemario = {};
-        onDataChange(); // Esto llamará a state.saveDB()
-        renderProgressView(container, moduleData, onDataChange);
-      }
-    });
   }
 
   moduleData.temario.forEach(unit => {
     const unitElement = document.createElement('div');
     unitElement.className = 'unit-section bg-white dark:bg-gray-800 p-4 rounded-lg shadow';
-    unitElement.innerHTML = `<h3 class="text-lg font-semibold mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">${unit.unidad}</h3>`;
+    unitElement.innerHTML = `
+      <div class="flex justify-between items-center mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+        <h3 class="text-lg font-semibold">${unit.unidad}</h3>
+        <button class="delete-unit-btn text-red-500 hover:text-red-700 text-sm font-medium" data-module-id="${moduleData.id}" data-unit-id="${unit.idUnidad}" title="Eliminar esta unidad y todos sus puntos">
+          Eliminar Unidad
+        </button>
+      </div>
+    `;
 
     const pointsList = document.createElement('ul');
     pointsList.className = 'points-list space-y-2';
@@ -176,14 +169,19 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
       
       // Lógica de inteligencia:
       if (pointStatus === 'no-visto') {
+        // --- INICIO DE LA CORRECCIÓN ---
+        // No modificamos directamente el estado aquí para evitar bucles de renderizado.
+        // Simplemente determinamos cuál debería ser el estado a mostrar en la UI.
+        // La persistencia del cambio se hará si el usuario interactúa o en otro punto.
         if (isDual) {
           pointStatus = 'en-empresa'; // Si es dual, su estado por defecto es "En Empresa"
         }
         if (evaluatedInActivities.length > 0) {
           pointStatus = 'visto'; // Si está evaluado, se marca como "Visto"
         }
-        // Actualizamos el estado en la base de datos para mantener la consistencia
-        moduleData.progresoTemario[point.idPunto] = pointStatus;
+        // La línea que mutaba el estado (`moduleData.progresoTemario[point.idPunto] = pointStatus;`)
+        // se ha eliminado para prevenir el bucle.
+        // --- FIN DE LA CORRECCIÓN ---
       }
       
       if (evaluatedInActivities.length > 0) {
@@ -194,20 +192,26 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
 
       const { icon } = statusConfig[pointStatus];
       const pointItem = document.createElement('li');
-      pointItem.className = 'point-item flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors';
+      pointItem.className = 'point-item group flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
       pointItem.dataset.pointId = point.idPunto; // ID para identificar el punto
       pointItem.style.cssText = indentationStyle; // Aplicamos la sangría calculada
       pointItem.innerHTML = `
-        <span class="point-status-icon mr-3">${icon}</span>
-        <span class="point-text flex-grow">${point.texto}</span>
+        <span class="point-status-icon mr-3 cursor-pointer">${icon}</span>
+        <span class="point-text flex-grow cursor-pointer">${point.texto}</span>
         ${evaluationBadge}
+        <button class="delete-point-btn text-red-400 hover:text-red-600 ml-2 text-lg leading-none opacity-0 group-hover:opacity-100 transition-opacity" data-unit-id="${unit.idUnidad}" data-point-id="${point.idPunto}" title="Eliminar este punto">
+          &times;
+        </button>
       `;
       
       // Añadimos el listener para cambiar el estado al hacer clic
-      pointItem.addEventListener('click', () => {
+      pointItem.addEventListener('click', (e) => {
+        // Si el clic fue en el botón de borrar, no hacemos nada aquí.
+        if (e.target.closest('.delete-point-btn')) {
+          return;
+        }
         // Pasamos el árbol jerárquico a la función de cambio de estado
         handleStatusChange(point.idPunto, moduleData, onDataChange, pointTree);
-        renderProgressView(container, moduleData, allActivities, onDataChange);
       });
 
       pointsList.appendChild(pointItem);
@@ -267,21 +271,17 @@ function handleStatusChange(pointId, moduleData, onDataChange, pointTree) {
 
   // Ejecutamos el callback de guardado que nos pasaron.
   if (onDataChange) {
-    console.log(`Estado de ${pointId} cambiado a ${nextStatus}. Guardando datos...`);
     onDataChange();
   }
 }
 
 /**
  * Muestra un modal para importar el temario desde un JSON.
- * @param {HTMLElement} container - El contenedor principal para re-renderizar.
- * @param {object} moduleData - El objeto de datos del módulo.
- * @param {function} onDataChange - Callback para guardar los datos.
+ * @param {string} moduleId - El ID del módulo al que se importará el temario.
+ * @returns {string} El HTML del modal.
  */
-function showImportTemarioModal(container, moduleData, onDataChange) {
-  const modalContainer = document.createElement('div');
-  modalContainer.id = 'import-temario-modal';
-  modalContainer.className = 'fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4';
+export function renderImportTemarioModal(moduleId) {
+  const modalContainerId = 'import-temario-modal-container';
 
   const templateJSON = JSON.stringify([
     {
@@ -308,38 +308,33 @@ function showImportTemarioModal(container, moduleData, onDataChange) {
     }
   ], null, 2);
 
-  modalContainer.innerHTML = `
+  const modalHTML = /*html*/`
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
       <div class="p-6 border-b dark:border-gray-700">
         <h3 class="text-xl font-bold">Importar Índice de Contenidos</h3>
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Pega el JSON del temario con la estructura de Unidades y Puntos.</p>
       </div>
       <div class="p-6 overflow-y-auto">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Modo de Importación</label>
+          <div class="flex gap-4">
+            <label class="flex items-center gap-2"><input type="radio" name="importMode" value="merge" checked class="form-radio"> Fusionar (Añadir y actualizar)</label>
+            <label class="flex items-center gap-2"><input type="radio" name="importMode" value="replace" class="form-radio"> Reemplazar (Borrar y sustituir)</label>
+          </div>
+        </div>
         <textarea id="temario-json-textarea" class="w-full h-64 p-3 font-mono text-xs border rounded-md dark:bg-gray-900">${templateJSON}</textarea>
       </div>
       <div class="p-6 border-t dark:border-gray-700 flex justify-end gap-4">
         <button id="cancel-import-temario" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-        <button id="confirm-import-temario" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Índice</button>
+        <button id="confirm-import-temario" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Importar Índice</button>
       </div>
     </div>
   `;
 
-  document.body.appendChild(modalContainer);
-
-  const closeModal = () => document.body.removeChild(modalContainer);
-
-  document.getElementById('cancel-import-temario').addEventListener('click', closeModal);
-  document.getElementById('confirm-import-temario').addEventListener('click', () => {
-    try {
-      const newTemario = JSON.parse(document.getElementById('temario-json-textarea').value);
-      moduleData.temario = newTemario; // Actualizamos el temario en el objeto del módulo
-      prepareModuleForProgressTracking(moduleData); // Preparamos la nueva estructura
-      onDataChange(); // Guardamos los cambios
-      closeModal();
-      renderProgressView(container, moduleData, allActivities, onDataChange); // Re-renderizamos la vista
-    } catch (error) {
-      alert('Error en el formato JSON. Por favor, revisa el texto introducido.');
-      console.error("Error al parsear JSON del temario:", error);
-    }
-  });
+  // Envolvemos el HTML en el contenedor del modal
+  return `
+    <div id="${modalContainerId}" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+      ${modalHTML}
+    </div>
+  `;
 }

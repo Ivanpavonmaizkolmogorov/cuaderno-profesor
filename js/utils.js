@@ -77,3 +77,31 @@ export function prepareModuleForProgressTracking(moduleData) {
   });
 
 }
+
+/**
+ * Elimina una unidad del temario de un módulo.
+ * @param {object} db - El objeto de la base de datos.
+ * @param {string} moduleId - El ID del módulo.
+ * @param {string} unitId - El ID de la unidad a eliminar.
+ */
+export function deleteTemarioUnit(db, moduleId, unitId) {
+  const module = db.modules.find(m => m.id === moduleId);
+  if (module && module.temario) {
+    module.temario = module.temario.filter(unit => unit.idUnidad !== unitId);
+  }
+}
+
+/**
+ * Elimina un punto específico de una unidad del temario.
+ * @param {object} db - El objeto de la base de datos.
+ * @param {string} moduleId - El ID del módulo.
+ * @param {string} unitId - El ID de la unidad que contiene el punto.
+ * @param {string} pointId - El ID del punto a eliminar.
+ */
+export function deleteTemarioPoint(db, moduleId, unitId, pointId) {
+  const module = db.modules.find(m => m.id === moduleId);
+  const unit = module?.temario?.find(u => u.idUnidad === unitId);
+  if (unit && unit.puntos) {
+    unit.puntos = unit.puntos.filter(point => point.idPunto !== pointId);
+  }
+}
