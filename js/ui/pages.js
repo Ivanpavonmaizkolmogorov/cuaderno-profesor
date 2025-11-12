@@ -587,6 +587,7 @@ export function renderStudentFormatModal(nameSuggestions, moduleId) {
 function renderModuloDetalle(module, moduleStudents) {
   const gestionAlumnosHtml = renderGestionAlumnos(module, moduleStudents);
   const gestionActividadesHtml = renderActividadesManagement(module);
+  const gestionAptitudHtml = renderAptitudConfig(module);
   const { db } = { db: getDB() };
   const uiState = getUI();
   let moduleView = uiState.moduleView || 'tabla'; // Asegurarse de que siempre haya una vista
@@ -634,6 +635,7 @@ function renderModuloDetalle(module, moduleStudents) {
     <div>
       ${gestionAlumnosHtml}
       ${gestionActividadesHtml}
+      ${gestionAptitudHtml}
       <hr class="my-8 border-gray-300 dark:border-gray-700">
       <!-- Selector de Vista -->
       <div class="mb-6 flex justify-center gap-2 p-2 bg-gray-200 dark:bg-gray-800 rounded-lg">
@@ -654,6 +656,30 @@ function renderModuloDetalle(module, moduleStudents) {
       </div>
     </div>
     <div id="ce-list-modal-container"></div>
+  `;
+}
+
+function renderAptitudConfig(module) {
+  const basePositiva = module.aptitudBasePositiva ?? 1.1;
+  const baseNegativa = module.aptitudBaseNegativa ?? 1.1;
+
+  return `
+    <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mt-6">
+      <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Configuración de Aptitud Trimestral</h3>
+      <form id="aptitud-config-form" data-module-id="${module.id}" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div>
+          <label for="basePositiva" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Base para Positivos</label>
+          <input type="number" id="basePositiva" name="basePositiva" value="${basePositiva}" step="0.01" min="1" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900">
+        </div>
+        <div>
+          <label for="baseNegativa" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Base para Negativos</label>
+          <input type="number" id="baseNegativa" name="baseNegativa" value="${baseNegativa}" step="0.01" min="1" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900">
+        </div>
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+          Guardar Configuración de Aptitud
+        </button>
+      </form>
+    </div>
   `;
 }
 
@@ -1245,7 +1271,80 @@ function renderAlumnoView(module, moduleStudents) {
         <div class="lg:col-span-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
           ${renderCommentForm(currentStudent, module)}
         </div>
+        <div class="lg:col-span-3 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+          ${renderAptitudPanel(currentStudent, module)}
+        </div>
       </div>
+    </div>
+  `;
+}
+
+function renderAptitudPanel(student, module) {
+  const { aptitudes } = getDB();
+  const studentAptitudes = aptitudes?.[module.id]?.[student.id] || {};
+  const basePositiva = module.aptitudBasePositiva ?? 1.1;
+  const baseNegativa = module.aptitudBaseNegativa ?? 1.1;
+
+  const renderTrimesterAptitud = (trimester) => {
+    const trimesterKey = `T${trimester}`;
+    const data = studentAptitudes[trimesterKey] || { positives: [], negatives: [] };
+    const numPositives = data.positives.length;
+    const numNegatives = data.negatives.length;
+
+    let ajustePositivo = 0;
+    if (numPositives > 0) ajustePositivo = Math.pow(basePositiva, numPositives - 1);
+    let ajusteNegativo = 0;
+    if (numNegatives > 0) ajusteNegativo = Math.pow(baseNegativa, numNegatives - 1);
+
+    return `
+      <div class="bg-gray-100 dark:bg-gray-900/50 p-4 rounded-lg">
+        <h4 class="font-bold text-lg mb-3">Trimestre ${trimester}</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Positivos -->
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <h5 class="font-semibold text-green-600">Positivos (${numPositives})</h5>
+              <button class="add-aptitud-btn bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-1 px-2 rounded" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="positives">+</button>
+            </div>
+            <p class="text-xs italic mb-2">Ajuste: +${ajustePositivo.toFixed(3)}</p>
+            <div class="space-y-1 text-xs max-h-24 overflow-y-auto">
+              ${data.positives.map(p => `
+                <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-1 rounded">
+                  <span>${new Date(p.effectiveDate).toLocaleDateString()}</span>
+                  <button class="delete-aptitud-btn text-red-500" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="positives" data-id="${p.id}">&times;</button>
+                </div>
+              `).join('') || '<p class="text-gray-500">Sin positivos.</p>'}
+            </div>
+          </div>
+          <!-- Negativos -->
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <h5 class="font-semibold text-red-600">Negativos (${numNegatives})</h5>
+              <button class="add-aptitud-btn bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1 px-2 rounded" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="negatives">+</button>
+            </div>
+            <p class="text-xs italic mb-2">Ajuste: -${ajusteNegativo.toFixed(3)}</p>
+            <div class="space-y-1 text-xs max-h-24 overflow-y-auto">
+              ${data.negatives.map(n => `
+                <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-1 rounded">
+                  <span>${new Date(n.effectiveDate).toLocaleDateString()}</span>
+                  <button class="delete-aptitud-btn text-red-500" data-module-id="${module.id}" data-student-id="${student.id}" data-trimester="${trimester}" data-type="negatives" data-id="${n.id}">&times;</button>
+                </div>
+              `).join('') || '<p class="text-gray-500">Sin negativos.</p>'}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  return `
+    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+      ${ICONS.User} Aptitud Trimestral
+    </h3>
+    <div class="space-y-4">
+      ${renderTrimesterAptitud(1)}
+      ${renderTrimesterAptitud(2)}
+      ${renderTrimesterAptitud(3)}
     </div>
   `;
 }

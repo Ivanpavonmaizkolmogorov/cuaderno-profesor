@@ -1,6 +1,6 @@
 // --- LÓGICA DE CÁLCULO ---
 
-export function calculateModuleGrades(module, students, grades, actividades, trimestre) {
+export function calculateModuleGrades(module, students, grades, actividades, trimestre, aptitudes = {}) {
   if (!module || !students || students.length === 0) return {};
 
   const studentData = {};
@@ -82,6 +82,30 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
         }
       }
       moduleGrade = (trimesterCeTotalWeight > 0) ? (trimesterCeWeightedTotal / trimesterCeTotalWeight) : 0;
+
+      // --- INICIO: APLICAR AJUSTE POR APTITUD ---
+      const studentAptitudes = aptitudes[module.id]?.[student.id];
+      if (trimestre && studentAptitudes) {
+        const trimesterKey = `T${trimestre}`;
+        const trimesterAptitudes = studentAptitudes[trimesterKey];
+        if (trimesterAptitudes) {
+          const numPositives = trimesterAptitudes.positives?.length || 0;
+          const numNegatives = trimesterAptitudes.negatives?.length || 0;
+          const basePositiva = module.aptitudBasePositiva ?? 1.1;
+          const baseNegativa = module.aptitudBaseNegativa ?? 1.1;
+
+          let ajustePositivo = 0;
+          if (numPositives > 0) {
+            ajustePositivo = Math.pow(basePositiva, numPositives - 1);
+          }
+          let ajusteNegativo = 0;
+          if (numNegatives > 0) {
+            ajusteNegativo = Math.pow(baseNegativa, numNegatives - 1);
+          }
+          moduleGrade = moduleGrade + ajustePositivo - ajusteNegativo;
+        }
+      }
+      // --- FIN: APLICAR AJUSTE POR APTITUD ---
     } else { // Si es el cálculo final (trimestre es undefined o null)
       // Para la nota final, la nota del módulo es la media ponderada de TODOS los CEs del módulo.
       // Los CEs no evaluados explícitamente (no presentes en ceFinalGrades) cuentan como 0.

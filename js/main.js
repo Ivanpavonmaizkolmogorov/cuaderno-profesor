@@ -29,10 +29,10 @@ export function renderApp() {
         allCalculatedGrades[selectedModule.id] = {};
       }
 
-      allCalculatedGrades[selectedModule.id].T1 = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades, '1');
-      allCalculatedGrades[selectedModule.id].T2 = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades, '2');
-      allCalculatedGrades[selectedModule.id].T3 = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades, '3');
-      allCalculatedGrades[selectedModule.id].Final = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades, null); // null para la final
+      allCalculatedGrades[selectedModule.id].T1 = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades, '1', db.aptitudes);
+      allCalculatedGrades[selectedModule.id].T2 = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades, '2', db.aptitudes);
+      allCalculatedGrades[selectedModule.id].T3 = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades, '3', db.aptitudes);
+      allCalculatedGrades[selectedModule.id].Final = calculateModuleGrades(selectedModule, moduleStudents, db.grades, db.actividades, null, db.aptitudes); // null para la final
 
       state.setCalculatedGrades(allCalculatedGrades);
     }
@@ -718,6 +718,23 @@ function attachEventListeners() {
         });
     });
 
+    // Listener para el formulario de configuración de aptitud
+    const aptitudConfigForm = document.getElementById('aptitud-config-form');
+    if (aptitudConfigForm) {
+      aptitudConfigForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handlers.handleUpdateAptitudConfig(e.currentTarget.dataset.moduleId, e.currentTarget);
+      });
+    }
+
+    // Listeners para añadir/eliminar positivos/negativos
+    document.querySelectorAll('.add-aptitud-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const { moduleId, studentId, trimester, type } = e.currentTarget.dataset;
+        handlers.handleAddAptitud(moduleId, studentId, trimester, type);
+      });
+    });
+
   }
 
   if (ui.page === 'actividadDetail') {
@@ -799,6 +816,12 @@ function handleDriveConnection({ content, fileId, fileName, accessToken }) {
   // 1. Validar que el JSON tiene la estructura esperada.
   if (content && content.modules && content.students) {
     // 2. Guardar los datos y el estado de la conexión.
+    // --- INICIO: CORRECCIÓN DE ERROR DE APTITUD ---
+    // Asegurarse de que la propiedad 'aptitudes' exista, incluso en archivos antiguos.
+    if (!content.aptitudes) {
+      content.aptitudes = {};
+    }
+    // --- FIN: CORRECCIÓN DE ERROR DE APTITUD ---
     state.setDB(content);
     state.setDriveConnection(fileId, fileName, accessToken);
     // 3. Renderizar la aplicación para mostrar los nuevos datos y el botón actualizado.

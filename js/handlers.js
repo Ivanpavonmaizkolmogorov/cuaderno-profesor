@@ -1079,3 +1079,55 @@ export function handleSaveDiversityTags(studentId, tagsString) {
     renderApp();
   }
 }
+
+export function handleUpdateAptitudConfig(moduleId, form) {
+  const basePositiva = parseFloat(form.basePositiva.value);
+  const baseNegativa = parseFloat(form.baseNegativa.value);
+
+  if (isNaN(basePositiva) || isNaN(baseNegativa) || basePositiva < 1 || baseNegativa < 1) {
+    alert("Las bases para el cálculo de aptitud deben ser números mayores o iguales a 1.");
+    return;
+  }
+
+  const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
+  if (module) {
+    module.aptitudBasePositiva = basePositiva;
+    module.aptitudBaseNegativa = baseNegativa;
+    state.setDB(db);
+    state.saveDB();
+    alert("Configuración de aptitud guardada.");
+    renderApp();
+  }
+}
+
+export function handleAddAptitud(moduleId, studentId, trimester, type) {
+  const db = state.getDB();
+  const trimesterKey = `T${trimester}`;
+
+  if (!db.aptitudes[moduleId]) db.aptitudes[moduleId] = {};
+  if (!db.aptitudes[moduleId][studentId]) db.aptitudes[moduleId][studentId] = {};
+  if (!db.aptitudes[moduleId][studentId][trimesterKey]) db.aptitudes[moduleId][studentId][trimesterKey] = { positives: [], negatives: [] };
+
+  const newEntry = {
+    id: crypto.randomUUID(),
+    dateAdded: new Date().toISOString(),
+    effectiveDate: new Date().toISOString(),
+    reason: `Añadido el ${new Date().toLocaleDateString()}`
+  };
+
+  db.aptitudes[moduleId][studentId][trimesterKey][type].push(newEntry);
+  state.setDB(db);
+  state.saveDB();
+  renderApp();
+}
+
+export function handleDeleteAptitud(moduleId, studentId, trimester, type, entryId) {
+  const db = state.getDB();
+  const trimesterKey = `T${trimester}`;
+  const entries = db.aptitudes[moduleId]?.[studentId]?.[trimesterKey]?.[type] || [];
+  db.aptitudes[moduleId][studentId][trimesterKey][type] = entries.filter(e => e.id !== entryId);
+  state.setDB(db);
+  state.saveDB();
+  renderApp();
+}
