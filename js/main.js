@@ -71,21 +71,19 @@ export function renderApp() {
   // 3. (Re)Añadir event listeners
   attachEventListeners();
 
-  // --- INICIO DE LA CORRECCIÓN ---
-  // Si la vista activa es 'indice', debemos renderizarla explícitamente aquí,
-  // DESPUÉS de que el contenedor principal haya sido creado por `renderModulosPage`.
+  // --- INICIO: CORRECCIÓN DEFINITIVA DEL RENDERIZADO DEL ÍNDICE ---
+  // Este bloque se asegura de que la vista del índice se renderice en el momento correcto.
+  // El problema anterior era que este código se ejecutaba ANTES de que `renderModulosPage`
+  // creara el contenedor necesario, causando que `progressContainer` fuera null.
+  // Ahora, al estar dentro de `renderApp` y después de la creación de la página, garantizamos el orden.
   if (ui.page === 'modulos' && ui.moduleView === 'indice') {
     const selectedModule = db.modules.find(m => m.id === ui.selectedModuleId);
-    // El contenedor ahora es creado por `renderModuloDetalle`
     const progressContainer = document.getElementById('progress-view-container');
 
     if (selectedModule && progressContainer) {
-      // Preparamos los datos y renderizamos la vista del índice.
+      console.log(`[LOG] Contenedor '#progress-view-container' encontrado. Renderizando vista 'indice' para el módulo: ${selectedModule.modulo}`);
       prepareModuleForProgressTracking(selectedModule);
-      // `renderProgressView` ahora rellena el contenedor y añade sus propios listeners.
-      renderProgressView(progressContainer, selectedModule, db.actividades, () => {
-        state.saveDB(); // Callback para guardar los datos cuando cambian.
-      });
+      renderProgressView(progressContainer, selectedModule, db.actividades, state.saveDB);
     }
   }
   // --- FIN DE LA CORRECCIÓN ---

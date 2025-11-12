@@ -29,6 +29,39 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
     console.error("Se intentó renderizar la vista de progreso sin datos del módulo (moduleData es undefined).");
     return;
   }
+
+  // --- INICIO: CORRECCIÓN DEFINITIVA DE LISTENERS ---
+  // Movemos la adición de listeners al principio de la función.
+  // Esto garantiza que los botones principales como "Importar" siempre funcionen,
+  // incluso si el módulo aún no tiene un temario definido y la función sale prematuramente.
+  console.log('[LOG] Añadiendo listener de clics para el contenedor de la vista de progreso.');
+  container.addEventListener('click', (e) => {
+    console.log('[LOG] Clic detectado en la vista de progreso. Elemento clickeado:', e.target);
+
+    const importBtn = e.target.closest('#import-temario-btn');
+    if (importBtn) {
+      e.preventDefault();
+      console.log('[LOG] Botón "Importar Temario" presionado. Llamando a showImportTemarioModal...');
+      handlers.showImportTemarioModal();
+    }
+
+    const deleteTemarioBtn = e.target.closest('#delete-temario-btn');
+    if (deleteTemarioBtn) {
+      e.preventDefault();
+      console.log('[LOG] Botón "Eliminar Temario" presionado. Llamando a handleDeleteTemario...');
+      handlers.handleDeleteTemario(moduleData.id);
+    }
+
+    const deleteUnitBtn = e.target.closest('.delete-unit-btn');
+    if (deleteUnitBtn) {
+      e.preventDefault();
+      const { moduleId, unitId } = deleteUnitBtn.dataset;
+      console.log(`[LOG] Botón "Eliminar Unidad" presionado. ModuleID: ${moduleId}, UnitID: ${unitId}`);
+      handlers.handleDeleteTemarioUnit(moduleId, unitId);
+    }
+  });
+  // --- FIN: CORRECCIÓN DEFINITIVA DE LISTENERS ---
+
   // --- FIN DE LA CORRECCIÓN ---
   // --- INICIO: Lógica para construir el árbol jerárquico ---
   const pointTree = new Map(); // Mapa para almacenar la jerarquía: idPunto -> { point, children: [idPunto] }
@@ -126,7 +159,6 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
       </div>
     `;
     container.appendChild(listContainer);
-
     return;
   }
 
@@ -214,33 +246,6 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
 
   container.appendChild(listContainer);
 
-  // --- INICIO DE LA CORRECCIÓN ---
-  // Añadimos los listeners para los botones de esta vista aquí,
-  // para asegurar que se registran después de que la vista se haya renderizado.
-  // Usamos delegación de eventos en el contenedor principal de la vista.
-  container.addEventListener('click', (e) => {
-    // Botón de importar temario
-    if (e.target.closest('#import-temario-btn')) {
-      e.preventDefault();
-      handlers.showImportTemarioModal();
-    }
-
-    // Botón de eliminar todo el temario
-    if (e.target.closest('#delete-temario-btn')) {
-      e.preventDefault();
-      handlers.handleDeleteTemario(moduleData.id);
-    }
-
-    // Botón de eliminar una unidad
-    const deleteUnitBtn = e.target.closest('.delete-unit-btn');
-    if (deleteUnitBtn) {
-      e.preventDefault();
-      const { moduleId, unitId } = deleteUnitBtn.dataset;
-      handlers.handleDeleteTemarioUnit(moduleId, unitId);
-    }
-  });
-  // El listener para los puntos individuales ya se añade correctamente dentro del bucle.
-  // --- FIN DE LA CORRECCIÓN ---
 }
 
 /**

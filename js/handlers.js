@@ -786,21 +786,21 @@ export function handleDeleteTemario(moduleId) {
 }
 
 export function handleDeleteTemarioUnit(moduleId, unitId) {
-  console.log(`[handleDeleteTemarioUnit] ==> INICIO de borrado de UNIDAD. ModuleID: ${moduleId}, UnitID: ${unitId}`);
+  console.log(`[LOG] ==> INICIO de borrado de UNIDAD. ModuleID: ${moduleId}, UnitID: ${unitId}`);
 
   // 1. Pedir confirmación UNA SOLA VEZ.
-  console.log('[handleDeleteTemarioUnit] Mostrando diálogo de confirmación AHORA...');
+  console.log('[LOG] Mostrando diálogo de confirmación para borrar unidad...');
   if (!window.confirm("¿Estás seguro de que quieres eliminar esta unidad y todos sus puntos? Esta acción no se puede deshacer.")) {
-    console.log('[handleDeleteTemarioUnit] El usuario CANCELÓ el borrado.');
+    console.log('[LOG] El usuario CANCELÓ el borrado de la unidad.');
     return; // Si el usuario cancela, no hacemos nada.
   }
-  console.log('[handleDeleteTemarioUnit] El usuario CONFIRMÓ el borrado.');
+  console.log('[LOG] El usuario CONFIRMÓ el borrado de la unidad.');
 
   const db = state.getDB();
   const module = db.modules.find(m => m.id === moduleId);
 
   if (module && module.temario) {
-    console.log(`[handleDeleteTemarioUnit] Unidad encontrada. Procediendo a filtrar el temario para eliminar la unidad.`);
+    console.log(`[LOG] Módulo encontrado. Procediendo a filtrar el temario para eliminar la unidad.`);
     // 2. Eliminar la unidad del temario.
     module.temario = module.temario.filter(unit => unit.idUnidad !== unitId);
     // 3. Guardar los cambios y volver a renderizar la aplicación.
@@ -809,17 +809,17 @@ export function handleDeleteTemarioUnit(moduleId, unitId) {
     console.log('[handleDeleteTemarioUnit] DB guardada y renderApp() llamado. Fin del proceso de borrado de unidad.');
     renderApp();
   } else {
-    console.error('[handleDeleteTemarioUnit] No se encontró el módulo o el temario para la unidad a borrar.');
+    console.error('[ERROR] No se encontró el módulo o el temario para la unidad a borrar.');
   }
 }
 
 export function handleDeleteTemarioPoint(moduleId, unitId, pointId) {
-  console.log(`[handleDeleteTemarioPoint] ==> INICIO de borrado de PUNTO. ModuleID: ${moduleId}, UnitID: ${unitId}, PointID: ${pointId}`);
+  console.log(`[LOG] ==> INICIO de borrado de PUNTO. ModuleID: ${moduleId}, UnitID: ${unitId}, PointID: ${pointId}`);
   const db = state.getDB();
   deleteTemarioPoint(db, moduleId, unitId, pointId);
   state.setDB(db);
   state.saveDB();
-  console.log('[handleDeleteTemarioPoint] DB guardada y renderApp() llamado. Fin del proceso de borrado de punto.');
+  console.log('[LOG] DB guardada y renderApp() llamado. Fin del proceso de borrado de punto.');
   renderApp();
 }
 
