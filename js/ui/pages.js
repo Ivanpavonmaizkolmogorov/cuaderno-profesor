@@ -1152,6 +1152,11 @@ export function renderActividadDetailPage() {
               </tbody>
             </table>
           </div>
+          <!-- INICIO: CORRECCIÓN - Botón "Volver a Módulos" duplicado en la parte inferior -->
+          <div class="mt-6 flex justify-end">
+            <button data-page="modulos" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Volver a Módulos</button>
+          </div>
+          <!-- FIN: CORRECCIÓN -->
         </div>
       </div>
     </div>
