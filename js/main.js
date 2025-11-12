@@ -447,7 +447,7 @@ function attachEventListeners() {
         // Preparar los datos y renderizar la vista del índice
         // La función ahora muta el objeto 'selectedModule' directamente, no devuelve nada.
         prepareModuleForProgressTracking(selectedModule);
-        renderProgressView(progressContainer, selectedModule, () => {
+        renderProgressView(progressContainer, selectedModule, db.actividades, () => {
             // La función de guardado que se pasa como callback
             state.saveDB();
         });

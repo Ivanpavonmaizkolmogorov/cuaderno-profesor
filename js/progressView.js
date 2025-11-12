@@ -15,9 +15,10 @@ const statusConfig = {
  * Renderiza la vista completa del progreso del temario en un contenedor.
  * @param {HTMLElement} container - El elemento del DOM donde se renderizará la vista.
  * @param {object} moduleData - El objeto completo de datos del módulo.
+ * @param {Array<object>} allActivities - La lista completa de actividades de la base de datos.
  * @param {function} onDataChange - Callback que se ejecuta para guardar los datos tras un cambio.
  */
-export function renderProgressView(container, moduleData, onDataChange) {
+export function renderProgressView(container, moduleData, allActivities, onDataChange) {
   // --- COMIENZO DE LA CORRECCIÓN ---
   // Comprobación de seguridad: si no se pasan datos del módulo, mostramos un error y salimos.
   if (!moduleData) {
@@ -50,23 +51,38 @@ export function renderProgressView(container, moduleData, onDataChange) {
     });
   });
   // --- FIN: Lógica del árbol ---
-
-  // 1. Crear un mapa para buscar rápidamente qué actividades evalúan cada CE.
+  
+  // 1. Crear mapas para búsquedas rápidas y eficientes
   const ceToActivityMap = new Map();
-  const moduleActivities = moduleData.actividades || []; // Usar las actividades del módulo si existen
-  if (moduleActivities) {
-    moduleActivities.forEach(activity => {
+  const ceDataMap = new Map();
+
+  // Mapa para datos de Criterios de Evaluación (ej: para saber si es 'dual')
+  moduleData.resultados_de_aprendizaje?.forEach(ra => {
+    ra.criterios_de_evaluacion.forEach(ce => {
+      ceDataMap.set(ce.ce_id, ce);
+    });
+  });
+
+  // Mapa para saber qué actividades evalúan cada Criterio
+  // Filtramos para obtener solo las actividades de este módulo
+  const moduleActivities = allActivities.filter(act => act.moduleId === moduleData.id);
+  moduleActivities.forEach(activity => {
       activity.ceIds.forEach(ceId => {
         if (!ceToActivityMap.has(ceId)) ceToActivityMap.set(ceId, []);
         ceToActivityMap.get(ceId).push(activity.name);
       });
     });
-  }
-
+  
+  
   container.innerHTML = `
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-2xl font-bold">Índice de Contenidos</h2>
-      <div class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400"
+    <div class="flex justify-between items-start mb-4">
+      <div class="flex items-center gap-4">
+        <h2 class="text-2xl font-bold">Índice de Contenidos</h2>
+        <button id="delete-temario-btn" class="hidden bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded" title="Eliminar el índice de contenidos actual">
+          Eliminar Índice
+        </button>
+      </div>
+      <div class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
         <div class="tooltip">
           <span class="cursor-help">${statusConfig['visto'].icon} ${statusConfig['visto'].text}</span>
           <span class="tooltip-text">${statusConfig['visto'].description}</span>
@@ -108,6 +124,20 @@ export function renderProgressView(container, moduleData, onDataChange) {
     return;
   }
 
+  // Si hay temario, mostramos el botón de eliminar
+  const deleteBtn = document.getElementById('delete-temario-btn');
+  if (deleteBtn) {
+    deleteBtn.classList.remove('hidden');
+    deleteBtn.addEventListener('click', () => {
+      if (confirm('¿Estás seguro de que quieres eliminar todo el índice de contenidos de este módulo? Esta acción no se puede deshacer.')) {
+        moduleData.temario = [];
+        moduleData.progresoTemario = {};
+        onDataChange(); // Esto llamará a state.saveDB()
+        renderProgressView(container, moduleData, onDataChange);
+      }
+    });
+  }
+
   moduleData.temario.forEach(unit => {
     const unitElement = document.createElement('div');
     unitElement.className = 'unit-section bg-white dark:bg-gray-800 p-4 rounded-lg shadow';
@@ -133,16 +163,24 @@ export function renderProgressView(container, moduleData, onDataChange) {
       const indentationStyle = level > 0 ? `padding-left: ${level * 1.5}rem;` : '';
       // --- FIN: LÓGICA DE INDENTACIÓN ---
 
-      // 2. Buscar las actividades asociadas a este punto del temario
-      const associatedActivities = (point.ce_ids || [])
-        .flatMap(ceId => ceToActivityMap.get(ceId) || [])
-        .filter((value, index, self) => self.indexOf(value) === index); // Eliminar duplicados
-
+      // --- INICIO: LÓGICA DE INDICADORES INTELIGENTES ---
+      const associatedCeIds = point.ce_ids || [];
+      let dualIndicator = '';
       let evaluationBadge = '';
-      if (associatedActivities.length > 0) {
-        const activityList = associatedActivities.join(', ');
-        evaluationBadge = `<span class="ml-2 text-xs font-semibold text-yellow-800 bg-yellow-100 dark:text-yellow-100 dark:bg-yellow-800 px-2 py-0.5 rounded-full" title="Evaluado en: ${activityList}">Evaluado</span>`;
+
+      const isDual = associatedCeIds.some(ceId => ceDataMap.get(ceId)?.dual === true);
+      if (isDual) {
+        dualIndicator = `<span class="ml-2 text-xs" title="Contenido de FP Dual (se imparte en la empresa)">🏢</span>`;
       }
+
+      const evaluatedInActivities = associatedCeIds
+        .flatMap(ceId => ceToActivityMap.get(ceId) || []);
+      
+      if (evaluatedInActivities.length > 0) {
+        const uniqueActivities = [...new Set(evaluatedInActivities)];
+        evaluationBadge = `<span class="ml-2 text-xs font-semibold text-yellow-800 bg-yellow-100 dark:text-yellow-100 dark:bg-yellow-800 px-2 py-0.5 rounded-full" title="Evaluado en: ${uniqueActivities.join(', ')}">Evaluado</span>`;
+      }
+      // --- FIN: LÓGICA DE INDICADORES INTELIGENTES ---
 
       const pointItem = document.createElement('li');
       pointItem.className = 'point-item flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors';
@@ -151,6 +189,7 @@ export function renderProgressView(container, moduleData, onDataChange) {
       pointItem.innerHTML = `
         <span class="point-status-icon mr-3">${icon}</span>
         <span class="point-text flex-grow">${point.texto}</span>
+        ${dualIndicator}
         ${evaluationBadge}
       `;
       
@@ -158,7 +197,7 @@ export function renderProgressView(container, moduleData, onDataChange) {
       pointItem.addEventListener('click', () => {
         // Pasamos el árbol jerárquico a la función de cambio de estado
         handleStatusChange(point.idPunto, moduleData, onDataChange, pointTree);
-        renderProgressView(container, moduleData, onDataChange);
+        renderProgressView(container, moduleData, allActivities, onDataChange);
       });
 
       pointsList.appendChild(pointItem);
@@ -235,15 +274,23 @@ function showImportTemarioModal(container, moduleData, onDataChange) {
     {
       "unidad": "UD 1: Título de la Unidad",
       "puntos": [
-        "1.1. Primer punto",
-        "1.2. Segundo punto"
+        {
+          "texto": "1.1. Primer punto",
+          "ce_ids": ["RA1-a", "RA1-b"]
+        },
+        {
+          "texto": "1.2. Segundo punto",
+          "ce_ids": ["RA1-c"]
+        }
       ]
     },
     {
       "unidad": "UD 2: Otra Unidad",
       "puntos": [
-        "2.1. Subapartado A",
-        "2.2. Subapartado B"
+        {
+          "texto": "2.1. Subapartado A (sin criterios asociados)",
+          "ce_ids": []
+        }
       ]
     }
   ], null, 2);
@@ -276,7 +323,7 @@ function showImportTemarioModal(container, moduleData, onDataChange) {
       prepareModuleForProgressTracking(moduleData); // Preparamos la nueva estructura
       onDataChange(); // Guardamos los cambios
       closeModal();
-      renderProgressView(container, moduleData, onDataChange); // Re-renderizamos la vista
+      renderProgressView(container, moduleData, allActivities, onDataChange); // Re-renderizamos la vista
     } catch (error) {
       alert('Error en el formato JSON. Por favor, revisa el texto introducido.');
       console.error("Error al parsear JSON del temario:", error);
