@@ -735,6 +735,14 @@ function attachEventListeners() {
       });
     });
 
+    // Listeners para eliminar entradas de aptitud
+    document.querySelectorAll('.delete-aptitud-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const { moduleId, studentId, trimester, type, id } = e.currentTarget.dataset;
+        handlers.handleDeleteAptitud(moduleId, studentId, trimester, type, id);
+      });
+    });
+
   }
 
   if (ui.page === 'actividadDetail') {
