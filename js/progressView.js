@@ -2,6 +2,7 @@
  * Módulo para renderizar y gestionar la vista de "Progreso del Temario".
  */
 import * as handlers from './handlers.js';
+import { renderApp } from './main.js';
 import { prepareModuleForProgressTracking } from './utils.js';
 
 // Mapa de estados a iconos para la UI.
@@ -162,27 +163,9 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
       const associatedCeIds = point.ce_ids || [];
       let evaluationBadge = '';
       let pointStatus = moduleData.progresoTemario[point.idPunto] || 'no-visto';
-
-      const isDual = associatedCeIds.some(ceId => ceDataMap.get(ceId)?.dual === true);
+      
       const evaluatedInActivities = associatedCeIds
         .flatMap(ceId => ceToActivityMap.get(ceId) || []);
-      
-      // Lógica de inteligencia:
-      if (pointStatus === 'no-visto') {
-        // --- INICIO DE LA CORRECCIÓN ---
-        // No modificamos directamente el estado aquí para evitar bucles de renderizado.
-        // Simplemente determinamos cuál debería ser el estado a mostrar en la UI.
-        // La persistencia del cambio se hará si el usuario interactúa o en otro punto.
-        if (isDual) {
-          pointStatus = 'en-empresa'; // Si es dual, su estado por defecto es "En Empresa"
-        }
-        if (evaluatedInActivities.length > 0) {
-          pointStatus = 'visto'; // Si está evaluado, se marca como "Visto"
-        }
-        // La línea que mutaba el estado (`moduleData.progresoTemario[point.idPunto] = pointStatus;`)
-        // se ha eliminado para prevenir el bucle.
-        // --- FIN DE LA CORRECCIÓN ---
-      }
       
       if (evaluatedInActivities.length > 0) {
         const uniqueActivities = [...new Set(evaluatedInActivities)];
@@ -222,6 +205,34 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
   });
 
   container.appendChild(listContainer);
+
+  // --- INICIO DE LA CORRECCIÓN ---
+  // Añadimos los listeners para los botones de esta vista aquí,
+  // para asegurar que se registran después de que la vista se haya renderizado.
+  // Usamos delegación de eventos en el contenedor principal de la vista.
+  container.addEventListener('click', (e) => {
+    // Botón de importar temario
+    if (e.target.closest('#import-temario-btn')) {
+      e.preventDefault();
+      handlers.showImportTemarioModal();
+    }
+
+    // Botón de eliminar todo el temario
+    if (e.target.closest('#delete-temario-btn')) {
+      e.preventDefault();
+      handlers.handleDeleteTemario(moduleData.id);
+    }
+
+    // Botón de eliminar una unidad
+    const deleteUnitBtn = e.target.closest('.delete-unit-btn');
+    if (deleteUnitBtn) {
+      e.preventDefault();
+      const { moduleId, unitId } = deleteUnitBtn.dataset;
+      handlers.handleDeleteTemarioUnit(moduleId, unitId);
+    }
+  });
+  // El listener para los puntos individuales ya se añade correctamente dentro del bucle.
+  // --- FIN DE LA CORRECCIÓN ---
 }
 
 /**
@@ -273,6 +284,7 @@ function handleStatusChange(pointId, moduleData, onDataChange, pointTree) {
   if (onDataChange) {
     onDataChange();
   }
+  renderApp(); // Llamamos a renderApp para un refresco global y consistente.
 }
 
 /**

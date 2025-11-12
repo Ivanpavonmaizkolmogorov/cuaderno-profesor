@@ -185,7 +185,7 @@ export function handleSetModuleView(newView) {
     if (newView === 'alumno' && (!currentSelectedId || !isCurrentStudentInList) && students.length > 0) {
         state.setSelectedStudentIdForView(students[0].id);
     }
-    renderApp();
+    renderApp(); // <-- RESTAURADO: Es necesario para que la UI reaccione al cambio de estado.
 }
 
 export function handleNavigateStudent(direction) {

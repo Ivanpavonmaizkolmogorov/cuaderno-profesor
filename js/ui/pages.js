@@ -586,6 +586,7 @@ export function renderStudentFormatModal(nameSuggestions, moduleId) {
 function renderModuloDetalle(module, moduleStudents) {
   const gestionAlumnosHtml = renderGestionAlumnos(module, moduleStudents);
   const gestionActividadesHtml = renderActividadesManagement(module);
+  const { db } = { db: getDB() };
   const uiState = getUI();
   let moduleView = uiState.moduleView || 'tabla'; // Asegurarse de que siempre haya una vista
 
@@ -616,12 +617,14 @@ function renderModuloDetalle(module, moduleStudents) {
   let contentHtml = '';
   if (moduleStudents.length > 0) {
     if (moduleView === 'tabla') {
-        contentHtml = renderCuadernoCalificaciones(module, moduleStudents);
+      contentHtml = renderCuadernoCalificaciones(module, moduleStudents);
     } else if (moduleView === 'alumno') {
-        contentHtml = renderAlumnoView(module, moduleStudents);
+      contentHtml = renderAlumnoView(module, moduleStudents);
+    } else if (moduleView === 'indice') {
+      // La vista de índice ahora se renderiza aquí, dentro del flujo normal.
+      // Devolvemos un contenedor vacío que será llenado por `renderProgressView` en `main.js`.
+      contentHtml = `<div id="progress-view-container" class="p-4 md:p-6"></div>`;
     }
-    // Si la vista es 'indice', el contenido se renderizará en un contenedor diferente,
-    // por lo que aquí no asignamos nada a contentHtml.
   } else { // Este 'else' corresponde a if (moduleStudents.length > 0)
     contentHtml = `<p class="text-center text-gray-500 dark:text-gray-400 my-10">Añade alumnos/as en la sección de gestión para empezar a calificar.</p>`;
   }

@@ -47,9 +47,8 @@ export function renderApp() {
   // 2. Renderizar contenido de la página
   const contentContainer = document.getElementById('content-container');
   if (contentContainer) {
-      // Limpiamos el contenedor principal y ocultamos el del progreso
+      // Limpiamos el contenedor principal. Ahora no necesitamos gestionar la visibilidad.
       contentContainer.innerHTML = '';
-      document.getElementById('progress-view-container').style.display = 'none';
 
       switch (ui.page) {
         case 'configuracion':
@@ -71,6 +70,23 @@ export function renderApp() {
   
   // 3. (Re)Añadir event listeners
   attachEventListeners();
+
+  // --- INICIO DE LA CORRECCIÓN ---
+  // Si la vista activa es 'indice', debemos renderizarla explícitamente aquí,
+  // DESPUÉS de que el contenedor principal haya sido creado por `renderModulosPage`.
+  if (ui.page === 'modulos' && ui.moduleView === 'indice') {
+    const selectedModule = db.modules.find(m => m.id === ui.selectedModuleId);
+    const progressContainer = document.getElementById('progress-view-container');
+
+    if (selectedModule && progressContainer) {
+      // Preparamos los datos y renderizamos la vista del índice.
+      prepareModuleForProgressTracking(selectedModule);
+      renderProgressView(progressContainer, selectedModule, db.actividades, () => {
+        state.saveDB(); // Callback para guardar los datos cuando cambian.
+      });
+    }
+  }
+  // --- FIN DE LA CORRECCIÓN ---
 
   // 4. Lógica para mostrar el modal de formato de estudiantes si hay datos para él
   const studentFormatData = ui.studentNameSuggestions;
@@ -143,26 +159,6 @@ export function renderApp() {
 
     }
   }
-
-  // --- INICIO DE LA CORRECCIÓN ---
-  // Si la vista activa es 'indice', debemos renderizarla explícitamente aquí.
-  // Esto soluciona el problema de que la vista del temario desaparezca después de una importación o borrado.
-  // Esta lógica se mueve FUERA del bloque `if (studentFormatData)`.
-  const selectedModuleForProgress = db.modules.find(m => m.id === ui.selectedModuleId);
-  if (ui.page === 'modulos' && ui.moduleView === 'indice' && selectedModuleForProgress) {
-      // Ocultamos el contenedor de detalles del módulo y mostramos el del progreso.
-      contentContainer.style.display = 'none';
-      const progressContainer = document.getElementById('progress-view-container');
-      progressContainer.style.display = 'block';
-
-      // Preparamos los datos y renderizamos la vista del índice.
-      prepareModuleForProgressTracking(selectedModuleForProgress);
-      renderProgressView(progressContainer, selectedModuleForProgress, db.actividades, () => {
-          // Callback para guardar los datos cuando cambian.
-          state.saveDB();
-      });
-  }
-  // --- FIN DE LA CORRECCIÓN ---
 }
 
 /**
@@ -525,43 +521,14 @@ function attachEventListeners() {
     
     // Listeners para el selector de vistas del módulo
     document.getElementById('view-tabla-btn')?.addEventListener('click', () => {
-      // Aseguramos que el contenedor principal sea visible
-      document.getElementById('content-container').style.display = 'block';
-      document.getElementById('progress-view-container').style.display = 'none';
-      document.getElementById('module-detail-content').style.display = 'block';
       handlers.handleSetModuleView('tabla');
     });
     document.getElementById('view-alumno-btn')?.addEventListener('click', () => {
-      // Aseguramos que el contenedor principal sea visible
-      document.getElementById('content-container').style.display = 'block';
-      document.getElementById('progress-view-container').style.display = 'none';
-      document.getElementById('module-detail-content').style.display = 'block';
       handlers.handleSetModuleView('alumno');
     });
-    
     // Listener para la nueva vista de Índice de Contenidos
     document.getElementById('view-progress-btn')?.addEventListener('click', () => {
-        const selectedModule = db.modules.find(m => m.id === ui.selectedModuleId);
-        if (!selectedModule) return;
-
-        // Actualizamos el estado de la UI para que el botón se marque como activo
         handlers.handleSetModuleView('indice');
-
-        // Ocultamos el contenedor principal
-        document.getElementById('content-container').style.display = 'none';
-        // Ocultar las otras vistas del módulo
-        document.getElementById('module-detail-content').style.display = 'none';
-        // Mostrar el contenedor de la vista de progreso
-        const progressContainer = document.getElementById('progress-view-container');
-        progressContainer.style.display = 'block';
-
-        // Preparar los datos y renderizar la vista del índice
-        // La función ahora muta el objeto 'selectedModule' directamente, no devuelve nada.
-        prepareModuleForProgressTracking(selectedModule);
-        renderProgressView(progressContainer, selectedModule, db.actividades, () => {
-            // La función de guardado que se pasa como callback
-            state.saveDB();
-        });
     });
 
     document.getElementById('process-students-btn')?.addEventListener('click', (e) => {
@@ -748,38 +715,6 @@ function attachEventListeners() {
             handlers.handleToggleCeDual(moduleId, ceId);
         });
     });
-
-    // Listener para el botón de importar temario (usando delegación de eventos)
-    // Esto asegura que funcione aunque el botón se renderice dinámicamente.
-    if (!progressContainerListenerAttached) {
-      const progressContainer = document.getElementById('progress-view-container');
-      if (progressContainer) {
-        progressContainer.addEventListener('click', (e) => {
-          // Usamos .closest() para detectar el clic en el botón o en un hijo del botón.
-          if (e.target.closest('#import-temario-btn')) {
-            e.preventDefault();
-            handlers.showImportTemarioModal();
-          }
-  
-          // Listener para el botón de eliminar unidad
-          const deleteUnitBtn = e.target.closest('.delete-unit-btn');
-          if (deleteUnitBtn) {
-            e.preventDefault();
-            const { moduleId, unitId } = deleteUnitBtn.dataset;
-            handlers.handleDeleteTemarioUnit(moduleId, unitId);
-          }
-  
-          // Listener para el botón de eliminar punto
-          const deletePointBtn = e.target.closest('.delete-point-btn');
-          if (deletePointBtn) {
-            e.preventDefault();
-            const { unitId, pointId } = deletePointBtn.dataset;
-            handlers.handleDeleteTemarioPoint(ui.selectedModuleId, unitId, pointId);
-          }
-        });
-        progressContainerListenerAttached = true;
-      }
-    }
 
   }
 
