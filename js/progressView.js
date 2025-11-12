@@ -8,7 +8,8 @@ const statusConfig = {
   'visto': { icon: '✅', text: 'Visto', description: 'Tema impartido y completado.' },
   'no-visto': { icon: '🔲', text: 'No Visto', description: 'Tema aún no abordado en clase (estado por defecto).' },
   'pendiente': { icon: '❗', text: 'Pendiente', description: 'Tema iniciado pero no completado, o que requiere un repaso.' },
-  'omitido': { icon: '❌', text: 'Omitido', description: 'Decidido activamente no impartir este punto del temario.' }
+  'omitido': { icon: '❌', text: 'Omitido', description: 'Decidido activamente no impartir este punto del temario.' },
+  'en-empresa': { icon: '🏢', text: 'En Empresa', description: 'Contenido de FP Dual que se imparte/evalúa en la empresa.' }
 };
 
 /**
@@ -96,6 +97,10 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
           <span class="tooltip-text">${statusConfig['omitido'].description}</span>
         </div>
         <div class="tooltip">
+          <span class="cursor-help">${statusConfig['en-empresa'].icon} ${statusConfig['en-empresa'].text}</span>
+          <span class="tooltip-text">${statusConfig['en-empresa'].description}</span>
+        </div>
+        <div class="tooltip">
           <span class="cursor-help">${statusConfig['no-visto'].icon} ${statusConfig['no-visto'].text}</span>
           <span class="tooltip-text">${statusConfig['no-visto'].description}</span>
         </div>
@@ -147,9 +152,6 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
     pointsList.className = 'points-list space-y-2';
 
     unit.puntos.forEach(point => {
-      const pointStatus = moduleData.progresoTemario[point.idPunto] || 'no-visto';
-      const { icon } = statusConfig[pointStatus];
-
       // --- INICIO: LÓGICA DE INDENTACIÓN MEJORADA ---
       // Extraemos el prefijo numérico (ej: "1.1" o "2.3.4.") del texto, sin requerir un espacio después.
       const numberPrefix = point.texto.match(/^[\d\.]+/)?.[0] || '';
@@ -163,25 +165,34 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
       const indentationStyle = level > 0 ? `padding-left: ${level * 1.5}rem;` : '';
       // --- FIN: LÓGICA DE INDENTACIÓN ---
 
-      // --- INICIO: LÓGICA DE INDICADORES INTELIGENTES ---
+      // --- INICIO: LÓGICA DE ESTADO INTELIGENTE ---
       const associatedCeIds = point.ce_ids || [];
-      let dualIndicator = '';
       let evaluationBadge = '';
+      let pointStatus = moduleData.progresoTemario[point.idPunto] || 'no-visto';
 
       const isDual = associatedCeIds.some(ceId => ceDataMap.get(ceId)?.dual === true);
-      if (isDual) {
-        dualIndicator = `<span class="ml-2 text-xs" title="Contenido de FP Dual (se imparte en la empresa)">🏢</span>`;
-      }
-
       const evaluatedInActivities = associatedCeIds
         .flatMap(ceId => ceToActivityMap.get(ceId) || []);
+      
+      // Lógica de inteligencia:
+      if (pointStatus === 'no-visto') {
+        if (isDual) {
+          pointStatus = 'en-empresa'; // Si es dual, su estado por defecto es "En Empresa"
+        }
+        if (evaluatedInActivities.length > 0) {
+          pointStatus = 'visto'; // Si está evaluado, se marca como "Visto"
+        }
+        // Actualizamos el estado en la base de datos para mantener la consistencia
+        moduleData.progresoTemario[point.idPunto] = pointStatus;
+      }
       
       if (evaluatedInActivities.length > 0) {
         const uniqueActivities = [...new Set(evaluatedInActivities)];
         evaluationBadge = `<span class="ml-2 text-xs font-semibold text-yellow-800 bg-yellow-100 dark:text-yellow-100 dark:bg-yellow-800 px-2 py-0.5 rounded-full" title="Evaluado en: ${uniqueActivities.join(', ')}">Evaluado</span>`;
       }
-      // --- FIN: LÓGICA DE INDICADORES INTELIGENTES ---
+      // --- FIN: LÓGICA DE ESTADO INTELIGENTE ---
 
+      const { icon } = statusConfig[pointStatus];
       const pointItem = document.createElement('li');
       pointItem.className = 'point-item flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors';
       pointItem.dataset.pointId = point.idPunto; // ID para identificar el punto
@@ -189,7 +200,6 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
       pointItem.innerHTML = `
         <span class="point-status-icon mr-3">${icon}</span>
         <span class="point-text flex-grow">${point.texto}</span>
-        ${dualIndicator}
         ${evaluationBadge}
       `;
       
@@ -223,13 +233,16 @@ function handleStatusChange(pointId, moduleData, onDataChange, pointTree) {
   let nextStatus;
 
   switch (currentStatus) {
-    case 'no-visto':
+    case 'no-visto': // El ciclo ahora empieza en visto
       nextStatus = 'visto';
       break;
     case 'visto':
       nextStatus = 'pendiente';
       break;
     case 'pendiente':
+      nextStatus = 'en-empresa'; // Añadimos el nuevo estado al ciclo
+      break;
+    case 'en-empresa':
       nextStatus = 'omitido';
       break;
     case 'omitido':
