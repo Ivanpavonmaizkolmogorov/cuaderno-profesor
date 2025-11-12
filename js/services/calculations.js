@@ -96,11 +96,11 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
 
           let ajustePositivo = 0;
           if (numPositives > 0) {
-            ajustePositivo = Math.pow(basePositiva, numPositives - 1);
+            ajustePositivo = Math.pow(basePositiva, numPositives) - 1;
           }
           let ajusteNegativo = 0;
           if (numNegatives > 0) {
-            ajusteNegativo = Math.pow(baseNegativa, numNegatives - 1);
+            ajusteNegativo = Math.pow(baseNegativa, numNegatives) - 1;
           }
           moduleGrade = moduleGrade + ajustePositivo - ajusteNegativo;
         }

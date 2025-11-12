@@ -1292,9 +1292,9 @@ function renderAptitudPanel(student, module) {
     const numNegatives = data.negatives.length;
 
     let ajustePositivo = 0;
-    if (numPositives > 0) ajustePositivo = Math.pow(basePositiva, numPositives - 1);
+    if (numPositives > 0) ajustePositivo = Math.pow(basePositiva, numPositives) - 1;
     let ajusteNegativo = 0;
-    if (numNegatives > 0) ajusteNegativo = Math.pow(baseNegativa, numNegatives - 1);
+    if (numNegatives > 0) ajusteNegativo = Math.pow(baseNegativa, numNegatives) - 1;
 
     return `
       <div class="bg-gray-100 dark:bg-gray-900/50 p-4 rounded-lg">

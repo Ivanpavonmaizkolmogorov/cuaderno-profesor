@@ -1084,8 +1084,8 @@ export function handleUpdateAptitudConfig(moduleId, form) {
   const basePositiva = parseFloat(form.basePositiva.value);
   const baseNegativa = parseFloat(form.baseNegativa.value);
 
-  if (isNaN(basePositiva) || isNaN(baseNegativa) || basePositiva <= 0 || baseNegativa <= 0) {
-    alert("Las bases para el cálculo de aptitud deben ser números mayores que 0.");
+  if (isNaN(basePositiva) || isNaN(baseNegativa) || basePositiva < 1 || baseNegativa < 1) {
+    alert("Las bases para el cálculo de aptitud deben ser números mayores o iguales a 1.");
     return;
   }
 
