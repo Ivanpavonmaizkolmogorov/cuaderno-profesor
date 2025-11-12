@@ -1245,9 +1245,21 @@ function renderAlumnoView(module, moduleStudents) {
               ${ICONS.DownloadCloud} Exportar
             </button>
           </div>
-          <div class="space-y-4">
-            <div class="flex justify-between items-center p-4 bg-green-50 dark:bg-green-900 rounded-lg">
-              <span class="text-lg font-bold text-green-800 dark:text-green-200">Nota Final</span>
+          <div class="space-y-2">
+            ${finalGrades.breakdown && finalGrades.breakdown.totalAdjustment !== 0 ? `
+              <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg text-sm">
+                <div class="flex justify-between">
+                  <span class="text-gray-600 dark:text-gray-400">Nota Base (CEs)</span>
+                  <span class="font-semibold">${finalGrades.breakdown.baseGrade.toFixed(2)}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600 dark:text-gray-400">Ajuste por Aptitud</span>
+                  <span class="font-semibold ${finalGrades.breakdown.totalAdjustment >= 0 ? 'text-green-500' : 'text-red-500'}">${finalGrades.breakdown.totalAdjustment.toFixed(2)}</span>
+                </div>
+              </div>
+            ` : ''}
+            <div class="flex justify-between items-center p-4 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-200 dark:border-green-800">
+              <span class="text-lg font-bold text-green-800 dark:text-green-200">Nota Final del Módulo</span>
               <span class="text-2xl font-bold text-green-700 dark:text-green-100">${finalModuleGrade}</span>
             </div>
             <div class="space-y-3 mt-4">
