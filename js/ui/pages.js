@@ -1366,6 +1366,43 @@ function renderAptitudPanel(student, module) {
   `;
 }
 
+/**
+ * Renderiza el constructor de motivos interactivo.
+ * @param {string} initialReason - El motivo inicial para precargar en el editor.
+ * @returns {string} El HTML del constructor de motivos.
+ */
+function renderReasonBuilder(initialReason = '') {
+  const keywords = ['Actividad', 'Unidad', 'Ejercicio', 'Tema', 'Examen', 'Tarea'];
+  const numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+
+  return `
+    <div>
+      <label for="aptitud-reason-display" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Motivo / Comentario</label>
+      <input type="text" id="aptitud-reason-display" name="reason" value="${initialReason}" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900" placeholder="Construye el motivo con los botones o escribe directamente...">
+      
+      <div class="mt-3 space-y-2">
+        <div class="flex flex-wrap gap-2">
+          ${keywords.map(word => `
+            <button type="button" class="reason-builder-btn bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm px-3 py-1 rounded-md" data-word="${word} ">
+              ${word}
+            </button>
+          `).join('')}
+        </div>
+        <div class="flex flex-wrap gap-2">
+          ${numbers.map(num => `
+            <button type="button" class="reason-builder-btn bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm px-3 py-1 rounded-md" data-word="${num}">
+              ${num}
+            </button>
+          `).join('')}
+           <button type="button" class="reason-builder-btn bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm px-3 py-1 rounded-md" data-word=" ">
+              Espacio
+            </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 export function renderAptitudEntryModal(module, student, trimester, type, entryId = null) {
   const { db } = { db: getDB() };
   const moduleActivities = db.actividades.filter(a => a.moduleId === module.id);
@@ -1373,8 +1410,7 @@ export function renderAptitudEntryModal(module, student, trimester, type, entryI
   const title = `${isEdit ? 'Editar' : 'Añadir'} ${type === 'positives' ? 'Positivo' : 'Negativo'}`;
 
   let existingEntry = null;
-  let selectedActivity = '';
-  let freeText = '';
+  let initialReason = '';
   let effectiveDate = new Date().toISOString().split('T')[0];
 
   if (isEdit) {
@@ -1382,14 +1418,7 @@ export function renderAptitudEntryModal(module, student, trimester, type, entryI
     existingEntry = db.aptitudes?.[module.id]?.[student.id]?.[trimesterKey]?.[type]?.find(e => e.id === entryId);
     if (existingEntry) {
       effectiveDate = new Date(existingEntry.effectiveDate).toISOString().split('T')[0];
-      // Descomponer el motivo
-      const reasonParts = existingEntry.reason.split(' - ');
-      if (reasonParts[0].startsWith('Actividad: ')) {
-        selectedActivity = reasonParts[0].replace('Actividad: ', '');
-        freeText = reasonParts.slice(1).join(' - ');
-      } else {
-        freeText = existingEntry.reason;
-      }
+      initialReason = existingEntry.reason;
     }
   }
 
@@ -1402,17 +1431,7 @@ export function renderAptitudEntryModal(module, student, trimester, type, entryI
             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Para: ${student.name}</p>
           </div>
           <div class="p-6 space-y-4">
-            <div>
-              <label for="aptitud-activity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asociar a Actividad (Opcional)</label>
-              <select id="aptitud-activity" name="activity" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900">
-                <option value="">-- Ninguna --</option>
-                ${moduleActivities.map(act => `<option value="${act.name}" ${act.name === selectedActivity ? 'selected' : ''}>${act.name}</option>`).join('')}
-              </select>
-            </div>
-            <div>
-              <label for="aptitud-reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Motivo / Comentario</label>
-              <input type="text" id="aptitud-reason" name="reason" value="${freeText}" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900" placeholder="Ej: Buen trabajo en el ejercicio 3">
-            </div>
+            ${renderReasonBuilder(initialReason)}
             <div>
               <label for="aptitud-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha de Efecto</label>
               <input type="date" id="aptitud-date" name="effectiveDate" value="${effectiveDate}" required class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900">

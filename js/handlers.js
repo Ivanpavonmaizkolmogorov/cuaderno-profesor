@@ -1119,20 +1119,23 @@ export function showAptitudEntryModal(moduleId, studentId, trimester, type, entr
     handleSaveAptitudEntry(e.currentTarget);
     closeModal();
   });
+
+  // Listeners para el constructor de motivos
+  document.querySelectorAll('.reason-builder-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const reasonInput = document.getElementById('aptitud-reason-display');
+      reasonInput.value += btn.dataset.word;
+      reasonInput.focus();
+    });
+  });
 }
 
 export function handleSaveAptitudEntry(form) {
   const { moduleId, studentId, trimester, type, entryId } = form.dataset;
   const isEdit = entryId !== '';
 
-  const selectedActivity = form.activity.value;
-  const freeText = form.reason.value.trim();
+  const finalReason = form.reason.value.trim();
   const effectiveDate = new Date(form.effectiveDate.value).toISOString();
-
-  let finalReason = freeText;
-  if (selectedActivity) {
-    finalReason = `Actividad: ${selectedActivity}${freeText ? ' - ' + freeText : ''}`;
-  }
   if (!finalReason) {
     finalReason = `Añadido el ${new Date(effectiveDate).toLocaleDateString()}`;
   }
