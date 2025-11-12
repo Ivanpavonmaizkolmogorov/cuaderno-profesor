@@ -1,4 +1,4 @@
-import { generateUUID } from '../utils.js';
+import { generateUUID } from "../utils.js";
 
 /**
  * Función genérica para fusionar nuevos elementos en un array de elementos existente.
@@ -14,19 +14,27 @@ import { generateUUID } from '../utils.js';
  * @param {function} [preProcessItem] - Función opcional para preprocesar cada 'newItem' antes de la fusión (ej. generar IDs para sub-elementos).
  * @returns {Array<object>} El array de elementos fusionado.
  */
-export function mergeItems(existingItems, newItems, idKey, preProcessItem = (item) => item) {
-  const mergedMap = new Map(existingItems.map(item => [item[idKey], item]));
+export function mergeItems(
+  existingItems,
+  newItems,
+  idKey,
+  preProcessItem = (item) => item
+) {
+  const mergedMap = new Map(existingItems.map((item) => [item[idKey], item]));
 
-  newItems.forEach(newItem => {
+  newItems.forEach((newItem) => {
     const processedItem = preProcessItem(newItem); // Preprocesar para asegurar que los sub-IDs se generen si es necesario
 
     if (processedItem[idKey] && mergedMap.has(processedItem[idKey])) {
       // El elemento existe, actualizarlo fusionando propiedades
-      mergedMap.set(processedItem[idKey], { ...mergedMap.get(processedItem[idKey]), ...processedItem });
+      mergedMap.set(processedItem[idKey], {
+        ...mergedMap.get(processedItem[idKey]),
+        ...processedItem,
+      });
     } else {
       // Nuevo elemento, generar ID si falta y añadir
       if (!processedItem[idKey]) {
-        processedItem[idKey] = `${idKey.substring(0, 1)}-${generateUUID()}`; // Generar ID basado en el prefijo de idKey
+        processedItem[idKey] = `${idKey.substring(0, 1)}-${generateUUID()}`; // Generar ID con prefijo
       }
       mergedMap.set(processedItem[idKey], processedItem);
     }
@@ -45,45 +53,57 @@ export function mergeItems(existingItems, newItems, idKey, preProcessItem = (ite
  * @returns {Array<object>} El array de temario fusionado.
  */
 export function mergeTemario(existingTemario, newTemario) {
-  // Ayudante para asegurar que los puntos tienen IDs
-  const preProcessPoint = (point) => {
-    if (typeof point === 'string') {
-      point = { texto: point };
-    }
-    if (!point.idPunto) point.idPunto = `p-${generateUUID()}`;
-    return point;
-  };
+  const finalTemario = [...existingTemario];
+  const existingUnitsMap = new Map(existingTemario.map(u => [u.unidad.trim().toLowerCase(), u]));
 
-  // Ayudante para asegurar que las unidades tienen IDs y sus puntos están preprocesados
-  const preProcessUnit = (unit) => {
-    if (!unit.idUnidad) unit.idUnidad = `u-${generateUUID()}`;
-    if (unit.puntos && Array.isArray(unit.puntos)) {
-      unit.puntos = unit.puntos.map(preProcessPoint);
+  newTemario.forEach(newUnit => {
+    const unitTitleKey = newUnit.unidad.trim().toLowerCase();
+    let existingUnit = existingUnitsMap.get(unitTitleKey);
+
+    // Si la unidad no existe por título, la añadimos como nueva.
+    if (!existingUnit) {
+      // Aseguramos que la nueva unidad y sus puntos tengan IDs.
+      if (!newUnit.idUnidad) newUnit.idUnidad = `u-${generateUUID()}`;
+      (newUnit.puntos || []).forEach(p => {
+        if (typeof p === 'string') p = { texto: p };
+        if (!p.idPunto) p.idPunto = `p-${generateUUID()}`;
+      });
+      finalTemario.push(newUnit);
+      existingUnitsMap.set(unitTitleKey, newUnit); // La añadimos al mapa para futuras referencias
     } else {
-      unit.puntos = [];
-    }
-    return unit;
-  };
+      // La unidad ya existe. Fusionamos sus puntos.
+      const existingPointsMap = new Map((existingUnit.puntos || []).map(p => [p.texto.trim().toLowerCase(), p]));
 
-  // Fusionar unidades (nivel superior)
-  const mergedUnits = mergeItems(existingTemario, newTemario, 'idUnidad', preProcessUnit);
+      (newUnit.puntos || []).forEach(newPointData => {
+        let newPoint = newPointData;
+        if (typeof newPoint === 'string') {
+          newPoint = { texto: newPoint };
+        }
+        const pointTextKey = newPoint.texto.trim().toLowerCase();
+        const existingPoint = existingPointsMap.get(pointTextKey);
 
-  // --- INICIO DE LA CORRECCIÓN ---
-  // La lógica anterior no fusionaba correctamente los puntos de unidades existentes.
-  // Esta nueva lógica asegura que si una unidad ya existe, sus puntos se fusionan
-  // en lugar de ser reemplazados.
-  const finalTemario = mergedUnits.map(unit => {
-    // Buscamos la unidad original y la nueva correspondiente
-    const existingUnit = existingTemario.find(u => u.idUnidad === unit.idUnidad);
-    const newUnitData = newTemario.find(u => u.idUnidad === unit.idUnidad);
-    
-    // Si la unidad existía y se le han proporcionado nuevos datos, fusionamos sus puntos.
-    if (existingUnit && newUnitData) {
-      unit.puntos = mergeItems(existingUnit.puntos || [], newUnitData.puntos || [], 'idPunto', preProcessPoint);
+        if (existingPoint) {
+          // El punto existe, actualizamos sus propiedades (como ce_ids)
+          // pero mantenemos el ID original.
+          existingPoint.ce_ids = newPoint.ce_ids || existingPoint.ce_ids || [];
+        } else {
+          // El punto es nuevo para esta unidad, lo añadimos.
+          if (!newPoint.idPunto) {
+            newPoint.idPunto = `p-${generateUUID()}`;
+          }
+          if (!existingUnit.puntos) {
+            existingUnit.puntos = [];
+          }
+          existingUnit.puntos.push(newPoint);
+          // Lo añadimos al mapa para evitar duplicados si viene repetido en el mismo JSON
+          existingPointsMap.set(pointTextKey, newPoint);
+        }
+      });
+
+      // Actualizamos otras propiedades de la unidad si es necesario
+      existingUnit.unidad = newUnit.unidad; // Permite corregir mayúsculas/minúsculas
     }
-    return unit;
   });
-  // --- FIN DE LA CORRECCIÓN ---
 
   return finalTemario;
 }
