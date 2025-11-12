@@ -119,7 +119,7 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
           <button id="import-temario-btn" class="bg-blue-500 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2 rounded" title="Importar y fusionar o reemplazar el índice">
             Importar
           </button>
-          <button id="delete-temario-btn" class="hidden bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded" title="Eliminar el índice de contenidos actual">
+          <button id="delete-temario-btn" class="${!moduleData.temario || moduleData.temario.length === 0 ? 'hidden' : ''} bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded" title="Eliminar el índice de contenidos actual">
             Eliminar
           </button>
         </div>
