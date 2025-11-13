@@ -1,6 +1,7 @@
 // --- LÓGICA DE CÁLCULO ---
 
 export function calculateModuleGrades(module, students, grades, actividades, trimestre, aptitudes = {}) {
+  console.log(`[LOG][calculateModuleGrades] Iniciando cálculo para Módulo: "${module.modulo}", Trimestre: ${trimestre || 'Final'}`);
   if (!module || !students || students.length === 0) return {};
 
   const studentData = {};
@@ -15,22 +16,31 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
     const ceFinalGrades = {};
 
     // 1. Calcular la nota final de cada CE basándose en las actividades
+    console.log(`[LOG][calculateModuleGrades] Calculando notas de CEs para Alumno: ${student.name}`);
     const allCes = ras.flatMap(ra => ra.criterios_de_evaluacion);
     allCes.forEach(ce => {
       const actividadesQueEvaluanEsteCE = moduleActividades.filter(act => act.ceIds.includes(ce.ce_id));
-      const gradesFromActivities = [];
+      // Ahora almacenamos objetos con nota y peso.
+      const gradesAndWeights = [];
 
       actividadesQueEvaluanEsteCE.forEach(act => {
         const attempts = studentGradesByActividad[act.id] || [];
         if (attempts.length > 0) {
           const maxAttemptGrade = Math.max(...attempts.map(att => att.grade));
-          gradesFromActivities.push(maxAttemptGrade);
+          // Usamos el peso de la actividad, con 1 como valor por defecto si no existe.
+          const activityWeight = act.peso || 1;
+          gradesAndWeights.push({ grade: maxAttemptGrade, weight: activityWeight });
+          console.log(`[LOG][calculateModuleGrades]   - Para CE '${ce.ce_id}', Actividad '${act.name}' aporta: Nota=${maxAttemptGrade}, Peso=${activityWeight}`);
         }
       });
 
-      if (gradesFromActivities.length > 0) {
-        const averageGrade = gradesFromActivities.reduce((sum, g) => sum + g, 0) / gradesFromActivities.length;
-        ceFinalGrades[ce.ce_id] = averageGrade;
+      if (gradesAndWeights.length > 0) {
+        // Cálculo de la media ponderada
+        const totalWeightedGrade = gradesAndWeights.reduce((sum, item) => sum + (item.grade * item.weight), 0);
+        const totalWeight = gradesAndWeights.reduce((sum, item) => sum + item.weight, 0);
+        const weightedAverage = totalWeight > 0 ? totalWeightedGrade / totalWeight : 0;
+        ceFinalGrades[ce.ce_id] = weightedAverage;
+        console.log(`[LOG][calculateModuleGrades]   -> Nota final (ponderada) para CE '${ce.ce_id}': ${weightedAverage.toFixed(2)} (Suma Ponderada: ${totalWeightedGrade.toFixed(2)}, Suma Pesos: ${totalWeight})`);
       }
     });
 

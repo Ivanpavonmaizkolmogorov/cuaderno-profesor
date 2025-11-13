@@ -587,10 +587,12 @@ export function renderStudentFormatModal(nameSuggestions, moduleId) {
 function renderModuloDetalle(module, moduleStudents) {
   const gestionAlumnosHtml = renderGestionAlumnos(module, moduleStudents);
   const gestionActividadesHtml = renderActividadesManagement(module);
+  const gestionTiposActividadHtml = renderActivityTypesManagement(module); // NUEVA SECCIÓN
   const gestionAptitudHtml = renderAptitudConfig(module);
   const { db } = { db: getDB() };
   const uiState = getUI();
   let moduleView = uiState.moduleView || 'tabla'; // Asegurarse de que siempre haya una vista
+  console.log(`[LOG][renderModuloDetalle] Renderizando detalle del módulo '${module.modulo}' con vista: ${moduleView}`);
 
   // Lógica de seguridad: si estamos en vista 'alumno' pero no hay alumnos o ninguno está seleccionado,
   // forzamos el cambio a la vista 'tabla' para evitar errores.
@@ -598,6 +600,7 @@ function renderModuloDetalle(module, moduleStudents) {
   if (moduleView === 'alumno' && (moduleStudents.length === 0 || !uiState.selectedStudentIdForView || !studentExists)) {
     moduleView = 'tabla';
     // Opcional: podrías llamar a un handler para actualizar el estado global aquí, pero para la UI es suficiente.
+    console.warn(`[WARN] Forzando cambio a vista 'tabla' porque no hay alumno seleccionado o no existe en el módulo.`);
   }
 
   const classTabla = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -625,6 +628,7 @@ function renderModuloDetalle(module, moduleStudents) {
     } else if (moduleView === 'indice') {
       // La vista de índice ahora se renderiza aquí, dentro del flujo normal.
       // Devolvemos un contenedor vacío que será llenado por `renderProgressView` en `main.js`.
+      console.log('[LOG][renderModuloDetalle] La vista es "indice", preparando contenedor #progress-view-container.');
       contentHtml = `<div id="progress-view-container" class="p-4 md:p-6"></div>`;
     }
   } else { // Este 'else' corresponde a if (moduleStudents.length > 0)
@@ -634,6 +638,7 @@ function renderModuloDetalle(module, moduleStudents) {
   return `
     <div>
       ${gestionAlumnosHtml}
+      ${gestionTiposActividadHtml}
       ${gestionActividadesHtml}
       ${gestionAptitudHtml}
       <hr class="my-8 border-gray-300 dark:border-gray-700">
@@ -682,6 +687,100 @@ function renderAptitudConfig(module) {
       </div>
     </div>
   `;
+}
+
+/**
+ * Renderiza el panel para gestionar los tipos de actividad y sus pesos por defecto.
+ * @param {object} module - El objeto del módulo.
+ * @returns {string} El HTML del panel de gestión.
+ */
+function renderActivityTypesManagement(module) {
+  console.log('[LOG][renderActivityTypesManagement] Renderizando panel de gestión de tipos de actividad.');
+  const activityTypes = module.activityTypes || [
+    { nombre: 'Examen', peso: 3 },
+    { nombre: 'Práctica', peso: 2 },
+    { nombre: 'Ejercicios', peso: 1 },
+  ];
+
+  // Si el módulo no tiene `activityTypes` definidos, los añadimos para la primera visualización.
+  if (!module.activityTypes) {
+    module.activityTypes = [...activityTypes];
+  }
+
+  const renderRow = (type, index) => `
+    <tr class="activity-type-row" data-index="${index}">
+      <td class="p-2"><input type="text" value="${type.nombre}" class="activity-type-name w-full p-1 border rounded dark:bg-gray-900"></td>
+      <td class="p-2"><input type="number" value="${type.peso}" step="0.1" min="0" class="activity-type-peso w-full p-1 border rounded dark:bg-gray-900"></td>
+      <td class="p-2 text-center"><button type="button" class="delete-activity-type-btn text-red-500 hover:text-red-700">&times;</button></td>
+    </tr>
+  `;
+
+  return `
+    <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mt-6">
+      <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Tipos de Actividad y Pesos por Defecto</h3>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Define categorías para autocompletar el peso al crear una actividad. Los cambios se guardan al pulsar "Guardar Tipos".</p>
+      <div id="activity-types-container">
+        <table class="w-full">
+          <thead>
+            <tr>
+              <th class="text-left font-medium p-2">Nombre del Tipo</th>
+              <th class="text-left font-medium p-2">Peso Sugerido</th>
+              <th class="w-12"></th>
+            </tr>
+          </thead>
+          <tbody id="activity-types-tbody">
+            ${activityTypes.map(renderRow).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-4 flex gap-4">
+        <button type="button" id="add-activity-type-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Añadir Tipo</button>
+        <button type="button" id="save-activity-types-btn" data-module-id="${module.id}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm">Guardar Tipos</button>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Renderiza el panel de feedback dinámico sobre el impacto de una actividad.
+ * @returns {string} El HTML del contenedor del panel.
+ */
+function renderImpactPanel() {
+  return `<div id="impact-feedback-panel" class="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 hidden"></div>`;
+}
+
+/**
+ * Actualiza el contenido del panel de feedback.
+ * @param {string} moduleId - El ID del módulo actual.
+ * @param {Array<string>} selectedCeIds - Los IDs de los CEs seleccionados.
+ * @param {number} newActivityWeight - El peso de la nueva actividad.
+ */
+function updateImpactPanel(moduleId, selectedCeIds, newActivityWeight) {
+  const panel = document.getElementById('impact-feedback-panel');
+  if (!panel) return;
+
+  if (selectedCeIds.length === 0 || !newActivityWeight || newActivityWeight <= 0) {
+    panel.classList.add('hidden');
+    return;
+  }
+
+  console.log(`[LOG][updateImpactPanel] Actualizando panel de impacto para ${selectedCeIds.length} CEs con peso ${newActivityWeight}`);
+  const { db } = { db: getDB() };
+  const moduleActivities = db.actividades.filter(a => a.moduleId === moduleId);
+  let content = '<h5 class="font-bold mb-2 text-sm">Impacto de esta Actividad:</h5><ul class="space-y-2 text-xs">';
+
+  selectedCeIds.forEach(ceId => {
+    const existingActivities = moduleActivities.filter(act => act.ceIds.includes(ceId));
+    const existingTotalWeight = existingActivities.reduce((sum, act) => sum + (act.peso || 1), 0);
+    const newTotalWeight = existingTotalWeight + newActivityWeight;
+    const impactPercentage = (newActivityWeight / newTotalWeight) * 100;
+
+    content += `<li><strong>${ceId}:</strong> Representará un <strong>${impactPercentage.toFixed(1)}%</strong> de la nota final de este CE (peso ${newActivityWeight} sobre un total de ${newTotalWeight}).</li>`;
+  });
+
+  content += '</ul>';
+  panel.innerHTML = content;
+  panel.classList.remove('hidden');
 }
 
 /**
@@ -915,6 +1014,11 @@ export function renderCeListModal(module, raId) {
 export function renderActividadesManagement(module) {
   const { actividades } = getDB();
   const moduleActividades = actividades.filter(a => a.moduleId === module.id);
+  const activityTypes = module.activityTypes || [
+    { nombre: 'Examen', peso: 3 },
+    { nombre: 'Práctica', peso: 2 },
+    { nombre: 'Ejercicios', peso: 1 },
+  ];
 
   // 1. Crear un Set con todos los CE IDs que ya están en uso en alguna actividad de este módulo.
   const usedCeIds = new Set(
@@ -988,14 +1092,33 @@ export function renderActividadesManagement(module) {
           <!-- Formulario para Nueva Actividad -->
           <div>
             <h4 class="font-semibold mb-3">Crear Nueva Actividad</h4>
-            <form id="actividad-form" data-module-id="${module.id}">
-              <input type="text" name="name" placeholder="Nombre de la actividad (Ej: Examen T1)" required class="w-full p-2 mb-2 border rounded-md dark:bg-gray-900">
-              <select name="trimestre" required class="w-full p-2 mb-2 border rounded-md dark:bg-gray-900">
-                <option value="">Seleccionar Trimestre</option>
-                <option value="1">1er Trimestre</option>
-                <option value="2">2º Trimestre</option>
-                <option value="3">3er Trimestre</option>
-              </select>
+            <form id="actividad-form" data-module-id="${module.id}" class="space-y-3">
+              <div>
+                <label for="act-name" class="text-sm font-medium">Nombre</label>
+                <input type="text" id="act-name" name="name" placeholder="Ej: Examen T1" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <div class="col-span-1">
+                  <label for="act-type" class="text-sm font-medium">Tipo</label>
+                  <select id="act-type" name="type" class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
+                    <option value="">-- Personalizado --</option>
+                    ${activityTypes.map(t => `<option value="${t.peso}">${t.nombre}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="col-span-1">
+                  <label for="act-peso" class="text-sm font-medium">Peso</label>
+                  <input type="number" id="act-peso" name="peso" value="1" step="0.1" min="0" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
+                </div>
+                <div class="col-span-1">
+                  <label for="act-trimestre" class="text-sm font-medium">Trimestre</label>
+                  <select id="act-trimestre" name="trimestre" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
+                    <option value="">Seleccionar</option>
+                    <option value="1">1º</option>
+                    <option value="2">2º</option>
+                    <option value="3">3º</option>
+                  </select>
+                </div>
+              </div>
               <p class="text-sm mb-2">Criterios de Evaluación a los que se asocia:</p>
               <div class="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1" id="ce-checkbox-container">
                 ${sortedUds.map(ud => `
@@ -1024,6 +1147,7 @@ export function renderActividadesManagement(module) {
                   </div>
                 `).join('')}
               </div>
+              ${renderImpactPanel()}
               <button type="submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
                 Crear Actividad
               </button>
@@ -1039,6 +1163,7 @@ export function renderActividadDetailPage() {
   const actividad = db.actividades.find(a => a.id === ui.selectedActividadId);
   const module = db.modules.find(m => m.id === actividad?.moduleId);
 
+  console.log(`[LOG][renderActividadDetailPage] Renderizando detalle para actividad ID: ${ui.selectedActividadId}`);
   if (!actividad || !module) {
     return `<div class="p-6"><p>Error: No se pudo encontrar la actividad o el módulo asociado. <button data-page="modulos" class="text-blue-500 underline">Volver a Módulos</button></p></div>`;
   }
@@ -1061,14 +1186,26 @@ export function renderActividadDetailPage() {
         <!-- Columna de Edición de Actividad -->
         <div class="lg:col-span-1 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 h-fit">
           <h3 class="text-xl font-semibold mb-4">Editar Actividad</h3>
-          <form class="update-actividad-form space-y-4" data-actividad-id="${actividad.id}">
-              <input type="text" name="name" value="${actividad.name}" required class="w-full p-2 border rounded-md dark:bg-gray-900" placeholder="Nombre de la actividad">
-              <select name="trimestre" required class="w-full p-2 border rounded-md dark:bg-gray-900">
-                <option value="1" ${actividad.trimestre === '1' ? 'selected' : ''}>1er Trimestre</option>
-                <option value="2" ${actividad.trimestre === '2' ? 'selected' : ''}>2º Trimestre</option>
-                <option value="3" ${actividad.trimestre === '3' ? 'selected' : ''}>3er Trimestre</option>
-              </select>
-              <p class="text-sm">Criterios de Evaluación asociados:</p>
+          <form class="update-actividad-form space-y-3" data-actividad-id="${actividad.id}">
+              <div>
+                <label class="text-sm font-medium">Nombre</label>
+                <input type="text" name="name" value="${actividad.name}" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900" placeholder="Nombre de la actividad">
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-sm font-medium">Peso</label>
+                  <input type="number" name="peso" value="${actividad.peso || 1}" step="0.1" min="0" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
+                </div>
+                <div>
+                  <label class="text-sm font-medium">Trimestre</label>
+                  <select name="trimestre" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
+                    <option value="1" ${actividad.trimestre === '1' ? 'selected' : ''}>1º</option>
+                    <option value="2" ${actividad.trimestre === '2' ? 'selected' : ''}>2º</option>
+                    <option value="3" ${actividad.trimestre === '3' ? 'selected' : ''}>3º</option>
+                  </select>
+                </div>
+              </div>
+              <p class="text-sm font-medium">Criterios de Evaluación asociados:</p>
               <div class="max-h-48 overflow-y-auto border rounded-md p-2 space-y-1 bg-white dark:bg-gray-800" id="ce-checkbox-container">
                 ${module.resultados_de_aprendizaje.map(ra => `
                   <div class="py-1">
@@ -1089,7 +1226,7 @@ export function renderActividadDetailPage() {
                     </div>
                   </div>`).join('')}
               </div>
-              <div class="flex gap-2 mt-4">
+              <div class="flex gap-2 pt-2">
                 <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
                 <button type="button" id="open-import-grades-modal-btn" data-actividad-id="${actividad.id}" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Importar Notas</button>
                 <button type="button" class="delete-actividad-btn bg-red-600 hover:bg-red-700 text-white font-bold p-2 rounded-lg" data-actividad-id="${actividad.id}" title="Eliminar Actividad">

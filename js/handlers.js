@@ -922,6 +922,7 @@ export function handleDeleteComment(moduleId, studentId, commentId) {
 export function handleCreateActividad(moduleId, form) {
   const name = form.name.value.trim();
   const trimestre = form.trimestre.value;
+  const peso = parseFloat(form.peso.value) || 1; // Obtener el peso, con 1 por defecto.
   const ceIds = Array.from(form.querySelectorAll('input[name="ceIds"]:checked')).map(cb => cb.value);
 
   if (!name || !trimestre || ceIds.length === 0) {
@@ -929,12 +930,15 @@ export function handleCreateActividad(moduleId, form) {
     return;
   }
 
+  console.log(`[LOG][handleCreateActividad] Creando actividad '${name}' con peso: ${peso}`);
+
   const newActividad = {
     id: crypto.randomUUID(),
     moduleId,
     name,
     trimestre,
     ceIds,
+    peso, // Guardar el peso en el objeto de la actividad
   };
 
   const db = state.getDB();
@@ -947,12 +951,15 @@ export function handleCreateActividad(moduleId, form) {
 export function handleUpdateActividad(actividadId, form) {
   const name = form.name.value.trim();
   const trimestre = form.trimestre.value;
+  const peso = parseFloat(form.peso.value) || 1; // Obtener el peso, con 1 por defecto.
   const ceIds = Array.from(form.querySelectorAll('input[name="ceIds"]:checked')).map(cb => cb.value);
 
   if (!name || !trimestre || ceIds.length === 0) {
     alert("Por favor, completa todos los campos: nombre, trimestre y al menos un CE.");
     return;
   }
+
+  console.log(`[LOG][handleUpdateActividad] Actualizando actividad ID '${actividadId}' con peso: ${peso}`);
 
   const db = state.getDB();
   const actividad = db.actividades.find(a => a.id === actividadId);
@@ -961,6 +968,7 @@ export function handleUpdateActividad(actividadId, form) {
   actividad.name = name;
   actividad.trimestre = trimestre;
   actividad.ceIds = ceIds;
+  actividad.peso = peso; // Actualizar el peso
 
   state.setDB(db);
   state.saveDB();
@@ -968,6 +976,41 @@ export function handleUpdateActividad(actividadId, form) {
   // No es necesario navegar, nos quedamos en la misma página para ver los cambios
   renderApp();
 }
+
+/**
+ * Guarda la configuración de los tipos de actividad para un módulo.
+ * @param {string} moduleId - El ID del módulo a modificar.
+ * @param {Array<object>} activityTypes - El array de objetos {nombre, peso}.
+ */
+export function handleSaveActivityTypes(moduleId, activityTypes) {
+  console.log(`[LOG][handleSaveActivityTypes] Guardando ${activityTypes.length} tipos de actividad para el módulo ${moduleId}`);
+  const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
+
+  if (module) {
+    // Validar y limpiar los datos antes de guardar
+    const sanitizedTypes = activityTypes
+      .map(type => ({
+        nombre: type.nombre.trim(),
+        peso: parseFloat(type.peso) || 1
+      }))
+      .filter(type => type.nombre); // Asegurarse de que el nombre no esté vacío
+
+    module.activityTypes = sanitizedTypes;
+    console.log('[LOG][handleSaveActivityTypes] Datos sanitizados:', sanitizedTypes);
+    state.setDB(db);
+    state.saveDB();
+    // No es necesario un renderApp completo si la UI se actualiza localmente,
+    // pero es más seguro para mantener la consistencia.
+    renderApp();
+    console.log('[LOG][handleSaveActivityTypes] ¡Guardado y renderizado completado!');
+  } else {
+    console.error(`[ERROR][handleSaveActivityTypes] No se encontró el módulo con ID: ${moduleId}`);
+    alert('Error: No se pudo encontrar el módulo para guardar la configuración.');
+  }
+}
+
+
 
 export function handleDeleteActividad(actividadId) {
   if (!window.confirm("¿Seguro que quieres eliminar esta actividad? Todas las calificaciones asociadas a ella también se borrarán.")) {
