@@ -1592,7 +1592,7 @@ export function renderActividadDetailPage() {
                       </td>
                       <td class="px-4 py-4">
                         <form class="add-attempt-form space-y-2" data-student-id="${student.id}" data-actividad-id="${actividad.id}">
-                          <input type="number" name="grade" step="0.1" min="0" max="10" placeholder="Nota" required class="w-full p-1 border rounded dark:bg-gray-900 text-sm">
+                          <input type="number" name="grade" step="0.01" min="0" max="10" placeholder="Nota" required class="w-full p-1 border rounded dark:bg-gray-900 text-sm">
                           <select name="type" class="w-full p-1 border rounded dark:bg-gray-900 text-sm">
                             <option value="Ordinaria">Ordinaria</option>
                             <option value="Recuperación">Recuperación</option>
