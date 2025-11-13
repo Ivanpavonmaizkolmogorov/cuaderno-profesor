@@ -1295,6 +1295,16 @@ export function renderActividadesManagement(module) {
     { nombre: 'Ejercicios', peso: 1 },
   ];
 
+  // --- INICIO: CÁLCULO DE PESOS POR TRIMESTRE ---
+  const trimesterTotalWeights = { '1': 0, '2': 0, '3': 0 };
+  moduleActividades.forEach(act => {
+    // Asegurarnos de que solo contamos actividades de trimestres válidos
+    if (trimesterTotalWeights[act.trimestre] !== undefined) {
+      trimesterTotalWeights[act.trimestre] += (act.peso || 1);
+    }
+  });
+  // --- FIN: CÁLCULO DE PESOS POR TRIMESTRE ---
+
   // 1. Crear un Set con todos los CE IDs que ya están en uso en alguna actividad de este módulo.
   const usedCeIds = new Set(
     moduleActividades.flatMap(act => act.ceIds)
@@ -1353,16 +1363,23 @@ export function renderActividadesManagement(module) {
             ${renderRaWeightSummary(module)}
             <h4 class="font-semibold mb-3">Actividades Creadas</h4>
             <div class="space-y-2 max-h-60 overflow-y-auto">
-              ${moduleActividades.length > 0 ? moduleActividades.map(act => `
+              ${moduleActividades.length > 0 ? moduleActividades.map(act => {
+                const totalWeightForTrimester = trimesterTotalWeights[act.trimestre] || 0;
+                const activityWeight = act.peso || 1;
+                const percentage = totalWeightForTrimester > 0 ? (activityWeight / totalWeightForTrimester) * 100 : 0;
+                return `
                 <button class="open-actividad-panel-btn w-full text-left bg-gray-100 dark:bg-gray-700 p-3 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600" data-actividad-id="${act.id}">
                   <div class="flex justify-between items-start">
                     <div>
-                      <p class="font-bold">${act.name} (T${act.trimestre})</p>
+                      <p class="font-bold">${act.name}</p>
                       <p class="text-xs text-gray-500 dark:text-gray-400">CEs: ${act.ceIds.join(', ')}</p>
                     </div>
+                    <span class="text-sm font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                      T${act.trimestre} (${percentage.toFixed(1)}%)
+                    </span>
                   </div>
                 </button>
-              `).join('') : '<p class="text-sm text-gray-500">No hay actividades creadas.</p>'}
+              `}).join('') : '<p class="text-sm text-gray-500">No hay actividades creadas.</p>'}
             </div>
           </div>
           <!-- Formulario para Nueva Actividad -->
