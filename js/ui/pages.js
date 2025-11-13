@@ -941,6 +941,16 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
   const ras = module.resultados_de_aprendizaje;
   const moduleActividades = actividades.filter(a => a.moduleId === module.id);
 
+  // --- INICIO: CÁLCULO DE PESOS POR TRIMESTRE ---
+  const trimesterTotalWeights = { '1': 0, '2': 0, '3': 0 };
+  moduleActividades.forEach(act => {
+    // Asegurarnos de que solo contamos actividades de trimestres válidos
+    if (trimesterTotalWeights[act.trimestre] !== undefined) {
+      trimesterTotalWeights[act.trimestre] += (act.peso || 1);
+    }
+  });
+  // --- FIN: CÁLCULO DE PESOS POR TRIMESTRE ---
+
   const headerHtml = `
     <thead class="bg-gray-50 dark:bg-gray-800 sticky-header">
 
@@ -956,11 +966,16 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
         <!-- FIN: CORRECCIÓN -->
         <!-- Columnas de Actividades Evaluables -->
         ${moduleActividades.map(act => {
+          const totalWeightForTrimester = trimesterTotalWeights[act.trimestre] || 0;
+          const activityWeight = act.peso || 1;
+          const percentage = totalWeightForTrimester > 0 ? (activityWeight / totalWeightForTrimester) * 100 : 0;
+
           return `
             <th key="${act.id}" scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
               <button class="open-actividad-panel-btn w-full h-full" data-actividad-id="${act.id}" title="Gestionar y calificar actividad: ${act.name}\nCEs: ${act.ceIds.join(', ')}">
                 <span class="block">${act.name}</span>
                 <span class="block font-normal normal-case">(T${act.trimestre})</span>
+                <span class="block font-normal normal-case text-gray-400">(${percentage.toFixed(1)}%)</span>
               </button>
             </th>
           `;
@@ -1070,6 +1085,19 @@ export function renderCeListModal(module, raId) {
   const ra = module.resultados_de_aprendizaje.find(r => r.ra_id === raId);
   if (!ra) return '';
 
+  // --- INICIO: LÓGICA PARA OBTENER ACTIVIDADES POR CE ---
+  const { db } = { db: getDB() };
+  const moduleActivities = db.actividades.filter(a => a.moduleId === module.id);
+
+  // Calcular pesos acumulados para los CEs de este RA
+  const ceAccumulatedWeights = {};
+  ra.criterios_de_evaluacion.forEach(ce => {
+    const activitiesForCe = moduleActivities.filter(act => act.ceIds.includes(ce.ce_id));
+    ceAccumulatedWeights[ce.ce_id] = activitiesForCe.reduce((sum, act) => sum + (act.peso || 1), 0);
+  });
+  // --- FIN: LÓGICA PARA OBTENER ACTIVIDADES POR CE ---
+
+
   return `
     <div id="ce-list-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
@@ -1085,21 +1113,39 @@ export function renderCeListModal(module, raId) {
             Haz clic en el icono del maletín (💼) para marcar un CE como evaluado en empresa (Dual). El cambio se guarda automáticamente.
           </p>
           <div class="space-y-3">
-            ${ra.criterios_de_evaluacion.map(ce => `
-              <div class="flex items-center gap-4 p-3 rounded-md ${ce.dual ? 'bg-blue-50 dark:bg-blue-900/50' : 'bg-gray-50 dark:bg-gray-900/20'}">
-                <button 
-                  class="toggle-dual-btn p-2 rounded-md ${ce.dual ? 'bg-blue-100 dark:bg-blue-900 text-blue-600' : 'bg-gray-200 dark:bg-gray-600 text-gray-500'} hover:bg-blue-200 dark:hover:bg-blue-800" 
-                  data-ce-id="${ce.ce_id}" 
-                  title="Marcar/Desmarcar como evaluado en empresa (Dual)"
-                >
-                  ${ICONS.Briefcase}
-                </button>
-                <div>
-                  <p class="font-bold text-gray-900 dark:text-white">${ce.ce_id}</p>
-                  <p class="text-sm text-gray-700 dark:text-gray-300">${ce.ce_descripcion}</p>
+            ${ra.criterios_de_evaluacion.map(ce => {
+              const currentCeWeight = ceAccumulatedWeights[ce.ce_id] || 0;
+              const activitiesForCe = moduleActivities.filter(act => act.ceIds.includes(ce.ce_id));
+              const activitiesListHtml = activitiesForCe.length > 0 ? `
+                <div class="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                  <ul class="list-disc list-inside ml-2">
+                    ${activitiesForCe.map(act => {
+                      const activityWeight = act.peso || 1;
+                      const percentageOfCe = currentCeWeight > 0 ? (activityWeight / currentCeWeight * 100) : 0;
+                      return `<li>${act.name} (Peso: ${activityWeight}, <span class="font-bold">${percentageOfCe.toFixed(1)}%</span>)</li>`;
+                    }).join('')}
+                  </ul>
+                </div>
+              ` : ``;
+
+              return `
+              <div class="p-3 rounded-md ${ce.dual ? 'bg-blue-50 dark:bg-blue-900/50' : 'bg-gray-50 dark:bg-gray-900/20'}">
+                <div class="flex items-start gap-4">
+                  <button 
+                    class="toggle-dual-btn p-2 rounded-md ${ce.dual ? 'bg-blue-100 dark:bg-blue-900 text-blue-600' : 'bg-gray-200 dark:bg-gray-600 text-gray-500'} hover:bg-blue-200 dark:hover:bg-blue-800" 
+                    data-ce-id="${ce.ce_id}" 
+                    title="Marcar/Desmarcar como evaluado en empresa (Dual)"
+                  >
+                    ${ICONS.Briefcase}
+                  </button>
+                  <div class="flex-grow">
+                    <p class="font-bold text-gray-900 dark:text-white">${ce.ce_id}</p>
+                    <p class="text-sm text-gray-700 dark:text-gray-300">${ce.ce_descripcion}</p>
+                    ${activitiesListHtml}
+                  </div>
                 </div>
               </div>
-            `).join('')}
+            `}).join('')}
           </div>
         </div>
         <div class="p-4 border-t dark:border-gray-700 text-right">
