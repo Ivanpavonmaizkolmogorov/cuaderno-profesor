@@ -2,13 +2,16 @@
   "name": "cuaderno-profesor",
   "version": "1.0.0",
   "description": "Aplicación Cuaderno del Profesor con conexión a Google Drive",
-  "main": "js/main.js",
+  "main": "electron-main.js",
   "scripts": {
-    "start": "live-server --port=3000"
+    "start": "electron ."
   },
   "author": "ivanpavonmaiz",
   "license": "ISC",
   "devDependencies": {
-    "live-server": "^1.2.2"
+    "electron": "^28.0.0"
+  },
+  "dependencies": {
+    "google-auth-library": "^10.5.0"
   }
 }

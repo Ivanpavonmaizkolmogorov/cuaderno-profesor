@@ -5,7 +5,6 @@ import { ICONS } from './ui/constants.js';
 import { renderStudentFormatModal } from './ui/pages.js';
 import * as pages from './ui/pages.js';
 import { calculateModuleGrades } from './services/calculations.js';
-import { initGoogleDriveButton } from './googleDriveLoader.js';
 import { prepareModuleForProgressTracking } from './utils.js';
 import { renderProgressView } from './progressView.js';
 
@@ -197,7 +196,101 @@ function renderDriveButton() {
         <span class="btn-text">Conectar con Drive</span>
       </button>
     `;
-    initGoogleDriveButton('load-from-drive-btn', handleDriveConnection);
+    // ANTES: initGoogleDriveButton('load-from-drive-btn', handleDriveConnection);
+    // AHORA: Usamos la API de Electron expuesta en preload.js
+    document.getElementById('load-from-drive-btn')?.addEventListener('click', async () => {
+      console.log('Iniciando login de Google a través de Electron...');
+      // Llama a la función del proceso principal de Electron
+      const result = await window.electronAPI.startGoogleLogin();
+
+      if (result.success) {
+        console.log('Login exitoso, token obtenido:', result.token);
+        // El objeto 'result.token' contiene el 'access_token'.
+        // ¡AHORA USAMOS EL TOKEN DE VERDAD!
+        // 1. Guardamos el token para futuras peticiones.
+        state.setDriveConnection(null, 'Conectando...', result.token.access_token);
+        // 2. Mostramos el selector de archivos de Google Drive.
+        showDriveFilePicker(result.token.access_token);
+
+      } else {
+        console.error('Error en el login de Google:', result.error);
+        alert(`Error al conectar con Google: ${result.error}`);
+      }
+    });
+  }
+}
+
+/**
+ * Usa el access token para obtener una lista de archivos JSON de Google Drive
+ * y los muestra en un modal para que el usuario elija uno.
+ * @param {string} accessToken El token de acceso de Google.
+ */
+async function showDriveFilePicker(accessToken) {
+  const modalContainer = document.getElementById('modal-container');
+  modalContainer.innerHTML = `<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-11/12 md:w-1/2"><h3 class="text-lg font-bold mb-4">Selecciona un archivo JSON</h3><div id="drive-file-list" class="text-center">Cargando archivos... ${ICONS.Spinner}</div><div class="mt-4 text-right"><button id="cancel-drive-picker" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">Cancelar</button></div></div></div>`;
+
+  document.getElementById('cancel-drive-picker').addEventListener('click', () => {
+    modalContainer.innerHTML = '';
+    handlers.handleDisconnectDrive(); // Desconectamos si el usuario cancela
+  });
+
+  try {
+    // Hacemos la petición a la API de Google Drive para listar archivos JSON
+    const response = await fetch("https://www.googleapis.com/drive/v3/files?q=mimeType='application/json'", {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error de red: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const fileListContainer = document.getElementById('drive-file-list');
+
+    if (data.files && data.files.length > 0) {
+      fileListContainer.innerHTML = '<ul class="list-none p-0 m-0 max-h-64 overflow-y-auto"></ul>';
+      const ul = fileListContainer.querySelector('ul');
+      data.files.forEach(file => {
+        const li = document.createElement('li');
+        li.className = 'p-2 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer';
+        li.textContent = file.name;
+        li.dataset.fileId = file.id;
+        li.dataset.fileName = file.name;
+        ul.appendChild(li);
+      });
+
+      // Añadimos el listener para cuando el usuario hace clic en un archivo
+      ul.addEventListener('click', async (e) => {
+        if (e.target.tagName === 'LI') {
+          const { fileId, fileName } = e.target.dataset;
+          fileListContainer.innerHTML = `Descargando "${fileName}"... ${ICONS.Spinner}`;
+
+          // Hacemos la petición para descargar el contenido del archivo
+          const fileResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          });
+
+          if (!fileResponse.ok) {
+            throw new Error(`Error al descargar el archivo: ${fileResponse.statusText}`);
+          }
+
+          const fileContent = await fileResponse.json();
+          modalContainer.innerHTML = ''; // Cerramos el modal
+          handleDriveConnection({ content: fileContent, fileId, fileName, accessToken });
+        }
+      });
+
+    } else {
+      fileListContainer.innerHTML = '<p>No se encontraron archivos JSON en tu Google Drive.</p>';
+    }
+
+  } catch (error) {
+    console.error('Error al obtener archivos de Drive:', error);
+    document.getElementById('drive-file-list').innerHTML = `<p class="text-red-500">Error al cargar los archivos: ${error.message}</p>`;
   }
 }
 
@@ -865,7 +958,7 @@ function getDragAfterElement(container, y) {
   }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-function handleDriveConnection({ content, fileId, fileName, accessToken }) {
+export function handleDriveConnection({ content, fileId, fileName, accessToken }) {
   // 1. Validar que el JSON tiene la estructura esperada.
   if (content && content.modules && content.students) {
     // 2. Guardar los datos y el estado de la conexión.
