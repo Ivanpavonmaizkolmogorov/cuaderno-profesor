@@ -1289,12 +1289,12 @@ function renderRaWeightSummary(module) {
 export function renderActividadesManagement(module) {
   const { db } = { db: getDB() };
   const { actividades } = db;
-  const moduleActividades = actividades.filter(a => a.moduleId === module.id);
   const activityTypes = module.activityTypes || [
     { nombre: 'Examen', peso: 3 },
     { nombre: 'Práctica', peso: 2 },
     { nombre: 'Ejercicios', peso: 1 },
   ];
+  const moduleActividades = actividades.filter(a => a.moduleId === module.id);
 
   // --- INICIO: CÁLCULO DE PESOS POR TRIMESTRE ---
   const { ui } = { ui: getUI() };
@@ -1411,27 +1411,37 @@ export function renderActividadesManagement(module) {
                 <label for="act-name" class="text-sm font-medium">Nombre</label>
                 <input type="text" id="act-name" name="name" placeholder="Ej: Examen T1" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
               </div>
-              <div class="grid grid-cols-3 gap-2">
-                <div class="col-span-1">
-                  <label for="act-type" class="text-sm font-medium">Tipo</label>
-                  <select id="act-type" name="type" class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
-                    <option value="">-- Personalizado --</option>
-                    ${activityTypes.map(t => `<option value="${t.peso}">${t.nombre}</option>`).join('')}
-                  </select>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm font-medium">Tipo</label>
+                    <div id="act-type-btn-group" class="flex flex-wrap gap-2 mt-1">
+                        <label class="flex-1">
+                            <input type="radio" name="type" value="" class="hidden peer" checked>
+                            <div class="cursor-pointer text-center text-sm p-2 rounded-md border peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600">Pers.</div>
+                        </label>
+                        ${activityTypes.map(t => `
+                            <label class="flex-1">
+                                <input type="radio" name="type" value="${t.peso}" class="hidden peer">
+                                <div class="cursor-pointer text-center text-sm p-2 rounded-md border peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600">${t.nombre}</div>
+                            </label>
+                        `).join('')}
+                    </div>
                 </div>
-                <div class="col-span-1">
-                  <label for="act-peso" class="text-sm font-medium">Peso</label>
-                  <input type="number" id="act-peso" name="peso" value="1" step="0.1" min="0" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
+                <div>
+                    <label class="text-sm font-medium">Trimestre</label>
+                    <div class="flex gap-2 mt-1">
+                        ${['1', '2', '3'].map(trim => `
+                            <label class="flex-1">
+                                <input type="radio" name="trimestre" value="${trim}" required class="hidden peer">
+                                <div class="cursor-pointer text-center text-sm p-2 rounded-md border peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600">${trim}º</div>
+                            </label>
+                        `).join('')}
+                    </div>
                 </div>
-                <div class="col-span-1">
-                  <label for="act-trimestre" class="text-sm font-medium">Trimestre</label>
-                  <select id="act-trimestre" name="trimestre" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
-                    <option value="">Seleccionar</option>
-                    <option value="1">1º</option>
-                    <option value="2">2º</option>
-                    <option value="3">3º</option>
-                  </select>
-                </div>
+              </div>
+              <div>
+                <label for="act-peso" class="text-sm font-medium">Peso (se autocompleta al elegir un tipo)</label>
+                <input type="number" id="act-peso" name="peso" value="1" step="0.1" min="0" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
               </div>
               <p class="text-sm mb-2">Criterios de Evaluación a los que se asocia:</p>
               <div class="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1" id="ce-checkbox-container">

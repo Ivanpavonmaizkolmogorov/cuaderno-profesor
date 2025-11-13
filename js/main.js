@@ -684,6 +684,51 @@ function attachEventListeners() {
       });
     }
 
+    // --- INICIO: CORRECCIÓN LISTENERS DE GESTIÓN DE TIPOS DE ACTIVIDAD ---
+    const activityTypesContainer = document.getElementById('activity-types-container');
+    if (activityTypesContainer) {
+      activityTypesContainer.addEventListener('click', (e) => {
+        // Listener para eliminar una fila de tipo de actividad
+        if (e.target.classList.contains('delete-activity-type-btn')) {
+          e.target.closest('.activity-type-row').remove();
+        }
+      });
+    }
+
+    document.getElementById('add-activity-type-btn')?.addEventListener('click', () => {
+      const tbody = document.getElementById('activity-types-tbody');
+      if (tbody) {
+        const newIndex = tbody.children.length;
+        const newRow = document.createElement('tr');
+        newRow.className = 'activity-type-row';
+        newRow.dataset.index = newIndex;
+        newRow.innerHTML = `
+          <td class="p-2"><input type="text" value="" placeholder="Nuevo Tipo" class="activity-type-name w-full p-1 border rounded dark:bg-gray-900"></td>
+          <td class="p-2"><input type="number" value="1" step="0.1" min="0" class="activity-type-peso w-full p-1 border rounded dark:bg-gray-900"></td>
+          <td class="p-2 text-center"><button type="button" class="delete-activity-type-btn text-red-500 hover:text-red-700">&times;</button></td>
+        `;
+        tbody.appendChild(newRow);
+      }
+    });
+
+    document.getElementById('save-activity-types-btn')?.addEventListener('click', (e) => {
+      const moduleId = e.currentTarget.dataset.moduleId;
+      const rows = document.querySelectorAll('#activity-types-tbody .activity-type-row');
+      const activityTypes = Array.from(rows).map(row => ({
+        nombre: row.querySelector('.activity-type-name').value,
+        peso: row.querySelector('.activity-type-peso').value
+      }));
+      handlers.handleSaveActivityTypes(moduleId, activityTypes);
+    });
+    // --- FIN: CORRECCIÓN LISTENERS DE GESTIÓN DE TIPOS DE ACTIVIDAD ---
+
+    // --- INICIO: CORRECCIÓN AUTOCOMPLETADO DE PESO (BOTONES) ---
+    document.getElementById('act-type-btn-group')?.addEventListener('change', (e) => {
+        if (e.target.name === 'type' && e.target.value) {
+            document.getElementById('act-peso').value = e.target.value;
+        }
+    });
+
     // --- INICIO: CORRECCIÓN AUTOCOMPLETADO DE PESO DE ACTIVIDAD ---
     // Listener para el autocompletado del peso de la actividad
     const actTypeSelect = document.getElementById('act-type');
