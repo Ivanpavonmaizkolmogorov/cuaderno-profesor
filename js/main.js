@@ -3,6 +3,7 @@ import * as handlers from './handlers.js';
 import { renderHeader } from './ui/components.js';
 import { ICONS } from './ui/constants.js';
 import { renderStudentFormatModal } from './ui/pages.js';
+import { renderWeightDistributionView } from './ui/pages.js'; // Importar la nueva función
 import * as pages from './ui/pages.js';
 import { calculateModuleGrades, updateImpactPanel } from './services/calculations.js';
 import { prepareModuleForProgressTracking } from './utils.js';
@@ -61,6 +62,9 @@ export function renderApp() {
           break;
         case 'actividadDetail':
           contentContainer.innerHTML = pages.renderActividadDetailPage();
+          break;
+        case 'distribucion': // Nueva vista
+          contentContainer.innerHTML = renderWeightDistributionView(selectedModule);
           break;
         default:
           contentContainer.innerHTML = `<p class="text-center text-red-500 p-10">Error: Página no reconocida.</p>`;
@@ -622,6 +626,9 @@ function attachEventListeners() {
     // Listener para la nueva vista de Índice de Contenidos
     document.getElementById('view-progress-btn')?.addEventListener('click', () => {
         handlers.handleSetModuleView('indice');
+    });
+    document.getElementById('view-distribution-btn')?.addEventListener('click', () => {
+      handlers.handleSetModuleView('distribucion');
     });
 
     document.getElementById('process-students-btn')?.addEventListener('click', (e) => {

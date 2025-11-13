@@ -670,6 +670,7 @@ function renderModuloDetalle(module, moduleStudents) {
           ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
           : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
       }`;
+  const classDistribucion = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'distribucion' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
       
   let contentHtml = '';
   if (moduleStudents.length > 0) {
@@ -678,10 +679,11 @@ function renderModuloDetalle(module, moduleStudents) {
     } else if (moduleView === 'alumno') {
       contentHtml = renderAlumnoView(module, moduleStudents);
     } else if (moduleView === 'indice') {
-      // La vista de índice ahora se renderiza aquí, dentro del flujo normal.
-      // Devolvemos un contenedor vacío que será llenado por `renderProgressView` en `main.js`.
       console.log('[LOG][renderModuloDetalle] La vista es "indice", preparando contenedor #progress-view-container.');
-      contentHtml = `<div id="progress-view-container" class="p-4 md:p-6"></div>`;
+      contentHtml = `<div id="progress-view-container" class="p-4 md:p-6"></div>`; // Contenedor para la vista de progreso
+    } else if (moduleView === 'distribucion') {
+      console.log('[LOG][renderModuloDetalle] La vista es "distribucion", llamando a renderWeightDistributionView.');
+      contentHtml = renderWeightDistributionView(module); // ¡Esta es la corrección!
     }
   } else { // Este 'else' corresponde a if (moduleStudents.length > 0)
     contentHtml = `<p class="text-center text-gray-500 dark:text-gray-400 my-10">Añade alumnos/as en la sección de gestión para empezar a calificar.</p>`;
@@ -705,6 +707,9 @@ function renderModuloDetalle(module, moduleStudents) {
         <button id="view-progress-btn" class="${classIndice}">
           ${ICONS.ClipboardList} Índice Contenidos
         </button>
+        <button id="view-distribution-btn" class="${classDistribucion}">
+          ${ICONS.PieChart} Distribución de Pesos
+        </button>
       </div>
 
       <!-- Contenido de la vista -->
@@ -713,6 +718,129 @@ function renderModuloDetalle(module, moduleStudents) {
       </div>
     </div>
     <div id="ce-list-modal-container"></div>
+  `;
+}
+
+/**
+ * Renderiza la vista de distribución de pesos de actividades por CE y RA.
+ * @param {object} module - El objeto del módulo seleccionado.
+ * @returns {string} El HTML de la vista de distribución de pesos.
+ */
+export function renderWeightDistributionView(module) {
+  console.log('[LOG][renderWeightDistributionView] -> Iniciando renderizado de la vista de distribución de pesos.');
+  console.log('[LOG][renderWeightDistributionView] -> Módulo recibido:', module);
+  const { db } = { db: getDB() };
+  const moduleActivities = db.actividades.filter(a => a.moduleId === module.id);
+  console.log('[LOG][renderWeightDistributionView] -> Actividades del módulo encontradas:', moduleActivities.length);
+
+  // Calcular el peso total de todas las actividades del módulo
+  const totalModuleActivityWeight = moduleActivities.reduce((sum, act) => sum + (act.peso || 1), 0);
+  console.log('[LOG][renderWeightDistributionView] -> Peso total de actividades en el módulo:', totalModuleActivityWeight);
+
+  // Calcular el peso acumulado por cada CE
+  const ceAccumulatedWeights = {}; // { 'CE_ID': total_weight }
+  module.resultados_de_aprendizaje.forEach(ra => {
+    ra.criterios_de_evaluacion.forEach(ce => {
+      const activitiesForCe = moduleActivities.filter(act => act.ceIds.includes(ce.ce_id));
+      ceAccumulatedWeights[ce.ce_id] = activitiesForCe.reduce((sum, act) => sum + (act.peso || 1), 0);
+    });
+    console.log('[LOG][renderWeightDistributionView] -> Pesos acumulados por CE:', ceAccumulatedWeights);
+  });
+
+  // Calcular el peso acumulado por cada RA
+  const raAccumulatedWeights = {}; // { 'RA_ID': total_weight } (corregido)
+  module.resultados_de_aprendizaje.forEach(ra => {
+    const ceIdsInThisRa = ra.criterios_de_evaluacion.map(ce => ce.ce_id);
+    const uniqueActivitiesForThisRa = new Set(); // Para almacenar IDs de actividades únicas
+
+    moduleActivities.forEach(act => {
+      // Comprobar si esta actividad evalúa algún CE dentro del RA actual
+      const evaluatesCeInThisRa = act.ceIds.some(actCeId => ceIdsInThisRa.includes(actCeId));
+      if (evaluatesCeInThisRa) {
+        uniqueActivitiesForThisRa.add(act.id);
+      }
+    });
+
+    let raTotalWeight = 0;
+    uniqueActivitiesForThisRa.forEach(actId => {
+      const activity = moduleActivities.find(a => a.id === actId);
+      if (activity) {
+        raTotalWeight += (activity.peso || 1);
+      }
+    });
+    raAccumulatedWeights[ra.ra_id] = raTotalWeight;
+    console.log(`[LOG][renderWeightDistributionView] -> Pesos acumulados por RA '${ra.ra_id}' (corregido):`, raTotalWeight);
+  });
+
+  return `
+    <div class="p-4 md:p-6 bg-white dark:bg-gray-800 shadow-lg rounded-lg">
+      <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Distribución de Pesos del Módulo: ${module.modulo}</h3>
+      
+      <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+        <p class="text-lg font-semibold text-blue-800 dark:text-blue-200">Peso Total de Actividades en el Módulo: 
+          <span class="font-bold text-2xl">${totalModuleActivityWeight.toFixed(1)}</span>
+        </p>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Este es la suma de los pesos de todas las actividades evaluables del módulo.
+        </p>
+      </div>
+
+      <div class="space-y-6">
+        ${module.resultados_de_aprendizaje.map(ra => {
+          const currentRaWeight = raAccumulatedWeights[ra.ra_id] || 0;
+          const raPercentage = totalModuleActivityWeight > 0 ? (currentRaWeight / totalModuleActivityWeight * 100) : 0;
+          console.log(`[LOG][renderWeightDistributionView]   - RA '${ra.ra_id}': Peso=${currentRaWeight.toFixed(1)}, Porcentaje=${raPercentage.toFixed(1)}%`);
+          const raContentId = `ra-distribution-content-${ra.ra_id}`;
+
+          return `
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+              <button class="ra-accordion-toggle w-full flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors" data-content-id="${raContentId}">
+                <div class="text-left">
+                  <h4 class="font-semibold text-gray-900 dark:text-white">${ra.ra_id} - ${ra.ra_descripcion}</h4>
+                </div>
+                <div class="flex items-center gap-4">
+                  <span class="text-lg font-bold text-blue-700 dark:text-blue-300">
+                    ${currentRaWeight.toFixed(1)} <span class="text-sm font-normal">(${raPercentage.toFixed(1)}%)</span>
+                  </span>
+                  <span class="chevron-icon transform transition-transform">${ICONS.ChevronRight}</span>
+                </div>
+              </button>
+              <div id="${raContentId}" class="accordion-content hidden p-4 bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                <h5 class="font-semibold text-gray-700 dark:text-gray-300 mb-3">Criterios de Evaluación:</h5>
+                <div class="space-y-2">
+                  ${ra.criterios_de_evaluacion.map(ce => {
+                    const currentCeWeight = ceAccumulatedWeights[ce.ce_id] || 0;
+                    const cePercentageOfRa = currentRaWeight > 0 ? (currentCeWeight / currentRaWeight * 100) : 0;
+                    const activitiesForCe = moduleActivities.filter(act => act.ceIds.includes(ce.ce_id));
+                    const activitiesListHtml = activitiesForCe.length > 0 ? `
+                      <div class="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                        <span class="font-semibold">Actividades que evalúan este CE:</span>
+                        <ul class="list-disc list-inside ml-2">
+                          ${activitiesForCe.map(act => {
+                            const activityWeight = act.peso || 1;
+                            const percentageOfCe = currentCeWeight > 0 ? (activityWeight / currentCeWeight * 100) : 0;
+                            return `<li>${act.name} (Peso: ${activityWeight}, <span class="font-bold">${percentageOfCe.toFixed(1)}%</span>)</li>`;
+                          }).join('')}
+                        </ul>
+                      </div>
+                    ` : `<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Ninguna actividad evalúa este CE.</p>`;
+                    console.log(`[LOG][renderWeightDistributionView]     - CE '${ce.ce_id}': Peso=${currentCeWeight.toFixed(1)}, Porcentaje del RA=${cePercentageOfRa.toFixed(1)}%`);
+                    return `
+                      <div class="flex justify-between items-center p-2 rounded-md bg-gray-100 dark:bg-gray-900/50">
+                        <div><p class="text-sm text-gray-800 dark:text-gray-200">${ce.ce_id} - ${ce.ce_descripcion}</p>${activitiesListHtml}</div>
+                        <span class="font-medium text-gray-900 dark:text-gray-100">
+                          ${currentCeWeight.toFixed(1)} <span class="text-xs text-gray-600 dark:text-gray-400">(${cePercentageOfRa.toFixed(1)}% del RA)</span>
+                        </span>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
   `;
 }
 
