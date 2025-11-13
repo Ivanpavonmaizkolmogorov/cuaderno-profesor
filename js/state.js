@@ -24,6 +24,7 @@ let state = {
     selectedActividadId: null, // ID de la actividad para la página de detalle
     studentPageModuleFilter: 'all', // 'all' o un ID de módulo
     studentNameSuggestions: null, // { suggestions: [], moduleId: '' }
+    expandedRaId: null, // Inicializamos a null para que siempre exista
   },
   // Almacén para notas calculadas
   calculatedGrades: {},
@@ -37,8 +38,8 @@ let driveState = {
 }
 
 // --- GETTERS (para leer el estado) ---
-export const getDB = () => state.db;
-export const getUI = () => state.ui;
+export const getDB = () => { console.log('[LOG][getDB] Returning state.db:', state.db); return state.db; };
+export const getUI = () => { console.log('[LOG][getUI] Returning state.ui:', state.ui); return state.ui; };
 export const getCalculatedGrades = () => state.calculatedGrades;
 
 // --- SETTERS (para modificar el estado) ---

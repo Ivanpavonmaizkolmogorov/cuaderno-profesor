@@ -1,5 +1,5 @@
 import * as state from './state.js';
-import { setUIProperty } from './state.js'; // Importación nombrada
+import { setUIProperty, getUI } from './state.js'; // Importación nombrada
 import * as dataManager from './services/dataManager.js';
 import { parseStudentNames } from './services/nameParser.js';
 import { calculateModuleGrades } from './services/calculations.js';
@@ -185,6 +185,14 @@ export function handleSetModuleView(newView) {
     }
     renderApp(); // <-- RESTAURADO: Es necesario para que la UI reaccione al cambio de estado.
 }
+
+export function handleViewRaDetails(raId) {
+  console.log(`[LOG][handleViewRaDetails] -> Estableciendo vista a 'distribucion' y expandiendo RA: ${raId}`);
+  state.setModuleView('distribucion');
+  state.setUIProperty('expandedRaId', raId);
+  renderApp();
+}
+
 
 export function handleNavigateStudent(direction) {
     const db = state.getDB();

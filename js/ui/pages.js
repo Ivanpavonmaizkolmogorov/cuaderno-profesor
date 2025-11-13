@@ -727,6 +727,9 @@ function renderModuloDetalle(module, moduleStudents) {
  * @returns {string} El HTML de la vista de distribución de pesos.
  */
 export function renderWeightDistributionView(module) {
+  console.log('[LOG][renderWeightDistributionView] -> Obteniendo estado de la UI...');
+  const ui = getUI(); // Obtenemos el objeto UI completo
+  console.log('[LOG][renderWeightDistributionView] -> Objeto UI obtenido:', ui);
   console.log('[LOG][renderWeightDistributionView] -> Iniciando renderizado de la vista de distribución de pesos.');
   console.log('[LOG][renderWeightDistributionView] -> Módulo recibido:', module);
   const { db } = { db: getDB() };
@@ -789,10 +792,13 @@ export function renderWeightDistributionView(module) {
         ${module.resultados_de_aprendizaje.map(ra => {
           const currentRaWeight = raAccumulatedWeights[ra.ra_id] || 0;
           const raPercentage = totalModuleActivityWeight > 0 ? (currentRaWeight / totalModuleActivityWeight * 100) : 0;
+          console.log(`[LOG][renderWeightDistributionView]   - Checking expandedRaId for RA '${ra.ra_id}'. Current ui?.expandedRaId: ${ui?.expandedRaId}`);
+          const isExpanded = ui?.expandedRaId === ra.ra_id; // Usamos encadenamiento opcional para evitar el TypeError
           console.log(`[LOG][renderWeightDistributionView]   - RA '${ra.ra_id}': Peso=${currentRaWeight.toFixed(1)}, Porcentaje=${raPercentage.toFixed(1)}%`);
           const raContentId = `ra-distribution-content-${ra.ra_id}`;
 
           return `
+            <!-- RA: ${ra.ra_id} -->
             <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
               <button class="ra-accordion-toggle w-full flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors" data-content-id="${raContentId}">
                 <div class="text-left">
@@ -805,7 +811,7 @@ export function renderWeightDistributionView(module) {
                   <span class="chevron-icon transform transition-transform">${ICONS.ChevronRight}</span>
                 </div>
               </button>
-              <div id="${raContentId}" class="accordion-content hidden p-4 bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+              <div id="${raContentId}" class="accordion-content ${isExpanded ? '' : 'hidden'} p-4 bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
                 <h5 class="font-semibold text-gray-700 dark:text-gray-300 mb-3">Criterios de Evaluación:</h5>
                 <div class="space-y-2">
                   ${ra.criterios_de_evaluacion.map(ce => {
@@ -1106,6 +1112,134 @@ export function renderCeListModal(module, raId) {
   `;
 }
 
+/**
+ * Renderiza un modal con el desglose detallado de un Resultado de Aprendizaje (RA).
+ * @param {object} module - El objeto del módulo.
+ * @param {string} raId - El ID del RA a detallar.
+ * @returns {string} El HTML del modal.
+ */
+export function renderRaDetailModal(module, raId) {
+  const { db } = { db: getDB() };
+  const ra = module.resultados_de_aprendizaje.find(r => r.ra_id === raId);
+  if (!ra) return '';
+
+  const moduleActivities = db.actividades.filter(a => a.moduleId === module.id);
+
+  // Calcular pesos acumulados para los CEs de este RA
+  const ceAccumulatedWeights = {};
+  ra.criterios_de_evaluacion.forEach(ce => {
+    const activitiesForCe = moduleActivities.filter(act => act.ceIds.includes(ce.ce_id));
+    ceAccumulatedWeights[ce.ce_id] = activitiesForCe.reduce((sum, act) => sum + (act.peso || 1), 0);
+  });
+
+  return `
+    <div id="ra-detail-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div class="p-6 border-b dark:border-gray-700">
+          <h3 class="text-xl font-bold">Desglose de ${ra.ra_id}</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">${ra.ra_descripcion}</p>
+        </div>
+        <div class="p-6 overflow-y-auto">
+          <div class="space-y-4">
+            ${ra.criterios_de_evaluacion.map(ce => {
+              const currentCeWeight = ceAccumulatedWeights[ce.ce_id] || 0;
+              const activitiesForCe = moduleActivities.filter(act => act.ceIds.includes(ce.ce_id));
+              const activitiesListHtml = activitiesForCe.length > 0 ? `
+                <div class="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                  <span class="font-semibold">Actividades que evalúan este CE:</span>
+                  <ul class="list-disc list-inside ml-2">
+                    ${activitiesForCe.map(act => {
+                      const activityWeight = act.peso || 1;
+                      const percentageOfCe = currentCeWeight > 0 ? (activityWeight / currentCeWeight * 100) : 0;
+                      return `<li>${act.name} (Peso: ${activityWeight}, <span class="font-bold">${percentageOfCe.toFixed(1)}%</span>)</li>`;
+                    }).join('')}
+                  </ul>
+                </div>
+              ` : `<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Ninguna actividad evalúa este CE.</p>`;
+
+              return `
+                <div class="p-3 rounded-md bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <p class="font-semibold text-gray-800 dark:text-gray-200">${ce.ce_id}</p>
+                      <p class="text-sm text-gray-600 dark:text-gray-400">${ce.ce_descripcion}</p>
+                    </div>
+                    <span class="font-bold text-lg text-blue-600 dark:text-blue-400">${currentCeWeight.toFixed(1)}</span>
+                  </div>
+                  ${activitiesListHtml}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+        <div class="p-4 border-t dark:border-gray-700 text-right">
+          <button id="close-ra-detail-modal-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Renderiza un resumen compacto de la distribución de pesos por RA.
+ * @param {object} module - El objeto del módulo.
+ * @returns {string} El HTML del resumen.
+ */
+function renderRaWeightSummary(module) {
+  const { db } = { db: getDB() };
+  const moduleActivities = db.actividades.filter(a => a.moduleId === module.id);
+
+  const totalModuleActivityWeight = moduleActivities.reduce((sum, act) => sum + (act.peso || 1), 0);
+
+  const raData = module.resultados_de_aprendizaje.map(ra => {
+    const ceIdsInThisRa = ra.criterios_de_evaluacion.map(ce => ce.ce_id);
+    const uniqueActivitiesForThisRa = new Set();
+
+    moduleActivities.forEach(act => {
+      if (act.ceIds.some(actCeId => ceIdsInThisRa.includes(actCeId))) {
+        uniqueActivitiesForThisRa.add(act.id);
+      }
+    });
+
+    let raTotalWeight = 0;
+    uniqueActivitiesForThisRa.forEach(actId => {
+      const activity = moduleActivities.find(a => a.id === actId);
+      if (activity) {
+        raTotalWeight += (activity.peso || 1);
+      }
+    });
+
+    const percentage = totalModuleActivityWeight > 0 ? (raTotalWeight / totalModuleActivityWeight * 100) : 0;
+
+    return {
+      id: ra.ra_id,
+      weight: raTotalWeight,
+      percentage: percentage
+    };
+  });
+
+  return `
+    <div class="mb-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900/50">
+      <h4 class="font-semibold mb-3 text-gray-800 dark:text-gray-200">Resumen de Pesos por RA</h4>
+      <div class="space-y-3">
+        ${raData.map(ra => `
+          <button class="open-ra-detail-modal-btn w-full text-left p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" data-module-id="${module.id}" data-ra-id="${ra.id}">
+            <div class="flex justify-between items-center text-sm mb-1">
+              <span class="font-bold text-gray-700 dark:text-gray-300">${ra.id}</span>
+              <span class="text-gray-600 dark:text-gray-400">${ra.weight.toFixed(1)} / ${totalModuleActivityWeight.toFixed(1)} (${ra.percentage.toFixed(1)}%)</span>
+            </div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+              <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${ra.percentage.toFixed(2)}%"></div>
+            </div>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 export function renderActividadesManagement(module) {
   const { actividades } = getDB();
   const moduleActividades = actividades.filter(a => a.moduleId === module.id);
@@ -1170,6 +1304,7 @@ export function renderActividadesManagement(module) {
       <div class="p-6 grid grid-cols-1 gap-8">
           <!-- Lista de Actividades -->
           <div>
+            ${renderRaWeightSummary(module)}
             <h4 class="font-semibold mb-3">Actividades Creadas</h4>
             <div class="space-y-2 max-h-60 overflow-y-auto">
               ${moduleActividades.length > 0 ? moduleActividades.map(act => `

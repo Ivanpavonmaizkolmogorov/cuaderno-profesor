@@ -65,6 +65,7 @@ export function renderApp() {
           break;
         case 'distribucion': // Nueva vista
           contentContainer.innerHTML = renderWeightDistributionView(selectedModule);
+          state.setUIProperty('expandedRaId', null); // Clear after rendering
           break;
         default:
           contentContainer.innerHTML = `<p class="text-center text-red-500 p-10">Error: Página no reconocida.</p>`;
@@ -629,6 +630,28 @@ function attachEventListeners() {
     });
     document.getElementById('view-distribution-btn')?.addEventListener('click', () => {
       handlers.handleSetModuleView('distribucion');
+    });
+
+    // Listener para los botones de "Ver detalles de RA" en el resumen de pesos
+    document.querySelectorAll('.view-ra-details-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        handlers.handleViewRaDetails(e.currentTarget.dataset.raId);
+      });
+    });
+
+    // Listener para los botones de resumen de RA que abren el modal de detalle
+    document.querySelectorAll('.open-ra-detail-modal-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const { moduleId, raId } = e.currentTarget.dataset;
+        const module = db.modules.find(m => m.id === moduleId);
+        if (module) {
+          const modalContainer = document.getElementById('modal-container');
+          modalContainer.innerHTML = pages.renderRaDetailModal(module, raId);
+          modalContainer.querySelector('#close-ra-detail-modal-btn')?.addEventListener('click', () => {
+            modalContainer.innerHTML = '';
+          });
+        }
+      });
     });
 
     document.getElementById('process-students-btn')?.addEventListener('click', (e) => {
