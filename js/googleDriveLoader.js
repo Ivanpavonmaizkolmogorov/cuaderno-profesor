@@ -158,17 +158,19 @@ export async function updateMirrorFileInDrive(originalFileName, content, accessT
     return false;
   }
 
-  const mirrorFileName = originalFileName.replace(/\.json$/i, '.txt');
-  console.log(`[MIRROR] Iniciando proceso para el archivo espejo: ${mirrorFileName}`);
+  // El nombre del Google Doc no necesita extensión.
+  const mirrorDocName = originalFileName.replace(/\.json$/i, '');
+  const mirrorMimeType = 'application/vnd.google-apps.document';
+  console.log(`[LOG-MIRROR] Iniciando proceso para el Google Doc espejo: "${mirrorDocName}"`);
 
   try {
     // 1. Buscar el ID del archivo espejo por su nombre.
-    console.log(`[LOG-MIRROR] Buscando archivo espejo con nombre: "${mirrorFileName}"`);
-    const searchResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(mirrorFileName)}'&fields=files(id)`, {
+    console.log(`[LOG-MIRROR] Buscando Google Doc con nombre: "${mirrorDocName}"`);
+    const searchResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(mirrorDocName)}' and mimeType='${mirrorMimeType}'&fields=files(id)`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
 
-    if (!searchResponse.ok) throw new Error(`[API-ERROR] Error al buscar el archivo espejo: ${searchResponse.statusText}`);
+    if (!searchResponse.ok) throw new Error(`[API-ERROR] Error al buscar el Google Doc: ${searchResponse.statusText}`);
 
     const searchData = await searchResponse.json();
     let mirrorFileId = searchData.files.length > 0 ? searchData.files[0].id : null;
@@ -177,8 +179,8 @@ export async function updateMirrorFileInDrive(originalFileName, content, accessT
     if (!mirrorFileId) {
       console.log(`[LOG-MIRROR] El archivo espejo no existe. Creando uno nuevo...`);
       const createMetadata = {
-        name: mirrorFileName,
-        mimeType: 'text/plain',
+        name: mirrorDocName,
+        mimeType: mirrorMimeType,
       };
       const createResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
         method: 'POST',
@@ -189,20 +191,21 @@ export async function updateMirrorFileInDrive(originalFileName, content, accessT
         body: JSON.stringify(createMetadata),
       });
 
-      if (!createResponse.ok) throw new Error(`[API-ERROR] Error al crear el archivo espejo: ${createResponse.statusText}`);
+      if (!createResponse.ok) throw new Error(`[API-ERROR] Error al crear el Google Doc: ${createResponse.statusText}`);
 
       const fileData = await createResponse.json();
       mirrorFileId = fileData.id;
-      console.log(`[LOG-MIRROR] Archivo espejo creado con éxito. ID: ${mirrorFileId}`);
+      console.log(`[LOG-MIRROR] Google Doc espejo creado con éxito. ID: ${mirrorFileId}`);
     } else {
       console.log(`[LOG-MIRROR] Archivo espejo encontrado. ID: ${mirrorFileId}`);
     }
 
     // 3. Actualizar el contenido del archivo (ya sea recién creado o existente).
+    // Para Google Docs, el contenido se sube como texto plano.
     const updateForm = new FormData();
-    const updateMetadata = { mimeType: 'text/plain' };
+    const updateMetadata = { mimeType: mirrorMimeType }; // Mantenemos el tipo de Google Doc
     updateForm.append('metadata', new Blob([JSON.stringify(updateMetadata)], { type: 'application/json' }));
-    updateForm.append('file', new Blob([JSON.stringify(content, null, 2)], { type: 'text/plain' }));
+    updateForm.append('file', new Blob([JSON.stringify(content, null, 2)], { type: 'text/plain' })); // El contenido es texto
 
     console.log(`[LOG-MIRROR] Actualizando contenido del archivo espejo (ID: ${mirrorFileId})...`);
     const updateResponse = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${mirrorFileId}?uploadType=multipart`, {
@@ -211,9 +214,9 @@ export async function updateMirrorFileInDrive(originalFileName, content, accessT
       body: updateForm,
     });
 
-    if (!updateResponse.ok) throw new Error(`[API-ERROR] Error al actualizar el contenido del archivo espejo: ${updateResponse.statusText}`);
+    if (!updateResponse.ok) throw new Error(`[API-ERROR] Error al actualizar el contenido del Google Doc: ${updateResponse.statusText}`);
 
-    console.log(`[LOG-MIRROR] ¡ÉXITO! Archivo espejo "${mirrorFileName}" actualizado correctamente.`);
+    console.log(`[LOG-MIRROR] ¡ÉXITO! Google Doc espejo "${mirrorDocName}" actualizado correctamente.`);
     return true;
 
   } catch (error) {
