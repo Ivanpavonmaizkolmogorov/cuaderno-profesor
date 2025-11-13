@@ -1,5 +1,5 @@
 // --- GESTIÓN DE ESTADO GLOBAL ---
-import { updateFileInDrive } from './googleDriveLoader.js';
+import { updateFileInDrive, updateMirrorFileInDrive } from './googleDriveLoader.js';
 
 let connectedFileHandle = null;
 let saveTimeout = null;
@@ -201,8 +201,12 @@ export function saveDB() {
     updateFileInDrive(driveState.fileId, state.db, driveState.accessToken)
       .then(success => {
         if (success) {
-          console.log("Sincronización con Google Drive completada.");
-          showSavingIndicator(false, false); // Guardado exitoso
+          console.log("[LOG-SAVE] Sincronización principal (.json) con Google Drive completada.");
+          // Ahora, procedemos a guardar el archivo espejo.
+          showSavingIndicator(true, false, 'Guardando espejo...'); // Mostramos el nuevo estado
+          updateMirrorFileInDrive(driveState.fileName, state.db, driveState.accessToken).then(mirrorSuccess => {
+            showSavingIndicator(false, !mirrorSuccess); // Ocultamos el indicador con el resultado final
+          });
         } else {
           console.error("Falló la sincronización con Google Drive.");
           showSavingIndicator(false, true); // Hubo un error
@@ -226,8 +230,9 @@ export function saveDB() {
  * Muestra un indicador visual sutil sobre el estado del guardado en la nube.
  * @param {boolean} isSaving - True si está en proceso de guardado.
  * @param {boolean} [hasError=false] - True si el guardado finalizó con error.
+ * @param {string|null} [customMessage=null] - Un mensaje personalizado para mostrar durante el guardado.
  */
-function showSavingIndicator(isSaving, hasError = false) {
+function showSavingIndicator(isSaving, hasError = false, customMessage = null) {
   let indicator = document.getElementById('cloud-save-indicator');
   if (!indicator) {
     indicator = document.createElement('div');
@@ -241,13 +246,13 @@ function showSavingIndicator(isSaving, hasError = false) {
   indicator.classList.remove('bg-gray-800', 'bg-green-600', 'bg-red-600');
 
   if (isSaving) {
-    indicator.innerHTML = `
+    indicator.innerHTML = customMessage ? `<span>${customMessage}</span>` : `
       <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
       Guardando en la nube...
-    `;
+    `; // Si hay mensaje personalizado, no mostramos el spinner para no sobrecargar
     indicator.classList.add('bg-gray-800');
     // Forzar reflow para que la animación de entrada funcione
     void indicator.offsetWidth; 

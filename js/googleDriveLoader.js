@@ -146,6 +146,84 @@ export async function updateFileInDrive(fileId, content, accessToken) {
 }
 
 /**
+ * Busca, crea o actualiza un archivo .txt espejo en Google Drive.
+ * @param {string} originalFileName - El nombre del archivo .json original (ej: "datos.json").
+ * @param {object} content - El objeto de la base de datos a guardar.
+ * @param {string} accessToken - El token de acceso para autorizar la petición.
+ * @returns {Promise<boolean>} True si la operación fue exitosa, false en caso contrario.
+ */
+export async function updateMirrorFileInDrive(originalFileName, content, accessToken) {
+  if (!originalFileName || !content || !accessToken) {
+    console.error("[LOG-MIRROR] Error: Faltan datos para actualizar el archivo espejo (nombre, contenido o token).");
+    return false;
+  }
+
+  const mirrorFileName = originalFileName.replace(/\.json$/i, '.txt');
+  console.log(`[MIRROR] Iniciando proceso para el archivo espejo: ${mirrorFileName}`);
+
+  try {
+    // 1. Buscar el ID del archivo espejo por su nombre.
+    console.log(`[LOG-MIRROR] Buscando archivo espejo con nombre: "${mirrorFileName}"`);
+    const searchResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(mirrorFileName)}'&fields=files(id)`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+
+    if (!searchResponse.ok) throw new Error(`[API-ERROR] Error al buscar el archivo espejo: ${searchResponse.statusText}`);
+
+    const searchData = await searchResponse.json();
+    let mirrorFileId = searchData.files.length > 0 ? searchData.files[0].id : null;
+
+    // 2. Si el archivo no existe, crearlo.
+    if (!mirrorFileId) {
+      console.log(`[LOG-MIRROR] El archivo espejo no existe. Creando uno nuevo...`);
+      const createMetadata = {
+        name: mirrorFileName,
+        mimeType: 'text/plain',
+      };
+      const createResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(createMetadata),
+      });
+
+      if (!createResponse.ok) throw new Error(`[API-ERROR] Error al crear el archivo espejo: ${createResponse.statusText}`);
+
+      const fileData = await createResponse.json();
+      mirrorFileId = fileData.id;
+      console.log(`[LOG-MIRROR] Archivo espejo creado con éxito. ID: ${mirrorFileId}`);
+    } else {
+      console.log(`[LOG-MIRROR] Archivo espejo encontrado. ID: ${mirrorFileId}`);
+    }
+
+    // 3. Actualizar el contenido del archivo (ya sea recién creado o existente).
+    const updateForm = new FormData();
+    const updateMetadata = { mimeType: 'text/plain' };
+    updateForm.append('metadata', new Blob([JSON.stringify(updateMetadata)], { type: 'application/json' }));
+    updateForm.append('file', new Blob([JSON.stringify(content, null, 2)], { type: 'text/plain' }));
+
+    console.log(`[LOG-MIRROR] Actualizando contenido del archivo espejo (ID: ${mirrorFileId})...`);
+    const updateResponse = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${mirrorFileId}?uploadType=multipart`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+      body: updateForm,
+    });
+
+    if (!updateResponse.ok) throw new Error(`[API-ERROR] Error al actualizar el contenido del archivo espejo: ${updateResponse.statusText}`);
+
+    console.log(`[LOG-MIRROR] ¡ÉXITO! Archivo espejo "${mirrorFileName}" actualizado correctamente.`);
+    return true;
+
+  } catch (error) {
+    console.error(`[LOG-MIRROR] ERROR en el proceso del archivo espejo:`, error);
+    // El indicador visual de error ya se gestiona en state.js
+    return false;
+  }
+}
+
+/**
  * Carga un script de forma dinámica y devuelve una promesa que se resuelve cuando ha cargado.
  * @param {string} src La URL del script a cargar.
  */
