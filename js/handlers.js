@@ -986,6 +986,43 @@ export function handleUpdateActividad(actividadId, form) {
 }
 
 /**
+ * Elimina una actividad directamente desde la lista de gestión de actividades.
+ * @param {string} actividadId - El ID de la actividad a eliminar.
+ */
+export function handleDeleteActivityFromList(actividadId) {
+  const db = state.getDB();
+  const actividad = db.actividades.find(a => a.id === actividadId);
+  if (!actividad) return;
+
+  if (!window.confirm(`¿Seguro que quieres eliminar la actividad "${actividad.name}"? Todas las calificaciones asociadas a ella también se borrarán.`)) {
+    return;
+  }
+
+  // 1. Eliminar la actividad
+  db.actividades = db.actividades.filter(a => a.id !== actividadId);
+
+  // 2. Borrar las notas de esta actividad para todos los alumnos
+  Object.keys(db.grades).forEach(studentId => {
+    if (db.grades[studentId]?.[actividadId]) {
+      delete db.grades[studentId][actividadId];
+    }
+  });
+
+  state.setDB(db);
+  state.saveDB();
+  renderApp();
+}
+
+export function handleReorderActivities(orderedActivityIds) {
+  const db = state.getDB();
+  const activityMap = new Map(db.actividades.map(act => [act.id, act]));
+  db.actividades = orderedActivityIds.map(id => activityMap.get(id)).filter(Boolean);
+  state.setDB(db);
+  state.saveDB();
+  renderApp();
+}
+
+/**
  * Guarda la configuración de los tipos de actividad para un módulo.
  * @param {string} moduleId - El ID del módulo a modificar.
  * @param {Array<object>} activityTypes - El array de objetos {nombre, peso}.
@@ -1036,6 +1073,11 @@ export function handleDeleteActividad(actividadId) {
   state.saveDB();
   alert("Actividad eliminada. Volviendo a la página de módulos.");
   handleSetPage('modulos');
+}
+
+export function handleSearchActivities(searchTerm) {
+  state.setUIProperty('activitySearchTerm', searchTerm);
+  renderApp();
 }
 
 export function handleAddActividadGradeAttempt(studentId, actividadId, form, fromPanel = false) {

@@ -1287,7 +1287,8 @@ function renderRaWeightSummary(module) {
 }
 
 export function renderActividadesManagement(module) {
-  const { actividades } = getDB();
+  const { db } = { db: getDB() };
+  const { actividades } = db;
   const moduleActividades = actividades.filter(a => a.moduleId === module.id);
   const activityTypes = module.activityTypes || [
     { nombre: 'Examen', peso: 3 },
@@ -1296,14 +1297,22 @@ export function renderActividadesManagement(module) {
   ];
 
   // --- INICIO: CÁLCULO DE PESOS POR TRIMESTRE ---
+  const { ui } = { ui: getUI() };
   const trimesterTotalWeights = { '1': 0, '2': 0, '3': 0 };
-  moduleActividades.forEach(act => {
+  db.actividades.filter(a => a.moduleId === module.id).forEach(act => { // Usamos todas, no las filtradas
     // Asegurarnos de que solo contamos actividades de trimestres válidos
     if (trimesterTotalWeights[act.trimestre] !== undefined) {
       trimesterTotalWeights[act.trimestre] += (act.peso || 1);
     }
   });
   // --- FIN: CÁLCULO DE PESOS POR TRIMESTRE ---
+
+  // --- INICIO: LÓGICA DE BÚSQUEDA ---
+  const searchTerm = ui.activitySearchTerm || '';
+  const filteredModuleActividades = moduleActividades.filter(act => 
+    act.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  // --- FIN: LÓGICA DE BÚSQUEDA ---
 
   // 1. Crear un Set con todos los CE IDs que ya están en uso en alguna actividad de este módulo.
   const usedCeIds = new Set(
@@ -1361,25 +1370,37 @@ export function renderActividadesManagement(module) {
           <!-- Lista de Actividades -->
           <div>
             ${renderRaWeightSummary(module)}
-            <h4 class="font-semibold mb-3">Actividades Creadas</h4>
-            <div class="space-y-2 max-h-60 overflow-y-auto">
-              ${moduleActividades.length > 0 ? moduleActividades.map(act => {
+            <div class="flex justify-between items-center mb-3">
+              <h4 class="font-semibold">Actividades Creadas (${filteredModuleActividades.length})</h4>
+            </div>
+            <input type="text" id="activity-search-input" value="${searchTerm}" class="w-full p-2 mb-3 border rounded-md dark:bg-gray-900" placeholder="Buscar actividad...">
+            <div id="activity-list-container" class="space-y-2 max-h-60 overflow-y-auto">
+              ${filteredModuleActividades.length > 0 ? filteredModuleActividades.map(act => {
                 const totalWeightForTrimester = trimesterTotalWeights[act.trimestre] || 0;
                 const activityWeight = act.peso || 1;
                 const percentage = totalWeightForTrimester > 0 ? (activityWeight / totalWeightForTrimester) * 100 : 0;
                 return `
-                <button class="open-actividad-panel-btn w-full text-left bg-gray-100 dark:bg-gray-700 p-3 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600" data-actividad-id="${act.id}">
-                  <div class="flex justify-between items-start">
-                    <div>
-                      <p class="font-bold">${act.name}</p>
-                      <p class="text-xs text-gray-500 dark:text-gray-400">CEs: ${act.ceIds.join(', ')}</p>
+                <div draggable="true" data-actividad-id="${act.id}" class="activity-draggable flex items-center gap-2 bg-gray-100 dark:bg-gray-700 p-2 rounded-md group">
+                  <span class="drag-handle cursor-move text-gray-400" title="Arrastrar para reordenar">${ICONS.GripVertical}</span>
+                  <button class="open-actividad-panel-btn flex-grow text-left" data-actividad-id="${act.id}">
+                    <div class="flex justify-between items-start">
+                      <div>
+                        <p class="font-bold">${act.name}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">CEs: ${act.ceIds.join(', ')}</p>
+                      </div>
+                      <span class="text-sm font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                        T${act.trimestre} (${percentage.toFixed(1)}%)
+                      </span>
                     </div>
-                    <span class="text-sm font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                      T${act.trimestre} (${percentage.toFixed(1)}%)
-                    </span>
-                  </div>
-                </button>
-              `}).join('') : '<p class="text-sm text-gray-500">No hay actividades creadas.</p>'}
+                  </button>
+                  <button 
+                    class="delete-activity-from-list-btn text-red-500 hover:text-red-700 p-1 opacity-0 group-hover:opacity-100 transition-opacity" 
+                    data-actividad-id="${act.id}" 
+                    title="Eliminar actividad">
+                      ${ICONS.Trash2}
+                  </button>
+                </div>
+              `}).join('') : `<p class="text-sm text-gray-500 text-center">${searchTerm ? 'No se encontraron actividades.' : 'No hay actividades creadas.'}</p>`}
             </div>
           </div>
           <!-- Formulario para Nueva Actividad -->

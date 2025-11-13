@@ -796,6 +796,57 @@ function attachEventListeners() {
       });
     }
 
+    // --- INICIO: CORRECCIÓN DRAG & DROP Y BORRADO DE ACTIVIDADES ---
+    // Lógica de Drag and Drop para reordenar actividades
+    const activityListContainer = document.getElementById('activity-list-container');
+    if (activityListContainer) {
+      let draggedItem = null;
+
+      activityListContainer.addEventListener('dragstart', (e) => {
+        if (e.target.classList.contains('activity-draggable')) {
+          draggedItem = e.target;
+          setTimeout(() => {
+            draggedItem.style.opacity = '0.5';
+          }, 0);
+        }
+      });
+
+      activityListContainer.addEventListener('dragend', () => {
+        if (draggedItem) {
+          draggedItem.style.opacity = '1';
+          draggedItem = null;
+        }
+      });
+
+      activityListContainer.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(activityListContainer, e.clientY, 'activity-draggable');
+        if (draggedItem) {
+          if (afterElement == null) {
+            activityListContainer.appendChild(draggedItem);
+          } else {
+            activityListContainer.insertBefore(draggedItem, afterElement);
+          }
+        }
+      });
+
+      activityListContainer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (draggedItem) {
+          const newOrderedIds = [...activityListContainer.querySelectorAll('.activity-draggable')].map(div => div.dataset.actividadId);
+          handlers.handleReorderActivities(newOrderedIds);
+        }
+      });
+    }
+
+    // Listener para el botón de eliminar actividad desde la lista
+    document.querySelectorAll('.delete-activity-from-list-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        handlers.handleDeleteActivityFromList(e.currentTarget.dataset.actividadId);
+      });
+    });
+    // --- FIN: CORRECCIÓN DRAG & DROP Y BORRADO DE ACTIVIDADES ---
+
     document.querySelectorAll('.remove-student-btn').forEach(button => {
       button.addEventListener('click', (e) => {
         const { studentId, moduleId } = e.currentTarget.dataset;
@@ -1036,8 +1087,8 @@ function attachEventListeners() {
   }
 }
 
-function getDragAfterElement(container, y) {
-  const draggableElements = [...container.querySelectorAll('.student-draggable:not(.dragging)')];
+function getDragAfterElement(container, y, draggableSelector = '.student-draggable') {
+  const draggableElements = [...container.querySelectorAll(`.${draggableSelector}:not(.dragging)`)];
 
   return draggableElements.reduce((closest, child) => {
     const box = child.getBoundingClientRect();
