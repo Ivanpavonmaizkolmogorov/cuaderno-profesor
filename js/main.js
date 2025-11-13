@@ -654,6 +654,22 @@ function attachEventListeners() {
       });
     }
 
+    // --- INICIO: CORRECCIÓN AUTOCOMPLETADO DE PESO DE ACTIVIDAD ---
+    // Listener para el autocompletado del peso de la actividad
+    const actTypeSelect = document.getElementById('act-type');
+    const actPesoInput = document.getElementById('act-peso');
+
+    if (actTypeSelect && actPesoInput) {
+      actTypeSelect.addEventListener('change', (e) => {
+        const selectedWeight = e.target.value;
+        if (selectedWeight) {
+          actPesoInput.value = selectedWeight;
+        }
+      });
+    }
+    // --- FIN: CORRECCIÓN AUTOCOMPLETADO DE PESO DE ACTIVIDAD ---
+
+
     // Panel de calificación de actividades
     document.querySelectorAll('.open-actividad-panel-btn').forEach(button => {
       button.addEventListener('click', (e) => {
