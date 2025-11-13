@@ -684,6 +684,33 @@ function attachEventListeners() {
       });
     }
 
+    // --- INICIO: FUNCIÓN AUXILIAR PARA ACTUALIZAR BOTONES DE TIPO DE ACTIVIDAD ---
+    const updateActivityTypeButtons = () => {
+      const buttonGroup = document.getElementById('act-type-btn-group');
+      const typeRows = document.querySelectorAll('#activity-types-tbody .activity-type-row');
+      if (!buttonGroup || !typeRows) return;
+
+      const types = Array.from(typeRows).map(row => ({
+        nombre: row.querySelector('.activity-type-name').value,
+        peso: row.querySelector('.activity-type-peso').value
+      }));
+
+      // Reconstruir los botones
+      buttonGroup.innerHTML = `
+        <label class="flex-1">
+            <input type="radio" name="type" value="" class="hidden peer" checked>
+            <div class="cursor-pointer text-center text-sm p-2 rounded-md border peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600">Pers.</div>
+        </label>
+        ${types.map(t => `
+            <label class="flex-1">
+                <input type="radio" name="type" value="${t.peso}" class="hidden peer">
+                <div class="cursor-pointer text-center text-sm p-2 rounded-md border peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600">${t.nombre}</div>
+            </label>
+        `).join('')}
+      `;
+    };
+    // --- FIN: FUNCIÓN AUXILIAR ---
+
     // --- INICIO: CORRECCIÓN LISTENERS DE GESTIÓN DE TIPOS DE ACTIVIDAD ---
     const activityTypesContainer = document.getElementById('activity-types-container');
     if (activityTypesContainer) {
@@ -691,6 +718,7 @@ function attachEventListeners() {
         // Listener para eliminar una fila de tipo de actividad
         if (e.target.classList.contains('delete-activity-type-btn')) {
           e.target.closest('.activity-type-row').remove();
+          updateActivityTypeButtons(); // Actualizar botones al eliminar
         }
       });
     }
@@ -708,6 +736,7 @@ function attachEventListeners() {
           <td class="p-2 text-center"><button type="button" class="delete-activity-type-btn text-red-500 hover:text-red-700">&times;</button></td>
         `;
         tbody.appendChild(newRow);
+        updateActivityTypeButtons(); // Actualizar botones al añadir
       }
     });
 
