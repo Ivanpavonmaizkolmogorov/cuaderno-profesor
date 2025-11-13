@@ -957,6 +957,10 @@ export function renderActividadesManagement(module) {
 
   const sortedUds = Object.keys(cesByUd).sort();
 
+  // 4. Calcular el peso total para cada UD.
+  const udTotalWeights = {};
+  sortedUds.forEach(ud => udTotalWeights[ud] = cesByUd[ud].reduce((sum, ce) => sum + (ce.peso || 0), 0));
+
   return `
     <div class="my-6 bg-white dark:bg-gray-800 shadow-lg rounded-lg">
       <div class="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -999,7 +1003,7 @@ export function renderActividadesManagement(module) {
                     ${ud !== 'Sin Unidad Didáctica' ? `
                       <label class="flex items-center gap-2 text-sm font-bold">
                         <input type="checkbox" class="ud-master-checkbox" data-ud-ref="${ud}">
-                        <span>${ud}</span>
+                        <span>${ud} <span class="font-normal text-gray-500 dark:text-gray-400">(Peso Total: ${udTotalWeights[ud].toFixed(2)}%)</span></span>
                       </label>
                     ` : `
                       <h5 class="text-sm font-bold text-gray-500 dark:text-gray-400">${ud}</h5>
@@ -1009,7 +1013,7 @@ export function renderActividadesManagement(module) {
                         <label class="flex items-center gap-2 text-sm">
                           <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-ud-${ud.replace(/ /g, '-')}">
                           <span class="${usedCeIds.has(ce.ce_id) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} flex items-center gap-1">
-                            ${ce.ce_id} - ${ce.ce_descripcion}
+                            ${ce.ce_id} (${ce.peso}%) - ${ce.ce_descripcion}
                             ${ceUdInfo[ce.ce_id]?.length > 1 ? `
                               <span class="text-xs font-semibold text-blue-500" title="Este CE pertenece a: ${ceUdInfo[ce.ce_id].join(', ')}">(${ceUdInfo[ce.ce_id].join(', ')})</span>
                             ` : ''}
