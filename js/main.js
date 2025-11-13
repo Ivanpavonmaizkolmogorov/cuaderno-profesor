@@ -4,7 +4,7 @@ import { renderHeader } from './ui/components.js';
 import { ICONS } from './ui/constants.js';
 import { renderStudentFormatModal } from './ui/pages.js';
 import * as pages from './ui/pages.js';
-import { calculateModuleGrades } from './services/calculations.js';
+import { calculateModuleGrades, updateImpactPanel } from './services/calculations.js';
 import { prepareModuleForProgressTracking } from './utils.js';
 import { renderProgressView } from './progressView.js';
 
@@ -669,6 +669,27 @@ function attachEventListeners() {
     }
     // --- FIN: CORRECCIÓN AUTOCOMPLETADO DE PESO DE ACTIVIDAD ---
 
+    // --- INICIO: FEEDBACK DE IMPACTO DE ACTIVIDAD ---
+    console.log('[LOG][attachEventListeners] Configurando listeners para feedback de impacto en CREAR actividad...');
+    const ceCheckboxContainer = document.getElementById('ce-checkbox-container');
+    const actPesoInputForImpact = document.getElementById('act-peso');
+    const moduleIdForImpact = actividadForm?.dataset.moduleId;
+
+    const updateFeedback = () => {
+      console.log('[LOG][updateFeedback] -> Evento detectado (input/change) en formulario de CREAR actividad.');
+      if (ceCheckboxContainer && actPesoInputForImpact && moduleIdForImpact) {
+        const selectedCeIds = Array.from(ceCheckboxContainer.querySelectorAll('input[name="ceIds"]:checked')).map(cb => cb.value);
+        const weight = parseFloat(actPesoInputForImpact.value) || 0;
+        console.log(`[LOG][updateFeedback] -> Llamando a updateImpactPanel con: ModuleId=${moduleIdForImpact}, CEs=${selectedCeIds.join(',')}, Peso=${weight}`);
+        updateImpactPanel(moduleIdForImpact, selectedCeIds, weight);
+      } else {
+        console.warn('[WARN][updateFeedback] -> No se pudo actualizar el feedback. Faltan elementos: ceCheckboxContainer, actPesoInputForImpact o moduleIdForImpact.');
+      }
+    };
+
+    ceCheckboxContainer?.addEventListener('change', updateFeedback);
+    actPesoInputForImpact?.addEventListener('input', updateFeedback);
+    // --- FIN: FEEDBACK DE IMPACTO DE ACTIVIDAD ---
 
     // Panel de calificación de actividades
     document.querySelectorAll('.open-actividad-panel-btn').forEach(button => {
@@ -957,6 +978,31 @@ function attachEventListeners() {
       handlers.showImportGradesModal(actividadId);
     });
 
+    // --- INICIO: FEEDBACK DE IMPACTO EN PÁGINA DE EDICIÓN ---
+    console.log('[LOG][attachEventListeners] Configurando listeners para feedback de impacto en EDITAR actividad...');
+    const updateForm = document.querySelector('.update-actividad-form');
+    if (updateForm) {
+      const ceCheckboxContainer = updateForm.querySelector('#ce-checkbox-container');
+      const pesoInput = updateForm.querySelector('input[name="peso"]');
+      const actividadId = updateForm.dataset.actividadId;
+      const actividad = db.actividades.find(a => a.id === actividadId);
+      console.log(`[LOG] Elementos para feedback de EDICIÓN encontrados: Formulario: ${!!updateForm}, Checkboxes: ${!!ceCheckboxContainer}, Input Peso: ${!!pesoInput}, Actividad: ${!!actividad}`);
+
+      const updateEditFeedback = () => {
+        console.log('[LOG][updateEditFeedback] -> Evento detectado (input/change) en formulario de EDICIÓN de actividad.');
+        if (ceCheckboxContainer && pesoInput && actividad) {
+          const selectedCeIds = Array.from(ceCheckboxContainer.querySelectorAll('input[name="ceIds"]:checked')).map(cb => cb.value);
+          const weight = parseFloat(pesoInput.value) || 0;
+          console.log(`[LOG][updateEditFeedback] -> Llamando a updateImpactPanel con: ModuleId=${actividad.moduleId}, CEs=${selectedCeIds.join(',')}, Peso=${weight}`);
+          updateImpactPanel(actividad.moduleId, selectedCeIds, weight, actividad.id);
+        } else {
+          console.warn('[WARN][updateEditFeedback] -> No se pudo actualizar el feedback. Faltan elementos: ceCheckboxContainer, pesoInput o actividad.');
+        }
+      };
+      ceCheckboxContainer?.addEventListener('change', updateEditFeedback);
+      pesoInput?.addEventListener('input', updateEditFeedback);
+    }
+    // --- FIN: FEEDBACK DE IMPACTO EN PÁGINA DE EDICIÓN ---
   }
 }
 

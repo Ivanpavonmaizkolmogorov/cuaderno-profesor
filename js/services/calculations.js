@@ -1,4 +1,5 @@
 // --- LÓGICA DE CÁLCULO ---
+import { getDB } from '../state.js';
 
 export function calculateModuleGrades(module, students, grades, actividades, trimestre, aptitudes = {}) {
   console.log(`[LOG][calculateModuleGrades] Iniciando cálculo para Módulo: "${module.modulo}", Trimestre: ${trimestre || 'Final'}`);
@@ -184,4 +185,50 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
     studentData[student.id].ceFinalGrades = ceFinalGrades;
   }
   return studentData;
+}
+
+/**
+ * Actualiza el contenido del panel de feedback.
+ * @param {string} moduleId - El ID del módulo actual.
+ * @param {Array<string>} selectedCeIds - Los IDs de los CEs seleccionados.
+ * @param {number} newActivityWeight - El peso de la nueva actividad.
+ * @param {string|null} [currentActivityId=null] - El ID de la actividad que se está editando, si aplica.
+ */
+export function updateImpactPanel(moduleId, selectedCeIds, newActivityWeight, currentActivityId = null) {
+  console.log(`[LOG][updateImpactPanel] -> Invocado con: ModuleId=${moduleId}, CEs Seleccionados=${selectedCeIds.length}, Peso=${newActivityWeight}, Editando ID=${currentActivityId}`);
+  const panel = document.getElementById('impact-feedback-panel');
+  if (!panel) {
+    console.error('[ERROR][updateImpactPanel] -> No se encontró el elemento #impact-feedback-panel en el DOM. El panel no se puede actualizar.');
+    return;
+  }
+
+  if (selectedCeIds.length === 0 || !newActivityWeight || newActivityWeight <= 0) {
+    console.log('[LOG][updateImpactPanel] -> Condiciones no cumplidas (sin CEs o peso 0). Ocultando panel.');
+    panel.classList.add('hidden');
+    return;
+  }
+
+  const { db } = { db: getDB() };
+  // Filtramos las actividades del módulo, EXCLUYENDO la que estamos editando actualmente.
+  const moduleActivities = db.actividades.filter(a => a.moduleId === moduleId && a.id !== currentActivityId);
+
+  let content = '<h5 class="font-bold mb-2 text-sm">Impacto de esta Actividad:</h5><ul class="space-y-2 text-xs">';
+
+  selectedCeIds.forEach(ceId => {
+    // Buscamos las actividades existentes que evalúan este CE.
+    const existingActivities = moduleActivities.filter(act => act.ceIds.includes(ceId));
+    const existingTotalWeight = existingActivities.reduce((sum, act) => sum + (act.peso || 1), 0);
+    
+    // El peso total nuevo será el de las existentes más el de la actividad actual (nueva o editada).
+    const newTotalWeight = existingTotalWeight + newActivityWeight;
+    const impactPercentage = (newActivityWeight / newTotalWeight) * 100;
+
+    console.log(`[LOG][updateImpactPanel]   - Para CE '${ceId}': Peso existente=${existingTotalWeight}, Peso nuevo total=${newTotalWeight}, Impacto=${impactPercentage.toFixed(1)}%`);
+    content += `<li><strong>${ceId}:</strong> Representará un <strong>${impactPercentage.toFixed(1)}%</strong> de la nota de este CE (peso ${newActivityWeight} sobre un total de ${newTotalWeight}).</li>`;
+  });
+
+  content += '</ul>';
+  panel.innerHTML = content;
+  console.log('[LOG][updateImpactPanel] -> Panel actualizado y visible.');
+  panel.classList.remove('hidden');
 }

@@ -584,6 +584,58 @@ export function renderStudentFormatModal(nameSuggestions, moduleId) {
   `;
 }
 
+/**
+ * Renderiza el panel para gestionar los tipos de actividad y sus pesos por defecto.
+ * @param {object} module - El objeto del módulo.
+ * @returns {string} El HTML del panel de gestión.
+ */
+function renderActivityTypesManagement(module) {
+  console.log('[LOG][renderActivityTypesManagement] Renderizando panel de gestión de tipos de actividad.');
+  const activityTypes = module.activityTypes || [
+    { nombre: 'Examen', peso: 3 },
+    { nombre: 'Práctica', peso: 2 },
+    { nombre: 'Ejercicios', peso: 1 },
+  ];
+
+  // Si el módulo no tiene `activityTypes` definidos, los añadimos para la primera visualización.
+  if (!module.activityTypes) {
+    module.activityTypes = [...activityTypes];
+  }
+
+  const renderRow = (type, index) => `
+    <tr class="activity-type-row" data-index="${index}">
+      <td class="p-2"><input type="text" value="${type.nombre}" class="activity-type-name w-full p-1 border rounded dark:bg-gray-900"></td>
+      <td class="p-2"><input type="number" value="${type.peso}" step="0.1" min="0" class="activity-type-peso w-full p-1 border rounded dark:bg-gray-900"></td>
+      <td class="p-2 text-center"><button type="button" class="delete-activity-type-btn text-red-500 hover:text-red-700">&times;</button></td>
+    </tr>
+  `;
+
+  return `
+    <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mt-6">
+      <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Tipos de Actividad y Pesos por Defecto</h3>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Define categorías para autocompletar el peso al crear una actividad. Los cambios se guardan al pulsar "Guardar Tipos".</p>
+      <div id="activity-types-container">
+        <table class="w-full">
+          <thead>
+            <tr>
+              <th class="text-left font-medium p-2">Nombre del Tipo</th>
+              <th class="text-left font-medium p-2">Peso Sugerido</th>
+              <th class="w-12"></th>
+            </tr>
+          </thead>
+          <tbody id="activity-types-tbody">
+            ${activityTypes.map(renderRow).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-4 flex gap-4">
+        <button type="button" id="add-activity-type-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Añadir Tipo</button>
+        <button type="button" id="save-activity-types-btn" data-module-id="${module.id}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm">Guardar Tipos</button>
+      </div>
+    </div>
+  `;
+}
+
 function renderModuloDetalle(module, moduleStudents) {
   const gestionAlumnosHtml = renderGestionAlumnos(module, moduleStudents);
   const gestionActividadesHtml = renderActividadesManagement(module);
@@ -690,97 +742,12 @@ function renderAptitudConfig(module) {
 }
 
 /**
- * Renderiza el panel para gestionar los tipos de actividad y sus pesos por defecto.
- * @param {object} module - El objeto del módulo.
- * @returns {string} El HTML del panel de gestión.
- */
-function renderActivityTypesManagement(module) {
-  console.log('[LOG][renderActivityTypesManagement] Renderizando panel de gestión de tipos de actividad.');
-  const activityTypes = module.activityTypes || [
-    { nombre: 'Examen', peso: 3 },
-    { nombre: 'Práctica', peso: 2 },
-    { nombre: 'Ejercicios', peso: 1 },
-  ];
-
-  // Si el módulo no tiene `activityTypes` definidos, los añadimos para la primera visualización.
-  if (!module.activityTypes) {
-    module.activityTypes = [...activityTypes];
-  }
-
-  const renderRow = (type, index) => `
-    <tr class="activity-type-row" data-index="${index}">
-      <td class="p-2"><input type="text" value="${type.nombre}" class="activity-type-name w-full p-1 border rounded dark:bg-gray-900"></td>
-      <td class="p-2"><input type="number" value="${type.peso}" step="0.1" min="0" class="activity-type-peso w-full p-1 border rounded dark:bg-gray-900"></td>
-      <td class="p-2 text-center"><button type="button" class="delete-activity-type-btn text-red-500 hover:text-red-700">&times;</button></td>
-    </tr>
-  `;
-
-  return `
-    <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mt-6">
-      <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Tipos de Actividad y Pesos por Defecto</h3>
-      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Define categorías para autocompletar el peso al crear una actividad. Los cambios se guardan al pulsar "Guardar Tipos".</p>
-      <div id="activity-types-container">
-        <table class="w-full">
-          <thead>
-            <tr>
-              <th class="text-left font-medium p-2">Nombre del Tipo</th>
-              <th class="text-left font-medium p-2">Peso Sugerido</th>
-              <th class="w-12"></th>
-            </tr>
-          </thead>
-          <tbody id="activity-types-tbody">
-            ${activityTypes.map(renderRow).join('')}
-          </tbody>
-        </table>
-      </div>
-      <div class="mt-4 flex gap-4">
-        <button type="button" id="add-activity-type-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Añadir Tipo</button>
-        <button type="button" id="save-activity-types-btn" data-module-id="${module.id}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm">Guardar Tipos</button>
-      </div>
-    </div>
-  `;
-}
-
-/**
  * Renderiza el panel de feedback dinámico sobre el impacto de una actividad.
  * @returns {string} El HTML del contenedor del panel.
  */
 function renderImpactPanel() {
+  console.log('[LOG][renderImpactPanel] -> Renderizando contenedor DIV para el panel de impacto.');
   return `<div id="impact-feedback-panel" class="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 hidden"></div>`;
-}
-
-/**
- * Actualiza el contenido del panel de feedback.
- * @param {string} moduleId - El ID del módulo actual.
- * @param {Array<string>} selectedCeIds - Los IDs de los CEs seleccionados.
- * @param {number} newActivityWeight - El peso de la nueva actividad.
- */
-function updateImpactPanel(moduleId, selectedCeIds, newActivityWeight) {
-  const panel = document.getElementById('impact-feedback-panel');
-  if (!panel) return;
-
-  if (selectedCeIds.length === 0 || !newActivityWeight || newActivityWeight <= 0) {
-    panel.classList.add('hidden');
-    return;
-  }
-
-  console.log(`[LOG][updateImpactPanel] Actualizando panel de impacto para ${selectedCeIds.length} CEs con peso ${newActivityWeight}`);
-  const { db } = { db: getDB() };
-  const moduleActivities = db.actividades.filter(a => a.moduleId === moduleId);
-  let content = '<h5 class="font-bold mb-2 text-sm">Impacto de esta Actividad:</h5><ul class="space-y-2 text-xs">';
-
-  selectedCeIds.forEach(ceId => {
-    const existingActivities = moduleActivities.filter(act => act.ceIds.includes(ceId));
-    const existingTotalWeight = existingActivities.reduce((sum, act) => sum + (act.peso || 1), 0);
-    const newTotalWeight = existingTotalWeight + newActivityWeight;
-    const impactPercentage = (newActivityWeight / newTotalWeight) * 100;
-
-    content += `<li><strong>${ceId}:</strong> Representará un <strong>${impactPercentage.toFixed(1)}%</strong> de la nota final de este CE (peso ${newActivityWeight} sobre un total de ${newTotalWeight}).</li>`;
-  });
-
-  content += '</ul>';
-  panel.innerHTML = content;
-  panel.classList.remove('hidden');
 }
 
 /**
@@ -1226,6 +1193,7 @@ export function renderActividadDetailPage() {
                     </div>
                   </div>`).join('')}
               </div>
+              ${renderImpactPanel()}
               <div class="flex gap-2 pt-2">
                 <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
                 <button type="button" id="open-import-grades-modal-btn" data-actividad-id="${actividad.id}" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Importar Notas</button>
