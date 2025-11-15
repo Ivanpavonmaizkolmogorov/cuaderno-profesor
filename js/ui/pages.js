@@ -1870,8 +1870,11 @@ function renderAlumnoView(module, moduleStudents) {
         </div>
         <!-- Columna 2: Tabla de Calificaciones Completa -->
         <div class="lg:col-span-3 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Tabla General de Calificaciones</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Haz clic en una fila para seleccionar a otro alumno/a y actualizar los paneles superiores.</p>
+          <div class="mb-4">
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Tabla General de Calificaciones</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Alumno/a seleccionado para calificar: <span class="font-bold text-blue-600 dark:text-blue-400">${currentStudent.name}</span></p>
+            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">Haz clic en otra fila para cambiar de alumno/a.</p>
+          </div>
           ${renderCuadernoCalificaciones(module, sortedStudents)}
         </div>
       </div>
