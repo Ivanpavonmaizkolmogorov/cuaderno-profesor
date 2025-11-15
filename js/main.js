@@ -357,8 +357,10 @@ function attachEventListeners() {
 
   // --- INICIO: LISTENER GLOBAL EN BODY PARA DELEGACIÓN DE EVENTOS ---
   // Escuchamos en `body` para capturar clics en elementos dinámicos como modales.
-  document.body.addEventListener('click', (e) => {
-    // Botones de navegación de página
+  // CORRECCIÓN: Nos aseguramos de que el listener se añada UNA SOLA VEZ.
+  if (document.body.dataset.globalListenerAttached !== 'true') {
+    document.body.dataset.globalListenerAttached = 'true'; // Marcamos como añadido para evitar duplicados.
+    document.body.addEventListener('click', (e) => {
     const pageNavBtn = e.target.closest('button[data-page]');
     if (pageNavBtn) {
       e.preventDefault();
@@ -388,7 +390,26 @@ function attachEventListeners() {
       console.log(`[LOG][DELEGATION] Clic en eliminar sugerencia. ID: ${reasonId}, Módulo: ${moduleId}, Tipo: ${type}`);
       handlers.handleDeleteAptitudeReason(moduleId, reasonId, type);
     }
-  });
+
+    // Botones de borrado masivo de aptitudes por alumno
+    const bulkDeleteStudentBtn = e.target.closest('.bulk-delete-student-aptitudes-btn');
+    if (bulkDeleteStudentBtn) {
+      e.stopPropagation();
+      const { moduleId, studentId, type } = bulkDeleteStudentBtn.dataset;
+      console.log(`[LOG][DELEGATION] Clic en borrado masivo por alumno. Módulo: ${moduleId}, Alumno: ${studentId}, Tipo: ${type}`);
+      handlers.handleBulkDeleteAptitudesByStudent(moduleId, studentId, type);
+    }
+
+    // Botones de borrado masivo de aptitudes por módulo
+    const bulkDeleteModuleBtn = e.target.closest('.bulk-delete-module-aptitudes-btn');
+    if (bulkDeleteModuleBtn) {
+      e.stopPropagation();
+      const { moduleId, type } = bulkDeleteModuleBtn.dataset;
+      console.log(`[LOG][DELEGATION] Clic en borrado masivo por módulo. Módulo: ${moduleId}, Tipo: ${type}`);
+      handlers.handleBulkDeleteAptitudesByModule(moduleId, type);
+    }
+    });
+  }
   // --- FIN: LISTENER GLOBAL EN BODY ---
 
   document.getElementById('connect-btn')?.addEventListener('click', handlers.handleConnect);

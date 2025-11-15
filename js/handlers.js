@@ -1280,6 +1280,67 @@ export function handleUpdateAptitudConfig(moduleId, form) {
   }
 }
 
+/**
+ * Elimina masivamente todos los positivos o negativos para un alumno específico en un módulo.
+ * @param {string} moduleId - El ID del módulo.
+ * @param {string} studentId - El ID del alumno.
+ * @param {string} type - El tipo de aptitud a borrar ('positives' o 'negatives').
+ */
+export function handleBulkDeleteAptitudesByStudent(moduleId, studentId, type) {
+  const db = state.getDB();
+  const student = db.students.find(s => s.id === studentId);
+  const typeText = type === 'positives' ? 'positivos' : 'negativos';
+
+  if (!student) return;
+
+  if (window.confirm(`¿Estás seguro de que quieres borrar TODOS los ${typeText} de "${student.name}" en este módulo?\n\nEsta acción es irreversible.`)) {
+    console.log(`[LOG][BulkDelete] Borrando todos los ${typeText} para el alumno ${studentId} en el módulo ${moduleId}`);
+    if (db.aptitudes?.[moduleId]?.[studentId]) {
+      // Recorremos cada trimestre y vaciamos el array correspondiente
+      Object.keys(db.aptitudes[moduleId][studentId]).forEach(trimesterKey => {
+        if (db.aptitudes[moduleId][studentId][trimesterKey]?.[type]) {
+          db.aptitudes[moduleId][studentId][trimesterKey][type] = [];
+        }
+      });
+    }
+    state.saveDB();
+    renderApp();
+  }
+}
+
+/**
+ * Elimina masivamente todos los positivos o negativos para TODOS los alumnos de un módulo.
+ * @param {string} moduleId - El ID del módulo.
+ * @param {string} type - El tipo de aptitud a borrar ('positives' o 'negatives').
+ */
+export function handleBulkDeleteAptitudesByModule(moduleId, type) {
+  const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
+  const typeText = type === 'positives' ? 'positivos' : 'negativos';
+
+  if (!module) return;
+
+  if (window.confirm(`¡ATENCIÓN!\n\n¿Estás seguro de que quieres borrar TODOS los ${typeText} de TODOS los alumnos en el módulo "${module.modulo}"?\n\nEsta acción es irreversible.`)) {
+    console.log(`[LOG][BulkDelete] Borrando todos los ${typeText} del módulo ${moduleId}`);
+    if (db.aptitudes?.[moduleId]) {
+      // CORRECCIÓN: Iteramos sobre cada alumno que tenga entradas en este módulo.
+      Object.keys(db.aptitudes[moduleId]).forEach(studentId => {
+        const studentAptitudes = db.aptitudes[moduleId][studentId];
+        if (studentAptitudes) {
+          // Recorremos cada trimestre (T1, T2, T3) y vaciamos el array correspondiente.
+          Object.keys(studentAptitudes).forEach(trimesterKey => {
+            if (studentAptitudes[trimesterKey]?.[type]) {
+              studentAptitudes[trimesterKey][type] = [];
+            }
+          });
+        }
+      });
+    }
+    state.saveDB();
+    renderApp();
+  }
+}
+
 export function showAptitudEntryModal(moduleId, studentId, trimester, type, entryId = null) {
   const modalContainer = document.getElementById('modal-container');
   if (!modalContainer) return;

@@ -906,6 +906,19 @@ function renderAptitudConfig(module) {
         <button type="submit" form="aptitud-config-form" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Configuración</button>
         <button id="open-import-aptitudes-modal-btn" data-module-id="${module.id}" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Importar Pos./Neg. (JSON)</button>
       </div>
+      <!-- Zona de Peligro para Borrado Masivo -->
+      <div class="mt-6 border-t border-red-300 dark:border-red-700 pt-4">
+        <h4 class="text-md font-semibold text-red-700 dark:text-red-300 mb-2">Zona de Peligro</h4>
+        <p class="text-xs text-red-600 dark:text-red-400 mb-3">Estas acciones son irreversibles y afectarán a todos los alumnos del módulo.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button class="bulk-delete-module-aptitudes-btn w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-lg text-sm" data-module-id="${module.id}" data-type="positives">
+            Limpiar Positivos del Módulo
+          </button>
+          <button class="bulk-delete-module-aptitudes-btn w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg text-sm" data-module-id="${module.id}" data-type="negatives">
+            Limpiar Negativos del Módulo
+          </button>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -1948,8 +1961,20 @@ function renderAptitudPanel(student, module) {
 
   return `
     <div class="mb-4">
-      <h3 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">${ICONS.User} Aptitud Trimestral</h3>
-      <p class="text-sm text-gray-600 dark:text-gray-400">Mostrando datos para: <span class="font-bold text-blue-600 dark:text-blue-400">${student.name}</span></p>
+      <div class="flex justify-between items-center">
+        <div>
+          <h3 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">${ICONS.User} Aptitud Trimestral</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">Mostrando datos para: <span class="font-bold text-blue-600 dark:text-blue-400">${student.name}</span></p>
+        </div>
+        <div class="flex gap-2">
+          <button class="bulk-delete-student-aptitudes-btn p-2 bg-amber-100 dark:bg-amber-900/50 text-amber-600 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-full" data-module-id="${module.id}" data-student-id="${student.id}" data-type="positives" title="Limpiar todos los positivos del alumno">
+            ${ICONS.Trash2}
+          </button>
+          <button class="bulk-delete-student-aptitudes-btn p-2 bg-red-100 dark:bg-red-900/50 text-red-600 hover:bg-red-200 dark:hover:bg-red-800 rounded-full" data-module-id="${module.id}" data-student-id="${student.id}" data-type="negatives" title="Limpiar todos los negativos del alumno">
+            ${ICONS.Trash2}
+          </button>
+        </div>
+      </div>
     </div>
     <div class="space-y-4">
       ${renderTrimesterAptitud(1)}
