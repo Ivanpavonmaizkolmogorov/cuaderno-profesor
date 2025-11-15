@@ -1,10 +1,12 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const http = require('http');
 const url = require('url');
 const { OAuth2Client } = require('google-auth-library');
 const credentials = require('./electron-credentials'); // <-- Importar credenciales
+const fs = require('fs').promises;
 
+let currentLocalFile = null;
 // --- CONFIGURACIÓN DE OAUTH OFICIAL DE GOOGLE ---
 const REDIRECT_URI = 'http://localhost:3000';
 const oAuth2Client = new OAuth2Client({ // <-- Se añade la llave de apertura
@@ -62,7 +64,7 @@ app.whenReady().then(() => {
         } catch (e) {
           console.error('Error al obtener tokens:', e);
           if (server && server.listening) server.close(); // Nos aseguramos de cerrar el servidor en caso de error
-          reject({ success: false, error: e.message });
+          reject(new Error(e.message));
         }
       }).listen(3000, () => {
         // Abrir la URL de autorización en el navegador predeterminado del usuario
@@ -72,10 +74,73 @@ app.whenReady().then(() => {
       server.on('error', (e) => {
         console.error('Error en el servidor local:', e);
         if (server && server.listening) server.close(); // Nos aseguramos de cerrar el servidor si falla al iniciar
-        reject({ success: false, error: 'No se pudo iniciar el servidor local para la autenticación.' });
+        reject(new Error('No se pudo iniciar el servidor local para la autenticación.'));
       });
     });
   });
+
+  // --- INICIO: MANEJADORES PARA GUARDADO LOCAL Y EN LA NUBE ---
+
+  ipcMain.handle('save-file-dialog', async () => {
+    const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Guardar como...',
+      defaultPath: 'cuaderno_profesor.json',
+      filters: [{ name: 'JSON Files', extensions: ['json'] }]
+    });
+
+    if (canceled || !filePath) {
+      return { success: false };
+    }
+
+    currentLocalFile = filePath;
+    return { success: true, filePath };
+  });
+
+  ipcMain.handle('open-file-dialog', async () => {
+    const { filePaths, canceled } = await dialog.showOpenDialog(mainWindow, {
+      title: 'Conectar a archivo',
+      properties: ['openFile'],
+      filters: [{ name: 'JSON Files', extensions: ['json'] }]
+    });
+
+    if (canceled || !filePaths || filePaths.length === 0) {
+      return { success: false };
+    }
+
+    currentLocalFile = filePaths[0];
+    try {
+      const content = await fs.readFile(currentLocalFile, 'utf-8');
+      return { success: true, filePath: currentLocalFile, content };
+    } catch (error) {
+      console.error('Error al leer el archivo local:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('save-file-local', async (event, content) => {
+    if (!currentLocalFile) {
+      console.warn('Se intentó guardar localmente pero no hay archivo conectado.');
+      return { success: false, error: 'No hay archivo conectado.' };
+    }
+    try {
+      await fs.writeFile(currentLocalFile, JSON.stringify(content, null, 2));
+      console.log(`Archivo local "${path.basename(currentLocalFile)}" guardado.`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error al guardar en archivo local:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('update-file-drive', async (event, fileId, content, accessToken) => {
+    return await updateFileInDrive(fileId, content, accessToken);
+  });
+
+  ipcMain.handle('update-mirror-drive', async (event, fileName, content, accessToken) => {
+    return await updateMirrorFileInDrive(fileName, content, accessToken);
+  });
+
+  // --- FIN: MANEJADORES ---
 
   createWindow();
 
@@ -87,3 +152,105 @@ app.whenReady().then(() => {
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });
+
+// --- INICIO: FUNCIONES DE GUARDADO EN DRIVE (MOVIDAS AQUÍ) ---
+
+async function updateFileInDrive(fileId, content, accessToken) {
+  if (!fileId || !accessToken) {
+    console.error("No se proporcionó fileId o accessToken para la actualización en Drive.");
+    return false;
+  }
+
+  console.log(`[ELECTRON-MAIN] Iniciando actualización del archivo ${fileId} en Google Drive...`);
+  oAuth2Client.setCredentials({ access_token: accessToken });
+
+  const metadata = { mimeType: 'application/json' };
+  const fileContent = JSON.stringify(content, null, 2);
+
+  const body = `--foo_bar_baz\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--foo_bar_baz\r\nContent-Type: application/json\r\n\r\n${fileContent}\r\n--foo_bar_baz--`;
+
+  try {
+    const response = await oAuth2Client.request({
+      url: `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'multipart/related; boundary=foo_bar_baz' },
+      body: body,
+    });
+
+    if (response.status === 200) {
+      console.log(`[ELECTRON-MAIN] Archivo ${fileId} actualizado correctamente en Google Drive.`);
+      return true;
+    } else {
+      throw new Error(`Falló la subida: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error('Error al actualizar el archivo en Google Drive:', error.message);
+    return false;
+  }
+}
+
+async function updateMirrorFileInDrive(originalFileName, content, accessToken) {
+  if (!originalFileName || !content || !accessToken) {
+    console.error("[ELECTRON-MAIN-MIRROR] Error: Faltan datos para actualizar el archivo espejo.");
+    return false;
+  }
+
+  oAuth2Client.setCredentials({ access_token: accessToken });
+  const mirrorDocName = originalFileName.replace(/\.json$/i, '');
+  const mirrorMimeType = 'application/vnd.google-apps.document';
+  console.log(`[ELECTRON-MAIN-MIRROR] Iniciando proceso para el Google Doc espejo: "${mirrorDocName}"`);
+
+  try {
+    // 1. Buscar el ID del archivo espejo
+    const searchResponse = await oAuth2Client.request({
+      url: `https://www.googleapis.com/drive/v3/files`,
+      params: {
+        q: `name='${mirrorDocName}' and mimeType='${mirrorMimeType}' and trashed=false`,
+        fields: 'files(id)',
+      },
+    });
+
+    let mirrorFileId = searchResponse.data.files.length > 0 ? searchResponse.data.files[0].id : null;
+
+    // 2. Si no existe, crearlo
+    if (!mirrorFileId) {
+      console.log(`[ELECTRON-MAIN-MIRROR] El archivo espejo no existe. Creando uno nuevo...`);
+      const createMetadata = { name: mirrorDocName, mimeType: mirrorMimeType };
+      const createResponse = await oAuth2Client.request({
+        url: 'https://www.googleapis.com/drive/v3/files',
+        method: 'POST',
+        body: JSON.stringify(createMetadata),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      mirrorFileId = createResponse.data.id;
+      console.log(`[ELECTRON-MAIN-MIRROR] Google Doc espejo creado con ID: ${mirrorFileId}`);
+    } else {
+      console.log(`[ELECTRON-MAIN-MIRROR] Archivo espejo encontrado. ID: ${mirrorFileId}`);
+    }
+
+    // 3. Actualizar el contenido
+    const updateMetadata = { mimeType: mirrorMimeType };
+    const fileContent = JSON.stringify(content, null, 2);
+    const body = `--foo_bar_baz\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(updateMetadata)}\r\n--foo_bar_baz\r\nContent-Type: text/plain\r\n\r\n${fileContent}\r\n--foo_bar_baz--`;
+
+    const updateResponse = await oAuth2Client.request({
+      url: `https://www.googleapis.com/upload/drive/v3/files/${mirrorFileId}?uploadType=multipart`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'multipart/related; boundary=foo_bar_baz' },
+      body: body,
+    });
+
+    if (updateResponse.status === 200) {
+      console.log(`[ELECTRON-MAIN-MIRROR] ¡ÉXITO! Google Doc espejo "${mirrorDocName}" actualizado.`);
+      return true;
+    } else {
+      throw new Error(`Error al actualizar el contenido del Google Doc: ${updateResponse.statusText}`);
+    }
+
+  } catch (error) {
+    console.error(`[ELECTRON-MAIN-MIRROR] ERROR en el proceso del archivo espejo:`, error.message);
+    return false;
+  }
+}
+
+// --- FIN: FUNCIONES DE GUARDADO EN DRIVE ---

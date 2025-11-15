@@ -1409,7 +1409,7 @@ export function renderActividadesManagement(module) {
             <form id="actividad-form" data-module-id="${module.id}" class="space-y-3">
               <div>
                 <label for="act-name" class="text-sm font-medium">Nombre</label>
-                <input type="text" id="act-name" name="name" placeholder="Ej: Examen T1" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
+                <input type="text" id="act-name" name="name" placeholder="Ej: Examen T1" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900" name="name">
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -1432,7 +1432,7 @@ export function renderActividadesManagement(module) {
                     <div class="flex gap-2 mt-1">
                         ${['1', '2', '3'].map(trim => `
                             <label class="flex-1">
-                                <input type="radio" name="trimestre" value="${trim}" required class="hidden peer">
+                                <input type="radio" name="trimestre" value="${trim}" required class="hidden peer" ${trim === '1' ? 'checked' : ''}>
                                 <div class="cursor-pointer text-center text-sm p-2 rounded-md border peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600">${trim}º</div>
                             </label>
                         `).join('')}
@@ -1441,7 +1441,7 @@ export function renderActividadesManagement(module) {
               </div>
               <div>
                 <label for="act-peso" class="text-sm font-medium">Peso (se autocompleta al elegir un tipo)</label>
-                <input type="number" id="act-peso" name="peso" value="1" step="0.1" min="0" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900">
+                <input type="number" id="act-peso" name="peso" value="1" step="0.1" min="0" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900" name="peso">
               </div>
               <p class="text-sm mb-2">Criterios de Evaluación a los que se asocia:</p>
               <div class="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1" id="ce-checkbox-container">

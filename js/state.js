@@ -1,10 +1,10 @@
 // --- GESTIÓN DE ESTADO GLOBAL ---
-import { updateFileInDrive, updateMirrorFileInDrive } from './googleDriveLoader.js';
 
 let connectedFileHandle = null;
 let saveTimeout = null;
 
 // Estado principal de la aplicación
+const isElectron = navigator.userAgent.toLowerCase().includes('electron');
 let state = {
   db: {
     modules: [],
@@ -96,13 +96,22 @@ export function setUIProperty(key, value) {
 // --- LÓGICA DE LOCALSTORAGE ---
 
 export async function connectToFile() {
-  if (!window.showOpenFilePicker) {
+  if (isElectron) {
+    const result = await window.electronAPI.connectFile();
+    if (result.success && result.content) {
+      const newDb = JSON.parse(result.content);
+      setDB(newDb);
+      return path.basename(result.filePath);
+    }
+    return null;
+  }
+  else if (!window.showOpenFilePicker) {
     alert("Tu navegador no soporta la API para conectar archivos. Por favor, usa un navegador moderno como Chrome o Edge.");
     return;
   }
 
   try {
-    const [fileHandle] = await window.showOpenFilePicker({
+    const [fileHandle] = await window.showOpenFilePicker({ // Web API
       types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }],
     });
     connectedFileHandle = fileHandle;
@@ -131,13 +140,20 @@ export async function connectToFile() {
 }
 
 export async function saveAsAndConnect() {
-  if (!window.showSaveFilePicker) {
+  if (isElectron) {
+    const result = await window.electronAPI.saveAs();
+    if (result.success) {
+      saveDB(); // Guardado inicial
+      return path.basename(result.filePath);
+    }
+    return null;
+  } else if (!window.showSaveFilePicker) {
     alert("Tu navegador no soporta la API para guardar archivos. Por favor, usa un navegador moderno como Chrome o Edge.");
     return null;
   }
 
   try {
-    const fileHandle = await window.showSaveFilePicker({
+    const fileHandle = await window.showSaveFilePicker({ // Web API
       suggestedName: 'cuaderno_profesor.json',
       types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }],
     });
@@ -159,7 +175,7 @@ export function disconnectFile() {
 }
 
 export function isConnected() {
-  return connectedFileHandle !== null;
+  return isElectron ? !!window.electronAPI.currentLocalFile : connectedFileHandle !== null;
 }
 
 export function getConnectedFileName() {
@@ -171,8 +187,18 @@ export function saveDB() {
   // La función ahora no se detiene, sino que intenta guardar en los destinos que estén activos.
   let isSaving = false;
 
-  // 1. Lógica de guardado en archivo local (si está conectado)
-  if (connectedFileHandle) {
+  // 1. Lógica de guardado en archivo local
+  if (isElectron) {
+    isSaving = true;
+    // En Electron, el guardado es más directo y no necesita debounce tan agresivo.
+    if (saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      window.electronAPI.saveFile(state.db).catch(err => {
+        console.error("Error al guardar en archivo local (Electron):", err);
+      });
+    }, 500);
+
+  } else if (connectedFileHandle) { // Lógica para la web
     isSaving = true;
     // Debounce: esperar 500ms de inactividad antes de guardar
     if (saveTimeout) clearTimeout(saveTimeout);
@@ -198,21 +224,30 @@ export function saveDB() {
   // --- FIN: LOGS DE DIAGNÓSTICO ---
   if (driveState.isConnected && driveState.fileId && driveState.accessToken) {
     console.log('[LOG-SAVE] ¡Condiciones cumplidas! Iniciando guardado en la nube.');
+    isSaving = true;
     showSavingIndicator(true); // Muestra "Guardando en la nube..."
-    updateFileInDrive(driveState.fileId, state.db, driveState.accessToken)
-      .then(success => {
-        if (success) {
-          console.log("[LOG-SAVE] Sincronización principal (.json) con Google Drive completada.");
-          // Ahora, procedemos a guardar el archivo espejo.
-          showSavingIndicator(true, false, 'Guardando espejo...'); // Mostramos el nuevo estado
-          updateMirrorFileInDrive(driveState.fileName, state.db, driveState.accessToken).then(mirrorSuccess => {
-            showSavingIndicator(false, !mirrorSuccess); // Ocultamos el indicador con el resultado final
-          });
-        } else {
-          console.error("Falló la sincronización con Google Drive.");
-          showSavingIndicator(false, true); // Hubo un error
-        }
-      });
+
+    const saveMainFile = isElectron
+      ? window.electronAPI.updateDriveFile(driveState.fileId, state.db, driveState.accessToken)
+      : updateFileInDrive(driveState.fileId, state.db, driveState.accessToken); // Función de googleDriveLoader.js
+
+    saveMainFile.then(success => {
+      if (success) {
+        console.log("[LOG-SAVE] Sincronización principal (.json) con Google Drive completada.");
+        showSavingIndicator(true, false, 'Guardando espejo...');
+
+        const saveMirrorFile = isElectron
+          ? window.electronAPI.updateDriveMirror(driveState.fileName, state.db, driveState.accessToken)
+          : updateMirrorFileInDrive(driveState.fileName, state.db, driveState.accessToken);
+
+        saveMirrorFile.then(mirrorSuccess => {
+          showSavingIndicator(false, !mirrorSuccess);
+        });
+      } else {
+        console.error("Falló la sincronización con Google Drive.");
+        showSavingIndicator(false, true);
+      }
+    });
   } else {
     console.log('[LOG-SAVE] Condiciones no cumplidas. No se intentará guardar en la nube.');
   }
@@ -220,7 +255,7 @@ export function saveDB() {
 
   // Si no se activó ningún guardado, lo indicamos.
   if (!isSaving && !(driveState.isConnected && driveState.fileId)) {
-    console.warn("saveDB fue llamado, pero no hay ninguna conexión activa (ni local ni en la nube) para guardar los datos.");
+    console.warn("saveDB fue llamado, pero no hay ninguna conexión activa para guardar los datos.");
   }
   // --- FIN DE LA CORRECCIÓN ---
 }
