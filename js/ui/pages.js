@@ -1947,9 +1947,10 @@ function renderAptitudPanel(student, module) {
   };
 
   return `
-    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-      ${ICONS.User} Aptitud Trimestral
-    </h3>
+    <div class="mb-4">
+      <h3 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">${ICONS.User} Aptitud Trimestral</h3>
+      <p class="text-sm text-gray-600 dark:text-gray-400">Mostrando datos para: <span class="font-bold text-blue-600 dark:text-blue-400">${student.name}</span></p>
+    </div>
     <div class="space-y-4">
       ${renderTrimesterAptitud(1)}
       ${renderTrimesterAptitud(2)}
