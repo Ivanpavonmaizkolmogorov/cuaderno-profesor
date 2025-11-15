@@ -1312,8 +1312,10 @@ export function handleDeleteAptitudeReason(moduleId, reasonId, type) {
     const initialCount = module.aptitudeReasons[type].length;
     module.aptitudeReasons[type] = module.aptitudeReasons[type].filter(reason => reason.id !== reasonId);
     console.log(`[LOG][handleDeleteAptitudeReason] Motivo eliminado. Catálogo de '${type}' pasó de ${initialCount} a ${module.aptitudeReasons[type].length} elementos.`);
-    state.saveDB();
-    renderApp(); // Volver a renderizar para que el modal se actualice sin la sugerencia
+    state.saveDB(); // Guardamos el cambio en la BD
+    // Eliminamos la sugerencia del DOM directamente para evitar un renderizado completo
+    const suggestionButton = document.querySelector(`.delete-suggestion-btn[data-reason-id="${reasonId}"]`)?.closest('.reason-suggestion-btn');
+    suggestionButton?.remove();
   }
 }
 
@@ -1338,7 +1340,12 @@ export function handleSaveAptitudEntry(form) {
     if (!module.aptitudeReasons) {
       module.aptitudeReasons = { positives: [], negatives: [] };
     }
-    const reasonCatalog = module.aptitudeReasons[type] || [];
+    // --- INICIO: CORRECCIÓN CLAVE ---
+    // Asegurarnos de que el array para el tipo específico exista.
+    if (!module.aptitudeReasons[type]) {
+      module.aptitudeReasons[type] = [];
+    }
+    const reasonCatalog = module.aptitudeReasons[type]; // Ahora es una referencia directa al array en el estado.
     const reasonExists = reasonCatalog.some(r => r.text.trim().toLowerCase() === finalReason.trim().toLowerCase());
 
     if (!reasonExists && finalReason) {
@@ -1350,6 +1357,12 @@ export function handleSaveAptitudEntry(form) {
         isFavorite: false
       });
     } else {
+      // Aunque el motivo exista, puede que el valor base haya cambiado. Lo actualizamos.
+      const existingReason = reasonCatalog.find(r => r.text.trim().toLowerCase() === finalReason.trim().toLowerCase());
+      if (existingReason && existingReason.baseValue !== baseValue) {
+        console.log(`[LOG][handleSaveAptitudEntry] El motivo existe, pero se actualiza su valor base de ${existingReason.baseValue} a ${baseValue}.`);
+        existingReason.baseValue = baseValue;
+      }
       console.log(`[LOG][handleSaveAptitudEntry] El motivo ya existe en el catálogo. No se añade.`);
     }
   } else {
