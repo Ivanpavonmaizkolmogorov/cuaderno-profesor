@@ -3,7 +3,7 @@ import * as handlers from './handlers.js';
 import { renderHeader } from './ui/components.js';
 import { ICONS } from './ui/constants.js';
 import { renderStudentFormatModal } from './ui/pages.js';
-import { renderWeightDistributionView } from './ui/pages.js'; // Importar la nueva función
+import { renderWeightDistributionView, sortStudentsForTableView } from './ui/pages.js'; // Importar la nueva función
 import * as pages from './ui/pages.js';
 import { calculateModuleGrades, updateImpactPanel } from './services/calculations.js';
 import { prepareModuleForProgressTracking } from './utils.js';
@@ -19,10 +19,13 @@ export function renderApp() {
   // Recalcular notas para el módulo seleccionado (T1, T2, T3 y Final)
   if (ui.page === 'modulos' && ui.selectedModuleId) {
     const selectedModule = db.modules.find(m => m.id === ui.selectedModuleId);
+
     if (selectedModule) {
-      const moduleStudents = (selectedModule.studentIds || [])
+      let moduleStudents = (selectedModule.studentIds || [])
         .map(studentId => db.students.find(s => s.id === studentId))
         .filter(Boolean);
+      
+      moduleStudents = sortStudentsForTableView(moduleStudents, ui.tableViewSort, state.getCalculatedGrades()[selectedModule.id]);
 
       const allCalculatedGrades = state.getCalculatedGrades();
       if (!allCalculatedGrades[selectedModule.id]) {
@@ -637,6 +640,23 @@ function attachEventListeners() {
       button.addEventListener('click', (e) => {
         handlers.handleViewRaDetails(e.currentTarget.dataset.raId);
       });
+    });
+
+    // Listener para clics en las cabeceras de la tabla de calificaciones para ordenar
+    document.querySelector('.calificaciones-table thead')?.addEventListener('click', (e) => {
+      const header = e.target.closest('th[data-sort-key]');
+      if (header) {
+        handlers.handleSortTableView(header.dataset.sortKey);
+      }
+    });
+
+    // Listener para clics en las filas de la tabla en la vista de alumno
+    document.querySelector('.calificaciones-table tbody')?.addEventListener('click', (e) => {
+      const row = e.target.closest('tr[data-student-id]');
+      if (row && ui.moduleView === 'alumno') {
+        state.setSelectedStudentIdForView(row.dataset.studentId);
+        renderApp();
+      }
     });
 
     // Listener para los botones de resumen de RA que abren el modal de detalle

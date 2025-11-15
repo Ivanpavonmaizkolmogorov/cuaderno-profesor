@@ -25,6 +25,7 @@ let state = {
     studentPageModuleFilter: 'all', // 'all' o un ID de módulo
     studentNameSuggestions: null, // { suggestions: [], moduleId: '' }
     expandedRaId: null, // Inicializamos a null para que siempre exista
+    tableViewSort: { key: 'name', direction: 'asc' }, // Criterio de ordenación para la vista de tabla
   },
   // Almacén para notas calculadas
   calculatedGrades: {},

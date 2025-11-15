@@ -4,6 +4,41 @@ import { calculateModuleGrades } from '../services/calculations.js';
 import { renderProgressView } from '../progressView.js';
 import { getDB, getUI, getCalculatedGrades } from '../state.js';
 
+/**
+ * Ordena una lista de alumnos según el criterio y la dirección especificados.
+ * @param {Array<object>} students - La lista de alumnos a ordenar.
+ * @param {object} sortConfig - El objeto de configuración de ordenación { key, direction }.
+ * @param {object} moduleCalculatedGrades - Las notas calculadas para el módulo actual.
+ * @returns {Array<object>} La lista de alumnos ordenada.
+ */
+export function sortStudentsForTableView(students, sortConfig, moduleCalculatedGrades) {
+  console.log(`[LOG][sortStudentsForTableView] -> Ordenando ${students.length} alumnos por:`, sortConfig);
+  const { key, direction } = sortConfig;
+  const sortedStudents = [...students]; // Crear una copia para no mutar el original
+
+  sortedStudents.sort((a, b) => {
+    let valA, valB;
+
+    if (key === 'name') {
+      valA = a.name.toLowerCase();
+      valB = b.name.toLowerCase();
+    } else if (key.startsWith('t')) { // t1, t2, t3
+      const trimesterKey = key.toUpperCase();
+      valA = moduleCalculatedGrades?.[trimesterKey]?.[a.id]?.moduleGrade ?? -1;
+      valB = moduleCalculatedGrades?.[trimesterKey]?.[b.id]?.moduleGrade ?? -1;
+    } else if (key === 'final') {
+      valA = moduleCalculatedGrades?.Final?.[a.id]?.moduleGrade ?? -1;
+      valB = moduleCalculatedGrades?.Final?.[b.id]?.moduleGrade ?? -1;
+    } else {
+      return 0; // No se ordena si la clave no es reconocida
+    }
+
+    const comparison = valA < valB ? -1 : (valA > valB ? 1 : 0);
+    return direction === 'asc' ? comparison : -comparison;
+  });
+  return sortedStudents;
+}
+
 // Renderiza la página de Configuración
 export function renderConfiguracionPage() {
   const studentText = ``;
@@ -936,10 +971,12 @@ export function renderImportAptitudesModal(moduleId) {
  * @returns {string} El HTML del contenedor que será llenado por `renderProgressView`.
  */
 function renderCuadernoCalificaciones(module, moduleStudents) {
-  const { grades, actividades } = getDB();
+  const { db, ui } = { db: getDB(), ui: getUI() };
+  const { grades, actividades } = db;
   const calculatedGrades = getCalculatedGrades();
   const ras = module.resultados_de_aprendizaje;
   const moduleActividades = actividades.filter(a => a.moduleId === module.id);
+  const sortConfig = ui.tableViewSort;
 
   // --- INICIO: CÁLCULO DE PESOS POR TRIMESTRE ---
   const trimesterTotalWeights = { '1': 0, '2': 0, '3': 0 };
@@ -951,18 +988,33 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
   });
   // --- FIN: CÁLCULO DE PESOS POR TRIMESTRE ---
 
+  const renderSortIcon = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'asc' ? '▲' : '▼';
+    }
+    return '';
+  };
+
   const headerHtml = `
     <thead class="bg-gray-50 dark:bg-gray-800 sticky-header">
 
       <tr>
-        <th scope="col" class="sticky left-0 z-10 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider bg-gray-50 dark:bg-gray-800">
-          Alumno/a
+        <th scope="col" data-sort-key="name" class="sortable-header sticky left-0 z-10 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider bg-gray-50 dark:bg-gray-800 cursor-pointer">
+          Alumno/a ${renderSortIcon('name')}
         </th>
         <!-- INICIO: CORRECCIÓN - Columnas de notas trimestrales y final -->
-        <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T1</th>
-        <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T2</th>
-        <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">T3</th>
-        <th scope="col" class="px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">Final</th>
+        <th scope="col" data-sort-key="t1" class="sortable-header px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700 cursor-pointer">
+          T1 ${renderSortIcon('t1')}
+        </th>
+        <th scope="col" data-sort-key="t2" class="sortable-header px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700 cursor-pointer">
+          T2 ${renderSortIcon('t2')}
+        </th>
+        <th scope="col" data-sort-key="t3" class="sortable-header px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700 cursor-pointer">
+          T3 ${renderSortIcon('t3')}
+        </th>
+        <th scope="col" data-sort-key="final" class="sortable-header px-3 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700 cursor-pointer">
+          Final ${renderSortIcon('final')}
+        </th>
         <!-- FIN: CORRECCIÓN -->
         <!-- Columnas de Actividades Evaluables -->
         ${moduleActividades.map(act => {
@@ -1008,8 +1060,10 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
         const t3Breakdown = studentAllCalcs.T3?.[student.id]?.breakdown;
         const finalCalcs = studentAllCalcs.Final?.[student.id] || { raTotals: {}, moduleGrade: 0, breakdown: {} };
         
+        const isSelectedInAlumnoView = ui.moduleView === 'alumno' && ui.selectedStudentIdForView === student.id;
+
         return `
-          <tr key="${student.id}" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+          <tr key="${student.id}" data-student-id="${student.id}" class="hover:bg-gray-50 dark:hover:bg-gray-800 ${isSelectedInAlumnoView ? 'bg-blue-100 dark:bg-blue-900/50' : ''} ${ui.moduleView === 'alumno' ? 'cursor-pointer' : ''}">
             <td class="sticky left-0 z-10 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800">
               ${student.name}
             </td>
@@ -1073,7 +1127,7 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
 
   return `
     <div class="overflow-x-auto shadow-md rounded-lg" style="max-height: 70vh;">
-      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+      <table class="calificaciones-table min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         ${headerHtml}
         ${bodyHtml}
       </table>
@@ -1741,13 +1795,17 @@ function renderAlumnoView(module, moduleStudents) {
   const { db, ui } = { db: getDB(), ui: getUI() };
   const { selectedStudentIdForView } = getUI();
   const calculatedGrades = getCalculatedGrades();
+  const sortedStudents = sortStudentsForTableView(moduleStudents, ui.tableViewSort, calculatedGrades[module.id]);
 
   if (!moduleStudents || moduleStudents.length === 0) {
        return `<p class="text-center text-gray-500 dark:text-gray-400 mt-10">No hay alumnos/as para mostrar en esta vista.</p>`;
   }
   
   const currentStudent = moduleStudents.find(s => s.id === selectedStudentIdForView);
-  const studentIndex = moduleStudents.findIndex(s => s.id === selectedStudentIdForView);
+  // Usamos la lista ordenada para la navegación
+  const studentIndex = sortedStudents.findIndex(s => s.id === selectedStudentIdForView);
+  const prevStudent = studentIndex > 0 ? sortedStudents[studentIndex - 1] : null;
+  const nextStudent = studentIndex < sortedStudents.length - 1 ? sortedStudents[studentIndex + 1] : null;
   
   if (!currentStudent || studentIndex === -1) {
        console.error("Error: Could not find student with ID:", selectedStudentIdForView);
@@ -1755,8 +1813,8 @@ function renderAlumnoView(module, moduleStudents) {
   }
   
   const isFirstStudent = studentIndex === 0;
-  const isLastStudent = studentIndex === moduleStudents.length - 1;
-  
+  const isLastStudent = studentIndex === sortedStudents.length - 1;
+
   const finalGrades = (calculatedGrades[module.id]?.Final?.[currentStudent.id]) || { raTotals: {}, moduleGrade: 0, ceFinalGrades: {} };
   const finalModuleGrade = (typeof finalGrades.moduleGrade === 'number') ? finalGrades.moduleGrade.toFixed(2) : '0.00';
   const baseFinalModuleGrade = (typeof finalGrades.baseModuleGrade === 'number') ? finalGrades.baseModuleGrade.toFixed(2) : '0.00';
@@ -1770,7 +1828,7 @@ function renderAlumnoView(module, moduleStudents) {
     <div class="p-4">
       <!-- Navegación y Nombre del Alumno -->
       <div class="flex items-center justify-between mb-2">
-        <button id="prev-student-btn" ${isFirstStudent ? 'disabled' : ''} class="p-2 rounded-full transition-colors ${isFirstStudent ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" aria-label="Alumno/a anterior" title="Alumno/a anterior">
+        <button id="prev-student-btn" ${!prevStudent ? 'disabled' : ''} class="p-2 rounded-full transition-colors ${!prevStudent ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" aria-label="Alumno/a anterior" title="Alumno/a anterior">
             ${ICONS.ArrowLeftCircle}
         </button>
         
@@ -1795,7 +1853,7 @@ function renderAlumnoView(module, moduleStudents) {
         </div>
         <!-- FIN: Selector de Alumno Desplegable -->
 
-        <button id="next-student-btn" ${isLastStudent ? 'disabled' : ''} class="p-2 rounded-full transition-colors ${isLastStudent ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" aria-label="Alumno/a siguiente" title="Alumno/a siguiente">
+        <button id="next-student-btn" ${!nextStudent ? 'disabled' : ''} class="p-2 rounded-full transition-colors ${!nextStudent ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" aria-label="Alumno/a siguiente" title="Alumno/a siguiente">
             ${ICONS.ArrowRightCircle}
         </button>
       </div>
@@ -1803,73 +1861,18 @@ function renderAlumnoView(module, moduleStudents) {
       <p class="text-lg text-gray-600 dark:text-gray-400 mb-6 text-center">${module.modulo}</p>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Columna 1: Calificaciones Finales -->
-        <div class="lg:col-span-1 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 h-fit">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Calificaciones Finales</h3>
-            <button id="export-current-view-pdf-btn" class="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg" data-student-id="${currentStudent.id}" data-module-id="${module.id}" title="Exportar esta vista a PDF">
-              ${ICONS.DownloadCloud} Exportar
-            </button>
-          </div>
-          <div class="space-y-4">
-            <!-- Nota Final -->
-            <div class="p-4 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-200 dark:border-green-800">
-              <div class="flex justify-between items-center">
-                <span class="text-lg font-bold text-green-800 dark:text-green-200">Nota Final Módulo</span>
-                <span class="text-2xl font-bold text-green-700 dark:text-green-100">${finalModuleGrade}</span>
-              </div>
-              ${baseFinalModuleGrade !== finalModuleGrade ? `
-                <div class="text-right text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  (Nota base sin ajuste: <span class="font-semibold">${baseFinalModuleGrade}</span>)
-                </div>
-              ` : ''}
-            </div>
-
-            <!-- Notas Trimestrales -->
-            <div class="space-y-2 text-sm p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-              <h4 class="font-semibold mb-2">Desglose Trimestral</h4>
-              ${[t1Grades, t2Grades, t3Grades].map((trimestre, i) => `
-                <div class="flex justify-between items-center">
-                  <span class="text-gray-600 dark:text-gray-400">Nota T${i + 1}</span>
-                  ${trimestre ? `
-                    <div class="text-right">
-                      <span class="font-bold">${trimestre.moduleGrade.toFixed(2)}</span>
-                      ${trimestre.baseModuleGrade.toFixed(2) !== trimestre.moduleGrade.toFixed(2) ? `
-                        <span class="text-xs text-gray-500 ml-1">(base ${trimestre.baseModuleGrade.toFixed(2)})</span>
-                      ` : ''}
-                    </div>
-                  ` : `
-                    <span class="text-gray-400">-</span>
-                  `}
-                </div>
-              `).join('')}
-            </div>
-            <div class="space-y-3 mt-4">
-              ${module.resultados_de_aprendizaje.map(ra => 
-                  // Para la vista de alumno/a, la nota del CE es la final calculada,
-                  // que es la nota más alta obtenida en cualquiera de las actividades que lo evalúan.
-                  // La función `calculateModuleGrades` ya nos da esta información.
-                  // `ceFinalGrades` contendrá el mapa de { ce_id: nota_final }.
-                  renderRaAccordion( 
-                      ra,
-                      finalGrades.ceFinalGrades || {}, // Pasamos las notas finales de los CEs
-                      (finalGrades.raTotals && typeof finalGrades.raTotals[ra.ra_id] === 'number') ? finalGrades.raTotals[ra.ra_id] : 0,
-                      currentStudent.id,
-                      true, // Forzar modo solo lectura
-                      db.actividades,
-                      studentGrades
-                  )
-              ).join('')}
-            </div>
-          </div>
-        </div>
-
-        <!-- Columna 2: Comentarios -->
+        <!-- Columna 1: Comentarios y Aptitud -->
         <div class="lg:col-span-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
           ${renderCommentForm(currentStudent, module)}
         </div>
         <div class="lg:col-span-3 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
           ${renderAptitudPanel(currentStudent, module)}
+        </div>
+        <!-- Columna 2: Tabla de Calificaciones Completa -->
+        <div class="lg:col-span-3 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Tabla General de Calificaciones</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Haz clic en una fila para seleccionar a otro alumno/a y actualizar los paneles superiores.</p>
+          ${renderCuadernoCalificaciones(module, sortedStudents)}
         </div>
       </div>
     </div>

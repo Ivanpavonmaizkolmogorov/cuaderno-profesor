@@ -10,6 +10,7 @@ import { renderApp } from './main.js';import * as pages from './ui/pages.js';
 import { mergeTemario } from './services/dataImporter.js'; // Import the new mergeTemario function
 import { exportToExcel } from './services/excelGenerator.js'; // <-- AÑADE ESTA LÍNEA
 
+
 export async function handleConnect() {
     const fileName = await state.connectToFile();
     if (fileName) {
@@ -261,6 +262,22 @@ export function handleSortStudents(moduleId, direction = 'asc') {
   state.saveDB();
   renderApp();
 }
+
+export function handleSortTableView(sortKey) {
+  console.log(`[LOG][handleSortTableView] -> Solicitada ordenación por: ${sortKey}`);
+  const currentSort = state.getUI().tableViewSort;
+  let newDirection = 'asc';
+
+  // Si se hace clic en la misma columna, se invierte la dirección. Si no, se establece a ascendente.
+  if (currentSort.key === sortKey && currentSort.direction === 'asc') {
+    newDirection = 'desc';
+  }
+
+  console.log(`[LOG][handleSortTableView] -> Nuevo estado de ordenación: key=${sortKey}, direction=${newDirection}`);
+  state.setUIProperty('tableViewSort', { key: sortKey, direction: newDirection });
+  renderApp();
+}
+
 
 export function handleReorderStudents(moduleId, orderedStudentIds) {
   const db = state.getDB();
