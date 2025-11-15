@@ -475,6 +475,9 @@ function attachEventListeners() {
     document.getElementById('sort-all-desc-btn')?.addEventListener('click', () => handlers.handleSortAllStudents('desc'));
     document.getElementById('student-module-filter')?.addEventListener('change', (e) => handlers.handleFilterStudentsByModule(e.target.value));
 
+    // Listener para el nuevo botón de exportar todos los informes
+    document.getElementById('export-all-students-report-btn')?.addEventListener('click', handlers.handleExportAllStudentReports);
+
     // --- INICIO: CORRECCIÓN LISTENER BOTÓN INFORME COMPLETO ---
     // Se mueve aquí para que se aplique en la página de 'alumnos' y a todos los botones.
     document.querySelectorAll('.export-full-student-report-btn').forEach(button => {

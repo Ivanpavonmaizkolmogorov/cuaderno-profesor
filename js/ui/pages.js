@@ -305,6 +305,9 @@ export function renderAlumnosPage() {
                   <button id="sort-all-asc-btn" class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar A-Z">${ICONS.ArrowDownAZ}</button>
                   <button id="sort-all-desc-btn" class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar Z-A">${ICONS.ArrowUpAZ}</button>
                 </div>
+                <button id="export-all-students-report-btn" class="flex items-center gap-2 px-4 py-2 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg" title="Generar un informe PDF completo para cada alumno/a del sistema">
+                  ${ICONS.DownloadCloud} Generar Todos los Informes
+                </button>
                 <div class="h-8 border-l border-gray-300 dark:border-gray-600"></div>
                 <button id="bulk-delete-students-btn" class="flex items-center gap-2 px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:bg-red-400 disabled:cursor-not-allowed" disabled>
                   ${ICONS.Trash2} Eliminar Seleccionados (<span id="selected-students-count">0</span>)

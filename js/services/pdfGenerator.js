@@ -1,17 +1,25 @@
 const { jsPDF } = window.jspdf;
+import { getDB, getCalculatedGrades } from '../state.js';
+import { calculateModuleGrades } from './calculations.js';
+import { handleExportFullStudentReport } from '../handlers.js';
 
 /**
  * Genera un informe PDF detallado para un alumno/a.
- * @param {object} student - El objeto del alumno.
- * @param {Array<object>} modulesData - Array con los datos de los módulos y las notas calculadas.
- * @param {Array<object>} allActividades - Todas las actividades de la base de datos.
- * @param {object} allGrades - Todas las notas de la base de datos.
+ * @param {object} options - Opciones para la generación del informe.
+ * @param {object} options.student - El objeto del alumno.
+ * @param {Array<object>} options.modulesData - Array con los datos de los módulos y las notas calculadas.
+ * @param {object} options.db - El objeto completo de la base de datos.
+ * @param {jsPDF} [options.doc] - Un documento jsPDF existente para continuar dibujando en él.
+ * @returns {{doc: jsPDF, yPosition: number}|undefined} - Devuelve el documento y la posición Y si se proporciona un doc.
  */
-export function generateStudentReport(student, modulesData, allActividades, allGrades) {
+export function generateStudentReport({ student, modulesData, db, doc = null }) {
   try {
     if (!student) return;
 
-    const doc = new jsPDF();
+    const isNewDoc = !doc;
+    if (isNewDoc) {
+      doc = new jsPDF();
+    }
     let yPosition = 20;
     const pageMargin = 14;
     const contentWidth = doc.internal.pageSize.width - (pageMargin * 2);
@@ -22,6 +30,9 @@ export function generateStudentReport(student, modulesData, allActividades, allG
         yPosition = 20;
       }
     };
+
+    const { actividades: allActividades, grades: allGrades } = db;
+
 
     // --- Título ---
     doc.setFontSize(22);
@@ -181,9 +192,60 @@ export function generateStudentReport(student, modulesData, allActividades, allG
     }
 
     // --- Guardar el PDF ---
-    doc.save(`Informe_${student.name.replace(/ /g, "_")}.pdf`);
+    if (isNewDoc) {
+      doc.save(`Informe_${student.name.replace(/ /g, "_")}.pdf`);
+    } else {
+      // Si estamos añadiendo a un documento existente, devolvemos el doc y la posición para el siguiente.
+      return { doc, yPosition };
+    }
   } catch (error) {
     console.error("Error al generar el PDF:", error);
     alert("Se produjo un error inesperado al generar el PDF. Revisa la consola para más detalles.");
   }
+}
+
+/**
+ * Genera un único informe PDF combinado con los datos de todos los alumnos.
+ * @param {object} db - El objeto completo de la base de datos.
+ */
+export function generateCombinedReport(db) {
+  const doc = new jsPDF();
+  const allStudents = db.students;
+
+  allStudents.forEach((student, index) => {
+    console.log(`[generateCombinedReport] Añadiendo alumno ${index + 1}/${allStudents.length}: ${student.name}`);
+
+    // 1. Obtener los módulos en los que está matriculado el alumno.
+    const enrolledModules = db.modules.filter(m => m.studentIds?.includes(student.id));
+
+    // 2. Calcular las notas para esos módulos.
+    const modulesDataForPdf = enrolledModules.map(module => {
+      const finalGrades = calculateModuleGrades(module, [student], db.grades, db.actividades, null, db.aptitudes)[student.id] || { moduleGrade: 0, raTotals: {}, ceFinalGrades: {} };
+      return { module, ...finalGrades };
+    });
+
+    // 3. Si no es el primer alumno, añadimos una nueva página para empezar.
+    if (index > 0) {
+      doc.addPage();
+    }
+
+    // 4. Llamar a generateStudentReport para que dibuje en el documento existente.
+    generateStudentReport({
+      student,
+      modulesData: modulesDataForPdf,
+      db,
+      doc // Pasamos el documento existente.
+    });
+  });
+
+  // --- Pie de página final para el documento combinado ---
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(9);
+    doc.setTextColor(150);
+    doc.text(`Página ${i} de ${pageCount}`, doc.internal.pageSize.width / 2, 287, { align: "center" });
+  }
+
+  doc.save(`Informe_Completo_Todos_Alumnos.pdf`);
 }

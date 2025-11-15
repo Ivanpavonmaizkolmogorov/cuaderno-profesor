@@ -3,7 +3,7 @@ import { setUIProperty, getUI } from './state.js'; // Importación nombrada
 import * as dataManager from './services/dataManager.js';
 import { parseStudentNames } from './services/nameParser.js';
 import { calculateModuleGrades } from './services/calculations.js';
-import { generateStudentReport } from './services/pdfGenerator.js';
+import { generateStudentReport, generateCombinedReport } from './services/pdfGenerator.js';
 import { prepareModuleForProgressTracking, deleteTemarioPoint, deleteTemarioUnit } from './utils.js';
 import { renderImportTemarioModal } from './progressView.js';
 import { renderApp } from './main.js';import * as pages from './ui/pages.js';
@@ -115,7 +115,7 @@ export function handleExportSingleModuleReport(studentId, moduleId) {
   }];
 
   // Pasamos también las actividades y las notas en bruto para el desglose
-  generateStudentReport(student, moduleDataForPdf, db.actividades, db.grades);
+  generateStudentReport(student, moduleDataForPdf, db);
 }
 
 export function handleExportFullStudentReport(studentId) {
@@ -145,9 +145,52 @@ export function handleExportFullStudentReport(studentId) {
     return { module, ...studentCalculations };
   });
 
-  generateStudentReport(student, modulesDataForPdf, db.actividades, db.grades);
+  generateStudentReport({ student, modulesData: modulesDataForPdf, db });
 }
 
+/**
+ * Inicia la exportación de informes completos en PDF para TODOS los alumnos del sistema.
+ * Advierte al usuario y luego itera sobre cada alumno, generando su informe.
+ */
+export async function handleExportAllStudentReports() {
+  const db = state.getDB();
+  const allStudents = db.students;
+
+  if (allStudents.length === 0) {
+    alert("No hay alumnos/as en el sistema para generar informes.");
+    return;
+  }
+
+  // --- INICIO: PREGUNTAR AL USUARIO EL FORMATO DE SALIDA ---
+  const individualFiles = window.confirm(
+    `Vas a generar ${allStudents.length} informe(s).\n\n` +
+    `PULSA "ACEPTAR": para generar un archivo PDF por cada alumno/a (puede que el navegador pida permiso para múltiples descargas).\n\n` +
+    `PULSA "CANCELAR": para generar un ÚNICO archivo PDF con todos los informes de los alumnos/as.`
+  );
+  // --- FIN: PREGUNTAR AL USUARIO ---
+
+  if (individualFiles) {
+    // Opción 1: Generar archivos individuales con una pausa
+    if (window.confirm(`Se generarán ${allStudents.length} archivos PDF separados. ¿Continuar?`)) {
+      for (const student of allStudents) {
+        console.log(`[handleExportAllStudentReports] Generando informe para: ${student.name}`);
+        handleExportFullStudentReport(student.id);
+        // Pausa de 500ms para evitar que el navegador bloquee las descargas
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      alert("Generación de informes individuales completada.");
+    }
+  } else {
+    // Opción 2: Generar un único archivo combinado
+    if (window.confirm(`Se generará un único archivo PDF con todos los alumnos/as. ¿Continuar?`)) {
+      console.log("[handleExportAllStudentReports] Iniciando generación de informe combinado.");
+      // 2. Llamar al nuevo generador de PDF combinado
+      // La función generateCombinedReport se encargará de todos los cálculos necesarios.
+      generateCombinedReport(db);
+      alert("Informe combinado generado con éxito.");
+    }
+  }
+}
 export function handleSetPage(newPage) {
   state.setPage(newPage);
   renderApp();
