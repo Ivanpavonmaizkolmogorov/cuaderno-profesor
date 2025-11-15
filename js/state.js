@@ -26,6 +26,7 @@ let state = {
     studentNameSuggestions: null, // { suggestions: [], moduleId: '' }
     expandedRaId: null, // Inicializamos a null para que siempre exista
     tableViewSort: { key: 'name', direction: 'asc' }, // Criterio de ordenación para la vista de tabla
+    isGeneratingPDF: false, // Flag para evitar exportaciones simultáneas
   },
   // Almacén para notas calculadas
   calculatedGrades: {},

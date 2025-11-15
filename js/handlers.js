@@ -92,6 +92,15 @@ Jiménez Castro, María de la Sierra`;
 }
 
 export function handleExportSingleModuleReport(studentId, moduleId) {
+  // --- INICIO: Bloqueo para evitar ejecuciones simultáneas ---
+  if (state.getUI().isGeneratingPDF) {
+    alert("Ya hay un proceso de generación de PDF en curso. Por favor, espera a que termine.");
+    return;
+  }
+  state.setUIProperty('isGeneratingPDF', true);
+  // Mostramos un indicador visual si es necesario (opcional)
+  // --- FIN: Bloqueo ---
+
   console.log("===== INICIANDO EXPORTACIÓN DE VISTA ACTUAL A PDF =====");
   console.log(`Recibido studentId: ${studentId}`);
   console.log(`Recibido moduleId: ${moduleId}`);
@@ -102,6 +111,7 @@ export function handleExportSingleModuleReport(studentId, moduleId) {
 
   if (!student || !module) {
     alert("Error: No se pudo encontrar el alumno/a o el módulo para exportar.");
+    state.setUIProperty('isGeneratingPDF', false); // Liberar bloqueo en caso de error
     return;
   }
 
@@ -115,7 +125,11 @@ export function handleExportSingleModuleReport(studentId, moduleId) {
   }];
 
   // Pasamos también las actividades y las notas en bruto para el desglose
-  generateStudentReport(student, moduleDataForPdf, db);
+  try {
+    generateStudentReport({ student, modulesData: moduleDataForPdf, db });
+  } finally {
+    state.setUIProperty('isGeneratingPDF', false); // Liberar bloqueo al finalizar
+  }
 }
 
 export function handleExportFullStudentReport(studentId) {
@@ -154,6 +168,14 @@ export function handleExportFullStudentReport(studentId) {
  */
 export async function handleExportAllStudentReports() {
   const db = state.getDB();
+
+  // --- INICIO: Bloqueo para evitar ejecuciones simultáneas ---
+  if (state.getUI().isGeneratingPDF) {
+    alert("Ya hay un proceso de generación de PDF en curso. Por favor, espera a que termine.");
+    return;
+  }
+  // --- FIN: Bloqueo ---
+
   const allStudents = db.students;
 
   if (allStudents.length === 0) {
@@ -161,34 +183,18 @@ export async function handleExportAllStudentReports() {
     return;
   }
 
-  // --- INICIO: PREGUNTAR AL USUARIO EL FORMATO DE SALIDA ---
-  const individualFiles = window.confirm(
-    `Vas a generar ${allStudents.length} informe(s).\n\n` +
-    `PULSA "ACEPTAR": para generar un archivo PDF por cada alumno/a (puede que el navegador pida permiso para múltiples descargas).\n\n` +
-    `PULSA "CANCELAR": para generar un ÚNICO archivo PDF con todos los informes de los alumnos/as.`
-  );
-  // --- FIN: PREGUNTAR AL USUARIO ---
+  state.setUIProperty('isGeneratingPDF', true); // Bloqueamos aquí, después de las confirmaciones
 
-  if (individualFiles) {
-    // Opción 1: Generar archivos individuales con una pausa
-    if (window.confirm(`Se generarán ${allStudents.length} archivos PDF separados. ¿Continuar?`)) {
-      for (const student of allStudents) {
-        console.log(`[handleExportAllStudentReports] Generando informe para: ${student.name}`);
-        handleExportFullStudentReport(student.id);
-        // Pausa de 500ms para evitar que el navegador bloquee las descargas
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      alert("Generación de informes individuales completada.");
-    }
-  } else {
-    // Opción 2: Generar un único archivo combinado
-    if (window.confirm(`Se generará un único archivo PDF con todos los alumnos/as. ¿Continuar?`)) {
+  try {
+    // Simplificamos: ahora solo genera un único archivo combinado.
+    if (window.confirm(`Se generará un único archivo PDF con los informes de todos los alumnos/as (${allStudents.length}).\n\n¿Quieres continuar?`)) {
       console.log("[handleExportAllStudentReports] Iniciando generación de informe combinado.");
-      // 2. Llamar al nuevo generador de PDF combinado
       // La función generateCombinedReport se encargará de todos los cálculos necesarios.
       generateCombinedReport(db);
       alert("Informe combinado generado con éxito.");
     }
+  } finally {
+    state.setUIProperty('isGeneratingPDF', false); // Liberamos el bloqueo al final de todo
   }
 }
 export function handleSetPage(newPage) {
