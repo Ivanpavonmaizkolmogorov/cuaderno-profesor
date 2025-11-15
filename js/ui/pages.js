@@ -703,24 +703,21 @@ function renderModuloDetalle(module, moduleStudents) {
   const classIndice = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
         moduleView === 'indice'
           ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
-          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
-      }`;
+          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
   const classDistribucion = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'distribucion' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
       
   let contentHtml = '';
-  if (moduleStudents.length > 0) {
-    if (moduleView === 'tabla') {
-      contentHtml = renderCuadernoCalificaciones(module, moduleStudents);
-    } else if (moduleView === 'alumno') {
-      contentHtml = renderAlumnoView(module, moduleStudents);
-    } else if (moduleView === 'indice') {
+  if (moduleView === 'indice') {
       console.log('[LOG][renderModuloDetalle] La vista es "indice", preparando contenedor #progress-view-container.');
       contentHtml = `<div id="progress-view-container" class="p-4 md:p-6"></div>`; // Contenedor para la vista de progreso
     } else if (moduleView === 'distribucion') {
       console.log('[LOG][renderModuloDetalle] La vista es "distribucion", llamando a renderWeightDistributionView.');
       contentHtml = renderWeightDistributionView(module); // ¡Esta es la corrección!
-    }
-  } else { // Este 'else' corresponde a if (moduleStudents.length > 0)
+  } else if (moduleStudents.length > 0) {
+    // La vista por defecto (y única para calificar) es ahora la de alumno.
+    contentHtml = renderAlumnoView(module, moduleStudents);
+  } else {
+    // Si no hay alumnos, mostramos el mensaje correspondiente.
     contentHtml = `<p class="text-center text-gray-500 dark:text-gray-400 my-10">Añade alumnos/as en la sección de gestión para empezar a calificar.</p>`;
   }
   
@@ -733,9 +730,6 @@ function renderModuloDetalle(module, moduleStudents) {
       <hr class="my-8 border-gray-300 dark:border-gray-700">
       <!-- Selector de Vista -->
       <div class="mb-6 flex justify-center gap-2 p-2 bg-gray-200 dark:bg-gray-800 rounded-lg">
-        <button id="view-tabla-btn" class="${classTabla}" ${moduleStudents.length === 0 ? 'disabled' : ''}>
-          ${ICONS.Table} Vista Tabla
-        </button>
         <button id="view-alumno-btn" class="${classAlumno}" ${moduleStudents.length === 0 ? 'disabled' : ''}>
           ${ICONS.User} Vista Alumnos/as
         </button>
@@ -1837,6 +1831,13 @@ function renderAlumnoView(module, moduleStudents) {
   const t3Grades = calculatedGrades[module.id]?.T3?.[currentStudent.id];
   const studentGrades = db.grades[currentStudent.id] || {};
 
+  // --- INICIO: Lógica para el estado de los paneles plegables ---
+  const openPanels = new Set(ui.openPanels || []);
+  const isCommentsOpen = openPanels.has('comments-panel');
+  const isAptitudOpen = openPanels.has('aptitud-panel');
+  // --- FIN: Lógica para el estado de los paneles plegables ---
+
+
   return ` 
     <div class="p-4">
       <!-- Navegación y Nombre del Alumno -->
@@ -1873,14 +1874,28 @@ function renderAlumnoView(module, moduleStudents) {
 
       <p class="text-lg text-gray-600 dark:text-gray-400 mb-6 text-center">${module.modulo}</p>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Columna 1: Comentarios y Aptitud -->
-        <div class="lg:col-span-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-          ${renderCommentForm(currentStudent, module)}
+      <div class="space-y-6">
+        <!-- Paneles Plegables para Comentarios y Aptitud -->
+        <div id="comments-panel" class="collapsible-panel bg-white dark:bg-gray-800 shadow-lg rounded-lg">
+          <button class="collapsible-toggle w-full flex justify-between items-center p-4 font-bold text-lg" data-panel-id="comments-panel">
+            <span class="flex items-center gap-2">${ICONS.FileText} Comentarios y Anotaciones</span>
+            <span class="chevron-icon transform transition-transform ${isCommentsOpen ? 'rotate-90' : ''}">${ICONS.ChevronRight}</span>
+          </button>
+          <div class="collapsible-content ${isCommentsOpen ? '' : 'hidden'} p-6 border-t border-gray-200 dark:border-gray-700">
+            ${renderCommentForm(currentStudent, module)}
+          </div>
         </div>
-        <div class="lg:col-span-3 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-          ${renderAptitudPanel(currentStudent, module)}
+
+        <div id="aptitud-panel" class="collapsible-panel bg-white dark:bg-gray-800 shadow-lg rounded-lg">
+          <button class="collapsible-toggle w-full flex justify-between items-center p-4 font-bold text-lg" data-panel-id="aptitud-panel">
+            <span class="flex items-center gap-2">${ICONS.User} Actitud y Participación (Positivos/Negativos)</span>
+            <span class="chevron-icon transform transition-transform ${isAptitudOpen ? 'rotate-90' : ''}">${ICONS.ChevronRight}</span>
+          </button>
+          <div class="collapsible-content ${isAptitudOpen ? '' : 'hidden'} p-6 border-t border-gray-200 dark:border-gray-700">
+            ${renderAptitudPanel(currentStudent, module)}
+          </div>
         </div>
+
         <!-- Columna 2: Tabla de Calificaciones Completa -->
         <div class="lg:col-span-3 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
           <div class="mb-4">

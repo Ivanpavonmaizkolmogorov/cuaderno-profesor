@@ -154,10 +154,19 @@ export function handleSetPage(newPage) {
 }
 
 export function handleSelectModule(moduleId) {
-    state.setSelectedModuleId(moduleId);
-    state.setModuleView('tabla'); 
+  state.setSelectedModuleId(moduleId);
+  state.setModuleView('alumno'); // Entramos directamente a la vista de alumno
+
+  // Al seleccionar un nuevo módulo, seleccionamos automáticamente el primer alumno
+  const db = state.getDB();
+  const selectedModule = db.modules.find(m => m.id === moduleId);
+  if (selectedModule && selectedModule.studentIds && selectedModule.studentIds.length > 0) {
+    state.setSelectedStudentIdForView(selectedModule.studentIds[0]);
+  } else {
     state.setSelectedStudentIdForView(null);
-    renderApp();
+  }
+
+  renderApp();
 }
 
 export function handleSelectActividad(actividadId) {
@@ -1486,4 +1495,20 @@ export function handleOverrideTemarioEvaluado(moduleId, pointId) {
     state.saveDB();
     renderApp();
   }
+}
+
+/**
+ * Gestiona el estado de los paneles plegables (abierto/cerrado).
+ * @param {string} panelId - El ID del panel a abrir o cerrar.
+ */
+export function handleTogglePanel(panelId) {
+  const openPanels = state.getUI().openPanels || [];
+  const panelIndex = openPanels.indexOf(panelId);
+
+  if (panelIndex > -1) {
+    openPanels.splice(panelIndex, 1); // Si está, lo quitamos (cerrar)
+  } else {
+    openPanels.push(panelId); // Si no está, lo añadimos (abrir)
+  }
+  renderApp(); // Volvemos a renderizar para que la UI refleje el nuevo estado
 }

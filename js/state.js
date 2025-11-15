@@ -31,6 +31,8 @@ let state = {
   calculatedGrades: {},
 };
 
+state.ui.openPanels = []; // IDs de los paneles plegables que están abiertos
+
 let driveState = {
   isConnected: false,
   fileId: null,

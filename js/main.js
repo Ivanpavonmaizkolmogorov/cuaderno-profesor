@@ -21,6 +21,14 @@ export function renderApp() {
     const selectedModule = db.modules.find(m => m.id === ui.selectedModuleId);
 
     if (selectedModule) {
+      // --- INICIO: CORRECCIÓN DE VISTA ALUMNO SIN ALUMNO ---
+      // Si estamos en la vista de alumno pero no hay ninguno seleccionado, seleccionamos el primero.
+      // Esto evita el error al entrar a un módulo y unifica la experiencia.
+      if (ui.moduleView === 'alumno' && !ui.selectedStudentIdForView && selectedModule.studentIds?.length > 0) {
+        state.setSelectedStudentIdForView(selectedModule.studentIds[0]);
+      }
+      // --- FIN: CORRECCIÓN ---
+
       let moduleStudents = (selectedModule.studentIds || [])
         .map(studentId => db.students.find(s => s.id === studentId))
         .filter(Boolean);
@@ -352,6 +360,7 @@ function attachEventListeners() {
         });
       }
     }
+
   });
 
 
@@ -366,6 +375,15 @@ function attachEventListeners() {
       e.preventDefault();
       handlers.handleSetPage(pageNavBtn.dataset.page);
     }
+
+    // --- INICIO: Lógica para paneles plegables ---
+    // Este listener se añade al body para que sea global y persistente,
+    // capturando clics en cualquier panel plegable que se renderice.
+    const collapsibleToggleBtn = e.target.closest('.collapsible-toggle');
+    if (collapsibleToggleBtn && collapsibleToggleBtn.dataset.panelId) {
+      handlers.handleTogglePanel(collapsibleToggleBtn.dataset.panelId);
+    }
+    // --- FIN: Lógica para paneles plegables ---
 
     // Botones de sugerencia de motivos en el modal de aptitud
     const suggestionButton = e.target.closest('.reason-suggestion-btn');
