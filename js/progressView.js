@@ -34,7 +34,13 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
   // Movemos la adición de listeners al principio de la función.
   // Esto garantiza que los botones principales como "Importar" siempre funcionen,
   // incluso si el módulo aún no tiene un temario definido y la función sale prematuramente.
-  console.log('[LOG] Añadiendo listener de clics para el contenedor de la vista de progreso.');
+  
+  // --- INICIO: CORRECCIÓN DE MÚLTIPLES LISTENERS ---
+  // Evitamos añadir el listener si ya existe uno en el contenedor.
+  if (container.dataset.listenerAttached === 'true') return;
+  container.dataset.listenerAttached = 'true';
+  // --- FIN: CORRECCIÓN DE MÚLTIPLES LISTENERS ---
+console.log('[LOG] Añadiendo listener de clics para el contenedor de la vista de progreso.');
   container.addEventListener('click', (e) => {
     console.log('[LOG] Clic detectado en la vista de progreso. Elemento clickeado:', e.target);
 
@@ -55,10 +61,31 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
     const deleteUnitBtn = e.target.closest('.delete-unit-btn');
     if (deleteUnitBtn) {
       e.preventDefault();
+      e.stopPropagation();
       const { moduleId, unitId } = deleteUnitBtn.dataset;
       console.log(`[LOG] Botón "Eliminar Unidad" presionado. ModuleID: ${moduleId}, UnitID: ${unitId}`);
       handlers.handleDeleteTemarioUnit(moduleId, unitId);
     }
+
+    // --- INICIO: LÓGICA DE CLIC CENTRALIZADA ---
+    const pointItem = e.target.closest('.point-item');
+    if (pointItem) {
+      const pointId = pointItem.dataset.pointId;
+
+      if (e.target.closest('.delete-point-btn')) {
+        // Clic en el botón de borrar punto
+        const { unitId } = e.target.closest('.delete-point-btn').dataset;
+        handlers.handleDeleteTemarioPoint(moduleData.id, unitId, pointId);
+      } else if (e.target.closest('.remove-evaluated-override-btn')) {
+        // Clic en la 'x' para anular 'Evaluado'
+        e.stopPropagation(); // ¡CRÍTICO! Evita que se dispare el cambio de estado normal.
+        handlers.handleOverrideTemarioEvaluado(moduleData.id, pointId);
+      } else {
+        // Clic en cualquier otra parte del item (icono, texto) para cambiar estado
+        handleStatusChange(pointId, moduleData, onDataChange, pointTree);
+      }
+    }
+    // --- FIN: LÓGICA DE CLIC CENTRALIZADA ---
   });
   // --- FIN: CORRECCIÓN DEFINITIVA DE LISTENERS ---
 
@@ -199,15 +226,25 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
       const evaluatedInActivities = associatedCeIds
         .flatMap(ceId => ceToActivityMap.get(ceId) || []);
       
-      if (evaluatedInActivities.length > 0) {
+      // Comprobamos si el usuario ha anulado manualmente la etiqueta "Evaluado"
+      const isOverridden = moduleData.temarioOverrides?.[point.idPunto]?.isEvaluated === false;
+
+      if (evaluatedInActivities.length > 0 && !isOverridden) {
         const uniqueActivities = [...new Set(evaluatedInActivities)];
-        evaluationBadge = `<span class="ml-2 text-xs font-semibold text-yellow-800 bg-yellow-100 dark:text-yellow-100 dark:bg-yellow-800 px-2 py-0.5 rounded-full" title="Evaluado en: ${uniqueActivities.join(', ')}">Evaluado</span>`;
+        evaluationBadge = `
+          <span class="flex items-center gap-1 ml-2 text-xs font-semibold text-yellow-800 bg-yellow-100 dark:text-yellow-100 dark:bg-yellow-800 px-2 py-0.5 rounded-full" title="Evaluado en: ${uniqueActivities.join(', ')}">
+            Evaluado
+            <button class="remove-evaluated-override-btn text-yellow-600 hover:text-yellow-900 dark:text-yellow-300 dark:hover:text-white" data-module-id="${moduleData.id}" data-point-id="${point.idPunto}" title="Marcar como 'No Visto' y ocultar esta etiqueta.">
+              &times;
+            </button>
+          </span>`;
 
         // --- INICIO DE LA CORRECCIÓN ---
         // Si el punto está evaluado y su estado es 'no-visto', lo actualizamos a 'visto'.
-        if (pointStatus === 'no-visto') {
-          pointStatus = 'visto'; // Actualizamos el estado para la renderización inmediata.
-          moduleData.progresoTemario[point.idPunto] = 'visto'; // Guardamos el cambio en el objeto de datos.
+        if (pointStatus === 'no-visto' && !isOverridden) {
+          pointStatus = 'visto'; // Actualizamos el estado solo para la visualización inmediata.
+          // No guardamos este cambio, ya que es una conveniencia visual. El guardado real
+          // lo hace el usuario al hacer clic en el icono de estado.
         }
         // --- FIN DE LA CORRECCIÓN ---
       }
@@ -227,16 +264,6 @@ export function renderProgressView(container, moduleData, allActivities, onDataC
         </button>
       `;
       
-      // Añadimos el listener para cambiar el estado al hacer clic
-      pointItem.addEventListener('click', (e) => {
-        // Si el clic fue en el botón de borrar, no hacemos nada aquí.
-        if (e.target.closest('.delete-point-btn')) {
-          return;
-        }
-        // Pasamos el árbol jerárquico a la función de cambio de estado
-        handleStatusChange(point.idPunto, moduleData, onDataChange, pointTree);
-      });
-
       pointsList.appendChild(pointItem);
     });
 

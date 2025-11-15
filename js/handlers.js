@@ -1357,3 +1357,26 @@ export function handleDeleteAptitud(moduleId, studentId, trimester, type, entryI
   state.saveDB();
   renderApp();
 }
+
+/**
+ * Anula la marca de "Evaluado" de un punto del temario y lo revierte a "no-visto".
+ * @param {string} moduleId - El ID del módulo.
+ * @param {string} pointId - El ID del punto del temario.
+ */
+export function handleOverrideTemarioEvaluado(moduleId, pointId) {
+  console.log(`[LOG][handleOverrideTemarioEvaluado] Anulando 'Evaluado' para el punto ${pointId} en el módulo ${moduleId}`);
+  const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
+
+  if (module) {
+    // Asegurarse de que el objeto de anulaciones exista
+    if (!module.temarioOverrides) {
+      module.temarioOverrides = {};
+    }
+    // Guardar la anulación y revertir el estado
+    module.temarioOverrides[pointId] = { isEvaluated: false };
+    module.progresoTemario[pointId] = 'no-visto';
+    state.saveDB();
+    renderApp();
+  }
+}
