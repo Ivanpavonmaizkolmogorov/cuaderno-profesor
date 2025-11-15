@@ -12,6 +12,7 @@ const statusConfig = {
   'pendiente': { icon: '❗', text: 'Pendiente', description: 'Tema iniciado pero no completado, o que requiere un repaso.' },
   'omitido': { icon: '❌', text: 'Omitido', description: 'Decidido activamente no impartir este punto del temario.' },
   'en-empresa': { icon: '🏢', text: 'En Empresa', description: 'Contenido de FP Dual que se imparte/evalúa en la empresa.' },
+  'evaluado-manual': { icon: '🏷️', text: 'Evaluado (Manual)', description: 'Marcado manualmente como evaluado.' },
 };
 
 /**
@@ -169,6 +170,10 @@ console.log('[LOG] Añadiendo listener de clics para el contenedor de la vista d
           <span class="tooltip-text">${statusConfig['en-empresa'].description}</span>
         </div>
         <div class="tooltip">
+          <span class="cursor-help">${statusConfig['evaluado-manual'].icon} ${statusConfig['evaluado-manual'].text}</span>
+          <span class="tooltip-text">${statusConfig['evaluado-manual'].description}</span>
+        </div>
+        <div class="tooltip">
           <span class="cursor-help">${statusConfig['no-visto'].icon} ${statusConfig['no-visto'].text}</span>
           <span class="tooltip-text">${statusConfig['no-visto'].description}</span>
         </div>
@@ -226,14 +231,19 @@ console.log('[LOG] Añadiendo listener de clics para el contenedor de la vista d
       const evaluatedInActivities = associatedCeIds
         .flatMap(ceId => ceToActivityMap.get(ceId) || []);
       
-      // Comprobamos si el usuario ha anulado manualmente la etiqueta "Evaluado"
-      const isOverridden = moduleData.temarioOverrides?.[point.idPunto]?.isEvaluated === false;
+      // --- INICIO: LÓGICA DE ETIQUETA "EVALUADO" MEJORADA ---
+      const override = moduleData.temarioOverrides?.[point.idPunto];
+      const isManuallyEvaluated = override?.isEvaluated === true || pointStatus === 'evaluado-manual';
+      const isManuallyHidden = override?.isEvaluated === false;
+      const isAutomaticallyEvaluated = evaluatedInActivities.length > 0;
 
-      if (evaluatedInActivities.length > 0 && !isOverridden) {
+      // La etiqueta se muestra si está forzada manualmente, O si está evaluada automáticamente Y no está oculta manualmente.
+      if (isManuallyEvaluated || (isAutomaticallyEvaluated && !isManuallyHidden)) {
         const uniqueActivities = [...new Set(evaluatedInActivities)];
+        const title = isAutomaticallyEvaluated ? `Evaluado en: ${uniqueActivities.join(', ')}` : 'Marcado como evaluado manualmente.';
         evaluationBadge = `
-          <span class="flex items-center gap-1 ml-2 text-xs font-semibold text-yellow-800 bg-yellow-100 dark:text-yellow-100 dark:bg-yellow-800 px-2 py-0.5 rounded-full" title="Evaluado en: ${uniqueActivities.join(', ')}">
-            Evaluado
+          <span class="flex items-center gap-1 ml-2 text-xs font-semibold text-yellow-800 bg-yellow-100 dark:text-yellow-100 dark:bg-yellow-800 px-2 py-0.5 rounded-full" title="${title}">
+            ${isManuallyEvaluated ? 'Evaluado' : 'Evaluado (Auto)'}
             <button class="remove-evaluated-override-btn text-yellow-600 hover:text-yellow-900 dark:text-yellow-300 dark:hover:text-white" data-module-id="${moduleData.id}" data-point-id="${point.idPunto}" title="Marcar como 'No Visto' y ocultar esta etiqueta.">
               &times;
             </button>
@@ -241,12 +251,12 @@ console.log('[LOG] Añadiendo listener de clics para el contenedor de la vista d
 
         // --- INICIO DE LA CORRECCIÓN ---
         // Si el punto está evaluado y su estado es 'no-visto', lo actualizamos a 'visto'.
-        if (pointStatus === 'no-visto' && !isOverridden) {
+        if (pointStatus === 'no-visto' && !isManuallyHidden) {
           pointStatus = 'visto'; // Actualizamos el estado solo para la visualización inmediata.
           // No guardamos este cambio, ya que es una conveniencia visual. El guardado real
           // lo hace el usuario al hacer clic en el icono de estado.
         }
-        // --- FIN DE LA CORRECCIÓN ---
+        // --- FIN: LÓGICA DE ETIQUETA "EVALUADO" MEJORADA ---
       }
       // --- FIN: LÓGICA DE ESTADO INTELIGENTE ---
 
@@ -300,8 +310,14 @@ function handleStatusChange(pointId, moduleData, onDataChange, pointTree) {
     case 'en-empresa':
       nextStatus = 'omitido';
       break;
-    case 'omitido':
+   case 'omitido': // --- INICIO DE LA CORRECCIÓN ---
+      nextStatus = 'evaluado-manual'; // El nuevo estado para forzar la etiqueta
+      moduleData.temarioOverrides[pointId] = { isEvaluated: true };
+      break;
+    case 'evaluado-manual':
       nextStatus = 'no-visto';
+      moduleData.temarioOverrides[pointId] = { isEvaluated: false };
+      break;
       break;
     default:
       nextStatus = 'no-visto';
