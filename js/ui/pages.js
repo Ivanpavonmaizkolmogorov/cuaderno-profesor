@@ -1840,14 +1840,14 @@ function renderAlumnoView(module, moduleStudents) {
 
   return ` 
     <div class="p-4">
-      <!-- Navegación y Nombre del Alumno -->
-      <div class="flex items-center justify-between mb-2">
+      <!-- Cabecera: Navegación, Nombre y Acciones -->
+      <div class="flex items-center justify-between mb-2 gap-4">
         <button id="prev-student-btn" ${!prevStudent ? 'disabled' : ''} class="p-2 rounded-full transition-colors ${!prevStudent ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" aria-label="Alumno/a anterior" title="Alumno/a anterior">
             ${ICONS.ArrowLeftCircle}
         </button>
         
         <!-- INICIO: Selector de Alumno Desplegable -->
-        <div class="relative flex-grow mx-4">
+        <div class="relative flex-grow">
           <button id="student-selector-toggle" class="w-full text-center text-2xl font-bold text-gray-900 dark:text-white p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center gap-2">
             ${currentStudent.name}
             <span class="text-gray-500">${ICONS.ChevronRight}</span>
@@ -1869,6 +1869,9 @@ function renderAlumnoView(module, moduleStudents) {
 
         <button id="next-student-btn" ${!nextStudent ? 'disabled' : ''} class="p-2 rounded-full transition-colors ${!nextStudent ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" aria-label="Alumno/a siguiente" title="Alumno/a siguiente">
             ${ICONS.ArrowRightCircle}
+        </button>
+        <button id="export-current-view-pdf-btn" data-student-id="${currentStudent.id}" data-module-id="${module.id}" class="p-2 rounded-full transition-colors text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Exportar vista actual a PDF" title="Exportar vista actual a PDF">
+            ${ICONS.DownloadCloud}
         </button>
       </div>
 

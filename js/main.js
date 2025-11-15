@@ -475,14 +475,14 @@ function attachEventListeners() {
     document.getElementById('sort-all-desc-btn')?.addEventListener('click', () => handlers.handleSortAllStudents('desc'));
     document.getElementById('student-module-filter')?.addEventListener('change', (e) => handlers.handleFilterStudentsByModule(e.target.value));
 
-    // Listener para el nuevo botón de exportación completa
+    // --- INICIO: CORRECCIÓN LISTENER BOTÓN INFORME COMPLETO ---
+    // Se mueve aquí para que se aplique en la página de 'alumnos' y a todos los botones.
     document.querySelectorAll('.export-full-student-report-btn').forEach(button => {
       button.addEventListener('click', (e) => {
-        const studentId = e.currentTarget.dataset.studentId;
-        handlers.handleExportFullStudentReport(studentId);
+        handlers.handleExportFullStudentReport(e.currentTarget.dataset.studentId);
       });
     });
-
+    // --- FIN: CORRECCIÓN ---
     // Listener para el historial de comentarios
     document.querySelectorAll('.view-history-btn').forEach(button => {
       button.addEventListener('click', (e) => {
@@ -1051,14 +1051,6 @@ function attachEventListeners() {
         document.getElementById('prev-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('prev'));
         document.getElementById('next-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('next'));
 
-        const exportBtn = document.getElementById('export-current-view-pdf-btn');
-        console.log("Buscando botón de exportación en vista de alumno:", exportBtn); // LOG
-        exportBtn?.addEventListener('click', (e) => {
-          const { studentId, moduleId } = e.currentTarget.dataset;
-          console.log("Botón de exportación clickeado. studentId:", studentId, "moduleId:", moduleId); // LOG
-          handlers.handleExportSingleModuleReport(studentId, moduleId);
-        });
-
         // --- INICIO: Lógica del Selector de Alumno ---
         const toggleBtn = document.getElementById('student-selector-toggle');
         const dropdown = document.getElementById('student-selector-dropdown');
@@ -1090,6 +1082,15 @@ function attachEventListeners() {
         });
         // --- FIN: Lógica del Selector de Alumno ---
 
+    }
+
+    // Listener para el botón de exportación en la vista de alumno
+    const exportSingleBtn = document.getElementById('export-current-view-pdf-btn');
+    if (exportSingleBtn) {
+      exportSingleBtn.addEventListener('click', (e) => {
+        const { studentId, moduleId } = e.currentTarget.dataset;
+        handlers.handleExportSingleModuleReport(studentId, moduleId);
+      });
     }
 
     // Listener para el formulario de comentarios
