@@ -355,6 +355,42 @@ function attachEventListeners() {
   });
 
 
+  // --- INICIO: LISTENER GLOBAL EN BODY PARA DELEGACIÓN DE EVENTOS ---
+  // Escuchamos en `body` para capturar clics en elementos dinámicos como modales.
+  document.body.addEventListener('click', (e) => {
+    // Botones de navegación de página
+    const pageNavBtn = e.target.closest('button[data-page]');
+    if (pageNavBtn) {
+      e.preventDefault();
+      handlers.handleSetPage(pageNavBtn.dataset.page);
+    }
+
+    // Botones de sugerencia de motivos en el modal de aptitud
+    const suggestionButton = e.target.closest('.reason-suggestion-btn');
+    if (suggestionButton) {
+      const reason = suggestionButton.dataset.reason;
+      const baseValue = suggestionButton.dataset.baseValue;
+      const reasonInput = document.getElementById('aptitud-reason-display');
+      const baseValueInput = document.getElementById('aptitud-base-value');
+
+      if (reasonInput) reasonInput.value = reason;
+      if (baseValueInput) baseValueInput.value = baseValue;
+
+      console.log(`[LOG][DELEGATION] Sugerencia de motivo aplicada: "${reason}", Valor: ${baseValue}`);
+      reasonInput.focus();
+    }
+
+    // Botón 'x' para eliminar una sugerencia de motivo
+    const deleteSuggestionBtn = e.target.closest('.delete-suggestion-btn');
+    if (deleteSuggestionBtn) {
+      e.stopPropagation(); // Evita que el clic se propague al botón de sugerencia principal
+      const { reasonId, moduleId, type } = deleteSuggestionBtn.dataset;
+      console.log(`[LOG][DELEGATION] Clic en eliminar sugerencia. ID: ${reasonId}, Módulo: ${moduleId}, Tipo: ${type}`);
+      handlers.handleDeleteAptitudeReason(moduleId, reasonId, type);
+    }
+  });
+  // --- FIN: LISTENER GLOBAL EN BODY ---
+
   document.getElementById('connect-btn')?.addEventListener('click', handlers.handleConnect);
   document.getElementById('disconnect-btn')?.addEventListener('click', handlers.handleDisconnect);
   

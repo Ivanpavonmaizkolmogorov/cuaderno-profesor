@@ -1287,6 +1287,7 @@ export function showAptitudEntryModal(moduleId, studentId, trimester, type, entr
   const { db } = { db: state.getDB() };
   const module = db.modules.find(m => m.id === moduleId);
   const student = db.students.find(s => s.id === studentId);
+  const aptitudes = db.aptitudes || {};
 
   if (!module || !student) return;
 
@@ -1300,22 +1301,27 @@ export function showAptitudEntryModal(moduleId, studentId, trimester, type, entr
     handleSaveAptitudEntry(e.currentTarget);
     closeModal();
   });
+}
 
-  // Listeners para el constructor de motivos
-  document.querySelectorAll('.reason-builder-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const reasonInput = document.getElementById('aptitud-reason-display');
-      reasonInput.value += btn.dataset.word;
-      reasonInput.focus();
-    });
-  });
+export function handleDeleteAptitudeReason(moduleId, reasonId, type) {
+  console.log(`[LOG][handleDeleteAptitudeReason] Solicitado borrado de motivo ID: ${reasonId} del módulo ${moduleId}`);
+  const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
+
+  if (module && module.aptitudeReasons && module.aptitudeReasons[type]) {
+    const initialCount = module.aptitudeReasons[type].length;
+    module.aptitudeReasons[type] = module.aptitudeReasons[type].filter(reason => reason.id !== reasonId);
+    console.log(`[LOG][handleDeleteAptitudeReason] Motivo eliminado. Catálogo de '${type}' pasó de ${initialCount} a ${module.aptitudeReasons[type].length} elementos.`);
+    state.saveDB();
+    renderApp(); // Volver a renderizar para que el modal se actualice sin la sugerencia
+  }
 }
 
 export function handleSaveAptitudEntry(form) {
   const { moduleId, studentId, trimester, type, entryId } = form.dataset;
   const isEdit = entryId !== '';
 
-  const finalReason = form.reason.value.trim();
+  let finalReason = form.reason.value.trim();
   const baseValue = parseFloat(form.baseValue.value);
   const effectiveDate = new Date(form.effectiveDate.value).toISOString();
   if (!finalReason) {
@@ -1323,19 +1329,46 @@ export function handleSaveAptitudEntry(form) {
   }
 
   const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
   const trimesterKey = `T${trimester}`;
+
+  // --- INICIO: Lógica de aprendizaje de motivos ---
+  console.log(`[LOG][handleSaveAptitudEntry] Iniciando lógica de aprendizaje para el motivo: "${finalReason}"`);
+  if (module) {
+    if (!module.aptitudeReasons) {
+      module.aptitudeReasons = { positives: [], negatives: [] };
+    }
+    const reasonCatalog = module.aptitudeReasons[type] || [];
+    const reasonExists = reasonCatalog.some(r => r.text.trim().toLowerCase() === finalReason.trim().toLowerCase());
+
+    if (!reasonExists && finalReason) {
+      console.log(`[LOG][handleSaveAptitudEntry] El motivo es nuevo. Añadiendo al catálogo del módulo.`);
+      reasonCatalog.push({
+        id: crypto.randomUUID(),
+        text: finalReason,
+        baseValue: baseValue,
+        isFavorite: false
+      });
+    } else {
+      console.log(`[LOG][handleSaveAptitudEntry] El motivo ya existe en el catálogo. No se añade.`);
+    }
+  } else {
+    console.warn(`[WARN][handleSaveAptitudEntry] No se encontró el módulo ${moduleId} para la lógica de aprendizaje.`);
+  }
+  // --- FIN: Lógica de aprendizaje de motivos ---
 
   if (isEdit) {
     // Lógica de edición
     const entry = db.aptitudes?.[moduleId]?.[studentId]?.[trimesterKey]?.[type]?.find(e => e.id === entryId);
     if (entry) {
-      console.log(`[LOG] Guardando cambios para la entrada de aptitud existente: ${entryId}`);
+      console.log(`[LOG][handleSaveAptitudEntry] Guardando cambios para la entrada de aptitud existente: ${entryId}`);
       entry.effectiveDate = effectiveDate;
       entry.reason = finalReason;
       entry.baseValue = baseValue;
     }
   } else {
     // Lógica de añadir
+    console.log(`[LOG][handleSaveAptitudEntry] Creando nueva entrada de aptitud.`);
     const newEntry = { id: crypto.randomUUID(), dateAdded: new Date().toISOString(), effectiveDate, reason: finalReason, baseValue };
     if (!db.aptitudes[moduleId]) db.aptitudes[moduleId] = {};
     if (!db.aptitudes[moduleId][studentId]) db.aptitudes[moduleId][studentId] = {};

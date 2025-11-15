@@ -1964,41 +1964,43 @@ function renderAptitudPanel(student, module) {
  * @param {string} initialReason - El motivo inicial para precargar en el editor.
  * @returns {string} El HTML del constructor de motivos.
  */
-function renderReasonBuilder(initialReason = '') {
-  const keywords = ['Actividad', 'Unidad', 'Ejercicio', 'Tema', 'Examen', 'Tarea'];
-  const numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+function renderReasonBuilder(initialReason = '', suggestions = []) {
+  console.log(`[LOG][renderReasonBuilder] Renderizando con ${suggestions.length} sugerencias.`);
+
+  const renderSuggestionButton = (suggestion) => `
+    <button 
+      type="button" 
+      class="reason-suggestion-btn group flex-shrink-0 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm pl-3 pr-2 py-1 rounded-full flex items-center gap-2" 
+      data-reason="${suggestion.text}" 
+      data-base-value="${suggestion.baseValue}"
+      title="Valor: ${suggestion.baseValue}"
+    >
+      <span class="pointer-events-none">${suggestion.isFavorite ? '⭐' : ''} ${suggestion.text}</span>
+      <span class="delete-suggestion-btn opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-800 dark:hover:text-red-300" data-reason-id="${suggestion.id}" data-module-id="${suggestion.moduleId}" data-type="${suggestion.type}" title="Eliminar esta sugerencia">
+        &times;
+      </span>
+    </button>
+  `;
 
   return `
     <div>
       <label for="aptitud-reason-display" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Motivo / Comentario</label>
       <input type="text" id="aptitud-reason-display" name="reason" value="${initialReason}" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900" placeholder="Construye el motivo con los botones o escribe directamente...">
       
-      <div class="mt-3 space-y-2">
-        <div class="flex flex-wrap gap-2">
-          ${keywords.map(word => `
-            <button type="button" class="reason-builder-btn bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm px-3 py-1 rounded-md" data-word="${word} ">
-              ${word}
-            </button>
-          `).join('')}
+      ${suggestions.length > 0 ? `
+        <div class="mt-3">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Sugerencias:</p>
+          <div class="flex flex-wrap gap-2">
+            ${suggestions.map(renderSuggestionButton).join('')}
+          </div>
         </div>
-        <div class="flex flex-wrap gap-2">
-          ${numbers.map(num => `
-            <button type="button" class="reason-builder-btn bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm px-3 py-1 rounded-md" data-word="${num}">
-              ${num}
-            </button>
-          `).join('')}
-           <button type="button" class="reason-builder-btn bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm px-3 py-1 rounded-md" data-word=" ">
-              Espacio
-            </button>
-        </div>
-      </div>
+      ` : ''}
     </div>
   `;
 }
 
 export function renderAptitudEntryModal(module, student, trimester, type, entryId = null) {
   const { db } = { db: getDB() };
-  const moduleActivities = db.actividades.filter(a => a.moduleId === module.id);
   const isEdit = entryId !== null;
   const title = `${isEdit ? 'Editar' : 'Añadir'} ${type === 'positives' ? 'Positivo' : 'Negativo'}`;
 
@@ -2006,6 +2008,19 @@ export function renderAptitudEntryModal(module, student, trimester, type, entryI
   let initialReason = '';
   let baseValueForInput;
   let effectiveDate = new Date().toISOString().split('T')[0];
+
+  // --- INICIO: Lógica para obtener sugerencias ---
+  const catalog = module.aptitudeReasons?.[type] || [];
+  const favorites = catalog.filter(r => r.isFavorite);
+  const nonFavorites = catalog.filter(r => !r.isFavorite);
+  // Añadimos el ID del módulo y el tipo a cada sugerencia para que el handler de borrado sepa qué hacer
+  const suggestions = [...favorites, ...nonFavorites].map(s => ({
+    ...s,
+    moduleId: module.id,
+    type: type
+  }));
+  console.log(`[LOG][renderAptitudEntryModal] Obtenidas ${suggestions.length} sugerencias del catálogo para el tipo "${type}".`);
+  // --- FIN: Lógica para obtener sugerencias ---
 
   if (isEdit) {
     const trimesterKey = `T${trimester}`;
@@ -2029,7 +2044,7 @@ export function renderAptitudEntryModal(module, student, trimester, type, entryI
             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Para: ${student.name}</p>
           </div>
           <div class="p-6 space-y-4">
-            ${renderReasonBuilder(initialReason)}
+            ${renderReasonBuilder(initialReason, suggestions)}
             <div>
               <label for="aptitud-base-value" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Valor Base para esta Entrada</label>
               <input type="number" id="aptitud-base-value" name="baseValue" value="${baseValueForInput}" step="0.01" min="1" required class="mt-1 w-full p-2 border rounded-md dark:bg-gray-900">
