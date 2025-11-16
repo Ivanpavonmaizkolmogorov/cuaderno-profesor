@@ -27,6 +27,13 @@ let state = {
     expandedRaId: null, // Inicializamos a null para que siempre exista
     tableViewSort: { key: 'name', direction: 'asc' }, // Criterio de ordenación para la vista de tabla
     isGeneratingPDF: false, // Flag para evitar exportaciones simultáneas
+    // --- INICIO: ESTADO PARA LA BÚSQUEDA EN PÁGINA ---
+    search: {
+      isActive: false,
+      query: '',
+      results: [], // Array de elementos DOM que coinciden
+      currentIndex: -1,
+    },
   },
   // Almacén para notas calculadas
   calculatedGrades: {},
@@ -95,6 +102,12 @@ export const setCalculatedGrades = (grades) => {
 
 export function setUIProperty(key, value) {
   state.ui[key] = value;
+}
+
+export function setSearchProperty(key, value) {
+  if (state.ui.search) {
+    state.ui.search[key] = value;
+  }
 }
 
 // --- LÓGICA DE LOCALSTORAGE ---

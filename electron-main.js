@@ -45,6 +45,7 @@ app.whenReady().then(() => {
       });
       
       // Crear un servidor local para escuchar el callback
+      let authWindow;
       server = http.createServer(async (req, res) => {
         try {
           // Extraer el código de la URL de redirección
@@ -58,6 +59,7 @@ app.whenReady().then(() => {
           oAuth2Client.setCredentials(tokens);
 
           console.log('Tokens obtenidos:', tokens);
+          if (authWindow) authWindow.close();
           server.close(); // Cerramos el servidor en el caso de éxito
           resolve({ success: true, token: tokens });
 
@@ -67,8 +69,16 @@ app.whenReady().then(() => {
           reject(new Error(e.message));
         }
       }).listen(3000, () => {
-        // Abrir la URL de autorización en el navegador predeterminado del usuario
-        shell.openExternal(authorizeUrl);
+        // Abrir la URL de autorización en una nueva ventana de Electron
+        authWindow = new BrowserWindow({ width: 800, height: 600, webPreferences: { nodeIntegration: false, contextIsolation: true } });
+        authWindow.loadURL(authorizeUrl);
+
+        authWindow.on('closed', () => {
+          // Si el usuario cierra la ventana sin completar el flujo, rechazamos la promesa
+          // y cerramos el servidor si todavía está escuchando.
+          if (server && server.listening) server.close();
+          reject(new Error('El usuario cerró la ventana de autenticación.'));
+        });
       });
 
       server.on('error', (e) => {

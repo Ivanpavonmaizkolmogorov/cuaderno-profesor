@@ -1,5 +1,5 @@
 import * as state from './state.js';
-import { setUIProperty, getUI } from './state.js'; // Importación nombrada
+import { setUIProperty, getUI, setSearchProperty } from './state.js'; // Importación nombrada
 import * as dataManager from './services/dataManager.js';
 import { parseStudentNames } from './services/nameParser.js';
 import { calculateModuleGrades } from './services/calculations.js';
@@ -1561,3 +1561,112 @@ export function handleTogglePanel(panelId) {
   }
   renderApp(); // Volvemos a renderizar para que la UI refleje el nuevo estado
 }
+
+// --- INICIO: MANEJADORES PARA LA BÚSQUEDA EN PÁGINA ---
+
+/**
+ * Activa o desactiva la barra de búsqueda.
+ * @param {boolean} isActive - Si la búsqueda debe estar activa.
+ */
+export function handleToggleSearch(isActive) {
+  if (!isActive) {
+    // Limpiar resaltados al cerrar
+    clearSearchHighlights();
+    state.setSearchProperty('query', '');
+    state.setSearchProperty('results', []);
+    state.setSearchProperty('currentIndex', -1);
+  }
+  state.setSearchProperty('isActive', isActive);
+  renderApp();
+
+  // Enfocar el input si se acaba de activar
+  if (isActive) {
+    setTimeout(() => document.getElementById('search-input')?.focus(), 0);
+  }
+}
+
+/**
+ * Realiza una búsqueda en el contenido de la página y resalta los resultados.
+ * @param {string} query - El texto a buscar.
+ */
+export function handleSearch(query) {
+  state.setSearchProperty('query', query);
+  clearSearchHighlights();
+
+  if (!query || query.length < 2) {
+    state.setSearchProperty('results', []);
+    state.setSearchProperty('currentIndex', -1);
+    renderApp(); // Re-render para actualizar el contador
+    return;
+  }
+
+  const content = document.getElementById('content-container');
+  const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, null, false);
+  const results = [];
+  const regex = new RegExp(query, 'gi');
+
+  let node;
+  while (node = walker.nextNode()) {
+    // Ignorar nodos dentro de scripts, styles, o de la propia barra de búsqueda
+    if (node.parentElement.closest('script, style, #search-bar-container')) {
+      continue;
+    }
+
+    const matches = node.textContent.match(regex);
+    if (matches) {
+      const parent = node.parentNode;
+      const parts = node.textContent.split(regex);
+      
+      for (let i = 0; i < parts.length - 1; i++) {
+        parent.insertBefore(document.createTextNode(parts[i]), node);
+        const mark = document.createElement('mark');
+        mark.textContent = matches[i];
+        mark.className = 'search-highlight';
+        parent.insertBefore(mark, node);
+        results.push(mark);
+      }
+      parent.insertBefore(document.createTextNode(parts[parts.length - 1]), node);
+      parent.removeChild(node);
+    }
+  }
+
+  state.setSearchProperty('results', results);
+  state.setSearchProperty('currentIndex', results.length > 0 ? 0 : -1);
+  
+  if (results.length > 0) {
+    results[0].classList.add('active-highlight');
+    results[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  renderApp(); // Re-render para actualizar el contador
+}
+
+/**
+ * Navega entre los resultados de búsqueda.
+ * @param {'next' | 'prev'} direction - La dirección de la navegación.
+ */
+export function handleNavigateSearchResults(direction) {
+  const searchState = getUI().search;
+  if (!searchState.results.length) return;
+
+  const { results, currentIndex } = searchState;
+  results[currentIndex]?.classList.remove('active-highlight');
+
+  let nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+  if (nextIndex >= results.length) nextIndex = 0;
+  if (nextIndex < 0) nextIndex = results.length - 1;
+
+  state.setSearchProperty('currentIndex', nextIndex);
+  results[nextIndex].classList.add('active-highlight');
+  results[nextIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  renderApp(); // Re-render para actualizar el contador
+}
+
+function clearSearchHighlights() {
+  document.querySelectorAll('mark.search-highlight').forEach(mark => {
+    mark.outerHTML = mark.innerHTML;
+  });
+  document.normalize(); // Fusiona nodos de texto adyacentes
+}
+// --- FIN: MANEJADORES PARA LA BÚSQUEDA EN PÁGINA ---

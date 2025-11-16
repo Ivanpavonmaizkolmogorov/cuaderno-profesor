@@ -44,6 +44,45 @@ export function renderHeader(page, db) {
   `;
 }
 
+/**
+ * Renderiza la barra de búsqueda flotante.
+ * @param {object} searchState - El estado actual de la búsqueda.
+ * @returns {string} El HTML de la barra de búsqueda.
+ */
+export function renderSearchBar(searchState) {
+  if (!searchState.isActive) {
+    return ''; // No renderizar nada si no está activa
+  }
+
+  const { query, results, currentIndex } = searchState;
+  const total = results.length;
+  const current = currentIndex + 1;
+
+  return `
+    <div id="search-bar" class="fixed top-4 right-4 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-2 flex items-center gap-2 z-50 border border-gray-300 dark:border-gray-600">
+      <input 
+        type="text" 
+        id="search-input" 
+        placeholder="Buscar en la página..." 
+        value="${query}"
+        class="p-1 border-none rounded-md bg-gray-100 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 w-48 text-sm"
+      >
+      <span class="text-sm text-gray-500 dark:text-gray-400 w-16 text-center">
+        ${total > 0 ? `${current} de ${total}` : (query.length > 1 ? '0 de 0' : '')}
+      </span>
+      <button id="search-prev-btn" class="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50" ${total === 0 ? 'disabled' : ''} title="Anterior (Shift+Enter)">
+        ${ICONS.ChevronUp || '▲'}
+      </button>
+      <button id="search-next-btn" class="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50" ${total === 0 ? 'disabled' : ''} title="Siguiente (Enter)">
+        ${ICONS.ChevronDown || '▼'}
+      </button>
+      <button id="search-close-btn" class="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700" title="Cerrar (Esc)">
+        &times;
+      </button>
+    </div>
+  `;
+}
+
 export function renderRaAccordion(ra, studentGrades, calculatedRaGrade, studentId, isReadOnly = false, allActividades = [], allStudentGrades = {}) {
     const contentId = `ra-content-${ra.ra_id}`;
     

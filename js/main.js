@@ -1,6 +1,6 @@
 import * as state from './state.js';
 import * as handlers from './handlers.js';
-import { renderHeader } from './ui/components.js';
+import { renderHeader, renderSearchBar } from './ui/components.js';
 import { ICONS } from './ui/constants.js';
 import { renderStudentFormatModal } from './ui/pages.js';
 import { renderWeightDistributionView, sortStudentsForTableView } from './ui/pages.js'; // Importar la nueva función
@@ -53,6 +53,13 @@ export function renderApp() {
   const headerContainer = document.getElementById('header-container');
   if (headerContainer) {
       headerContainer.innerHTML = renderHeader(ui.page, db);
+  }
+
+  // --- INICIO: RENDERIZAR BARRA DE BÚSQUEDA ---
+  const searchBarContainer = document.getElementById('search-bar-container');
+  if (searchBarContainer) {
+    searchBarContainer.innerHTML = renderSearchBar(ui.search);
+    attachSearchEventListeners(); // Añadir listeners específicos de la búsqueda
   }
   
   // 2. Renderizar contenido de la página
@@ -426,6 +433,20 @@ function attachEventListeners() {
       console.log(`[LOG][DELEGATION] Clic en borrado masivo por módulo. Módulo: ${moduleId}, Tipo: ${type}`);
       handlers.handleBulkDeleteAptitudesByModule(moduleId, type);
     }
+    });
+
+    // --- INICIO: LISTENER PARA BÚSQUEDA (CTRL+F) ---
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        const searchState = state.getUI().search;
+        // Si la búsqueda ya está activa, solo enfoca el input. Si no, la activa.
+        if (searchState.isActive) {
+          document.getElementById('search-input')?.focus();
+        } else {
+          handlers.handleToggleSearch(true);
+        }
+      }
     });
   }
   // --- FIN: LISTENER GLOBAL EN BODY ---
@@ -1258,6 +1279,31 @@ function attachEventListeners() {
     }
     // --- FIN: FEEDBACK DE IMPACTO EN PÁGINA DE EDICIÓN ---
   }
+}
+
+/**
+ * Añade los event listeners específicos para la barra de búsqueda.
+ * Se llama después de que `renderSearchBar` inserte el HTML.
+ */
+function attachSearchEventListeners() {
+  const searchInput = document.getElementById('search-input');
+  const closeBtn = document.getElementById('search-close-btn');
+  const prevBtn = document.getElementById('search-prev-btn');
+  const nextBtn = document.getElementById('search-next-btn');
+
+  closeBtn?.addEventListener('click', () => handlers.handleToggleSearch(false));
+  prevBtn?.addEventListener('click', () => handlers.handleNavigateSearchResults('prev'));
+  nextBtn?.addEventListener('click', () => handlers.handleNavigateSearchResults('next'));
+
+  searchInput?.addEventListener('input', (e) => handlers.handleSearch(e.target.value));
+  
+  // Navegar con Enter y Shift+Enter sin perder el foco
+  searchInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handlers.handleNavigateSearchResults(e.shiftKey ? 'prev' : 'next');
+    }
+  });
 }
 
 function getDragAfterElement(container, y, draggableSelector = '.student-draggable') {
