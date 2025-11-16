@@ -294,6 +294,12 @@ console.log('[LOG] Añadiendo listener de clics para el contenedor de la vista d
  * @param {Map} pointTree - El mapa que representa la jerarquía del temario.
  */
 function handleStatusChange(pointId, moduleData, onDataChange, pointTree) {
+  // --- INICIO: CORRECCIÓN DE ERROR DE TIPO ---
+  // Asegurarse de que el objeto de anulaciones exista antes de usarlo.
+  if (!moduleData.temarioOverrides) {
+    moduleData.temarioOverrides = {};
+  }
+  // --- FIN: CORRECCIÓN ---
   const currentStatus = moduleData.progresoTemario[pointId] || 'no-visto';
   let nextStatus;
 
@@ -317,7 +323,6 @@ function handleStatusChange(pointId, moduleData, onDataChange, pointTree) {
     case 'evaluado-manual':
       nextStatus = 'no-visto';
       moduleData.temarioOverrides[pointId] = { isEvaluated: false };
-      break;
       break;
     default:
       nextStatus = 'no-visto';
