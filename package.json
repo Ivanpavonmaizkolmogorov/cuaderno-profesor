@@ -4,7 +4,8 @@
   "description": "Aplicación Cuaderno del Profesor con conexión a Google Drive",
   "main": "electron-main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder"
   },
   "author": "ivanpavonmaiz",
   "license": "ISC",
@@ -14,5 +15,17 @@
   },
   "dependencies": {
     "google-auth-library": "^10.5.0"
+  },
+  "build": {
+    "appId": "com.ivanpavonmaiz.cuadernoprofesor",
+    "icon": "build/icon.png",
+    "win": {
+      "icon": "build/icon.png",
+      "artifactName": "${productName}-setup-${version}-${arch}.${ext}",
+      "target": "nsis"
+    },
+    "mac": {
+      "icon": "build/icon.png"
+    }
   }
 }
