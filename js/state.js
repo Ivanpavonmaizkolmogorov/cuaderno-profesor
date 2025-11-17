@@ -45,12 +45,27 @@ let driveState = {
   isConnected: false,
   fileId: null,
   fileName: null,
-  accessToken: null, // Guardaremos el token aquí para reusarlo
+  accessToken: null,
+  isMirrorFiltered: true, // Por defecto, el filtrado del espejo está activado
 }
 
 // --- GETTERS (para leer el estado) ---
 export const getDB = () => { console.log('[LOG][getDB] Returning state.db:', state.db); return state.db; };
 export const getUI = () => { console.log('[LOG][getUI] Returning state.ui:', state.ui); return state.ui; };
+
+/**
+ * Devuelve una copia filtrada de la base de datos para el archivo espejo.
+ * Contiene solo el temario, progreso, RAs y CEs de cada módulo.
+ */
+const getFilteredDBForMirror = () => ({
+  modules: state.db.modules.map(module => ({
+    id: module.id,
+    modulo: module.modulo,
+    temario: module.temario || [],
+    progresoTemario: module.progresoTemario || {},
+    resultados_de_aprendizaje: module.resultados_de_aprendizaje || [],
+  })),
+});
 export const getCalculatedGrades = () => state.calculatedGrades;
 
 // --- SETTERS (para modificar el estado) ---
@@ -65,7 +80,11 @@ export const setDriveConnection = (fileId, fileName, accessToken) => {
 export const getDriveState = () => driveState;
 
 export const disconnectDrive = () => {
-  driveState = { isConnected: false, fileId: null, fileName: null };
+  driveState = { isConnected: false, fileId: null, fileName: null, accessToken: null, isMirrorFiltered: true };
+};
+
+export const setDriveMirrorFilter = (isFiltered) => {
+  driveState.isMirrorFiltered = isFiltered;
 };
 
 export const setDB = (newDb) => {
@@ -253,9 +272,13 @@ export function saveDB() {
         console.log("[LOG-SAVE] Sincronización principal (.json) con Google Drive completada.");
         showSavingIndicator(true, false, 'Guardando espejo...');
 
+        // --- INICIO: LÓGICA DE FILTRADO PARA EL ESPEJO ---
+        const dbForMirror = driveState.isMirrorFiltered ? getFilteredDBForMirror() : state.db;
+        // --- FIN: LÓGICA DE FILTRADO PARA EL ESPEJO ---
+
         const saveMirrorFile = isElectron
-          ? window.electronAPI.updateDriveMirror(driveState.fileName, state.db, driveState.accessToken)
-          : updateMirrorFileInDrive(driveState.fileName, state.db, driveState.accessToken);
+          ? window.electronAPI.updateDriveMirror(driveState.fileName, dbForMirror, driveState.accessToken)
+          : updateMirrorFileInDrive(driveState.fileName, dbForMirror, driveState.accessToken);
 
         saveMirrorFile.then(mirrorSuccess => {
           showSavingIndicator(false, !mirrorSuccess);

@@ -200,18 +200,30 @@ function renderDriveButton() {
   if (!container) return;
 
   if (driveState.isConnected) {
-    container.innerHTML = `
-      <div class="flex items-center gap-2">
-        <span class="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
-          <img src="https://www.google.com/images/branding/product/1x/drive_2020q4_48dp.png" alt="Google Drive" class="w-5 h-5">
-          ${driveState.fileName}
-        </span>
-        <button id="disconnect-drive-btn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm" title="Desconectar de Google Drive">
-          ${ICONS.Unplug}
-        </button>
+    const isChecked = driveState.isMirrorFiltered ? 'checked' : '';
+    container.innerHTML = /*html*/`
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+            <img src="https://www.google.com/images/branding/product/1x/drive_2020q4_48dp.png" alt="Google Drive" class="w-5 h-5">
+            ${driveState.fileName}
+          </span>
+          <button id="disconnect-drive-btn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded-md text-xs" title="Desconectar de Google Drive">
+            ${ICONS.Unplug}
+          </button>
+        </div>
+        <div class="flex items-center gap-2 text-sm" title="Si está activado, la copia espejo en Google Docs solo guardará el temario y su progreso, en lugar de toda la base de datos.">
+          <label for="filter-mirror-toggle" class="cursor-pointer">Filtrado Espejo</label>
+          <input type="checkbox" id="filter-mirror-toggle" class="form-checkbox h-4 w-4 text-blue-600" ${isChecked}>
+        </div>
       </div>
     `;
     document.getElementById('disconnect-drive-btn')?.addEventListener('click', handlers.handleDisconnectDrive);
+    document.getElementById('filter-mirror-toggle')?.addEventListener('change', (e) => {
+      state.setDriveMirrorFilter(e.target.checked);
+      // Forzamos un guardado para que el cambio se aplique inmediatamente en el archivo espejo
+      state.saveDB();
+    });
   } else {
     container.innerHTML = `
       <button id="load-from-drive-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded inline-flex items-center">
