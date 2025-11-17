@@ -121,7 +121,7 @@ app.whenReady().then(() => {
     currentLocalFile = filePaths[0];
     try {
       const content = await fs.readFile(currentLocalFile, 'utf-8');
-      return { success: true, filePath: currentLocalFile, content };
+      return { success: true, filePath: currentLocalFile, content, fileName: path.basename(currentLocalFile) };
     } catch (error) {
       console.error('Error al leer el archivo local:', error);
       return { success: false, error: error.message };

@@ -118,7 +118,7 @@ export async function connectToFile() {
     if (result.success && result.content) {
       const newDb = JSON.parse(result.content);
       setDB(newDb);
-      return path.basename(result.filePath);
+      return result.fileName;
     }
     return null;
   }
