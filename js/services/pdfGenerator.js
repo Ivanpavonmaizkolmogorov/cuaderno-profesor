@@ -96,8 +96,19 @@ export function generateStudentReport({ student, modulesData, db, doc = null, is
             const maxGrade = attempts.length > 0 ? Math.max(...attempts.map(a => a.grade)) : null;
             const gradeText = maxGrade !== null ? maxGrade.toFixed(2) : 'S.C.';
 
+            // --- INICIO: LÓGICA DE COLOR PARA NOTAS SUSPENSAS ---
+            const originalColor = doc.getTextColor();
+            if (maxGrade !== null && maxGrade < 5) {
+              doc.setTextColor(200, 0, 0); // Rojo para suspensos
+            }
+
             doc.text(`- ${act.name} (T${act.trimestre}):`, pageMargin + 5, yPosition);
             doc.text(gradeText, pageMargin + contentWidth - 2, yPosition, { align: "right" });
+
+            if (maxGrade !== null && maxGrade < 5) {
+              doc.setTextColor(originalColor); // Restaurar color original
+            }
+            // --- FIN: LÓGICA DE COLOR ---
             yPosition += 5;
           });
 

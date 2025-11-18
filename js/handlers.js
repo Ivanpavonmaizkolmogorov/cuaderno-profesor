@@ -303,8 +303,14 @@ function showRecoveryValidationModal(data) {
  */
 export function handleGenerateRecoveryReport(validations) {
   const db = state.getDB();
-  const { type, studentId, moduleId } = state.getUI().recoveryValidationData;
-  console.log(`[LOG] handleGenerateRecoveryReport: Iniciando con tipo=${type}`);
+  const recoveryData = state.getUI().recoveryValidationData;
+
+  if (!recoveryData) {
+    console.warn('[WARN] handleGenerateRecoveryReport fue llamado pero recoveryValidationData es null. Abortando.');
+    return;
+  }
+  const { type, studentId, moduleId } = recoveryData;
+  console.log(`[LOG] handleGenerateRecoveryReport: Iniciando con tipo=${type}`, recoveryData);
 
   // 1. Guardar las validaciones en la base de datos
   db.recoveryValidations = validations;
