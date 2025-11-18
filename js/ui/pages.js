@@ -1661,9 +1661,9 @@ export function renderActividadesManagement(module) {
                 <!-- INICIO: Leyenda de colores -->
                 <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
                   <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-red-500"></span>No evaluado</span>
-                  <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-green-500"></span>Evaluado</span>
+                  <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-green-500"></span>Evaluado en el centro</span>
                   <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-blue-500"></span>Dual</span>
-                  <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-orange-500"></span>Dual y Evaluado</span>
+                  <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-pink-500"></span>Dual y Evaluado</span>
                 </div>
                 <!-- FIN: Leyenda de colores -->
               </div>
@@ -1680,15 +1680,18 @@ export function renderActividadesManagement(module) {
                     `}
                     <div class="pl-6 mt-1 space-y-1">
                       ${cesByUd[ud].map(ce => {
+                        // LOG: Añadimos logs para depurar el estado de cada CE
+                        console.log(`[LOG][Color CE] Procesando CE: ${ce.ce_id}, es Dual: ${ce.dual}, está en usedCeIds: ${usedCeIds.has(ce.ce_id)}`);
+
                         const isEvaluated = usedCeIds.has(ce.ce_id);
-                        const isDual = ce.dual;
+                        const isDual = ce.dual === true; // CORRECCIÓN: Aseguramos que la comprobación sea estrictamente booleana.
                         let ceColorClass = 'text-red-600 dark:text-red-400'; // Por defecto: No evaluado
                         if (isDual && isEvaluated) {
-                          ceColorClass = 'text-orange-500 dark:text-orange-400'; // Dual y Evaluado
+                          ceColorClass = 'text-pink-500 dark:text-pink-400'; // Dual y Evaluado (Fucsia)
                         } else if (isDual) {
                           ceColorClass = 'text-blue-600 dark:text-blue-400'; // Solo Dual
                         } else if (isEvaluated) {
-                          ceColorClass = 'text-green-600 dark:text-green-400'; // Solo Evaluado
+                          ceColorClass = 'text-green-600 dark:text-green-400'; // Solo Evaluado en centro
                         }
                         return `
                         <label class="flex items-center gap-2 text-sm">
