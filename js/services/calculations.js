@@ -64,18 +64,19 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
         const weight = ce.peso || 0;
         // Para la nota final (trimestre es null), si un CE no tiene nota, su nota es 0.
         // Para una nota trimestral, solo se consideran los CEs con nota en ese trimestre.
-        if (ceFinalGrades[ce.ce_id] !== undefined) {
+        if (ceFinalGrades[ce.ce_id] !== undefined) { // <-- CORRECCIÓN: Solo CEs con nota cuentan
           raWeightedTotal += (ceFinalGrades[ce.ce_id] * weight);
-          raTotalWeight += weight;
-        } else if (!trimestre) { // Si no se especifica trimestre (cálculo final)
-          // Si es el cálculo final y el CE no tiene nota, su peso sí cuenta (nota 0).
-          raWeightedTotal += 0; // La nota es 0
           raTotalWeight += weight;
         }
       }
 
-      const raGrade = (raTotalWeight > 0) ? (raWeightedTotal / raTotalWeight) : 0;
-      raTotals[ra.ra_id] = parseFloat(raGrade.toFixed(2));
+      // --- INICIO: CORRECCIÓN ---
+      // Un RA solo tiene nota si al menos uno de sus CEs ha sido evaluado.
+      // Si no, no se le asigna nota (quedará como undefined).
+      if (raTotalWeight > 0) {
+        const raGrade = raWeightedTotal / raTotalWeight;
+        raTotals[ra.ra_id] = parseFloat(raGrade.toFixed(2));
+      }
     }
 
     let moduleGrade;
@@ -136,24 +137,15 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
       // --- FIN: APLICAR AJUSTE POR APTITUD ---
     } else { // Si es el cálculo final (trimestre es undefined o null)
       // Para la nota final, la nota del módulo es la media ponderada de TODOS los CEs del módulo.
-      // Los CEs no evaluados explícitamente (no presentes en ceFinalGrades) cuentan como 0.
-      let finalCeWeightedTotal = 0;
-      let finalCeTotalWeight = 0;      
-
-      // Iterar a través de todos los CEs del módulo (allCes ya contiene todos los CEs)
-      allCes.forEach(ce => {
-        // --- INICIO: LÓGICA DE RECUPERACIÓN ---
-        if (recoveryValidations && recoveryValidations[student.id]?.[ce.ce_id]?.isApproved) {
-          console.log(`[LOG][calculateModuleGrades] RECUPERACIÓN FINAL: Saltando CE '${ce.ce_id}' para '${student.name}' porque fue validado.`);
-          return; // Usamos return porque estamos en un forEach
-        }
-
-        const grade = ceFinalGrades[ce.ce_id] ?? 0; // Si no hay nota, es un 0 para la final
-        const weight = ce.peso || 0;
-        finalCeWeightedTotal += (grade * weight);
-        finalCeTotalWeight += weight;        
-      });
-      moduleGrade = (finalCeTotalWeight > 0) ? (finalCeWeightedTotal / finalCeTotalWeight) : 0;
+      // --- INICIO: CORRECCIÓN CÁLCULO NOTA FINAL ---
+      // La nota final del módulo es la media de las notas de los RAs evaluados.
+      const evaluatedRaGrades = Object.values(raTotals);
+      if (evaluatedRaGrades.length > 0) {
+        moduleGrade = evaluatedRaGrades.reduce((sum, grade) => sum + grade, 0) / evaluatedRaGrades.length;
+      } else {
+        moduleGrade = 0; // Si ningún RA ha sido evaluado, la nota del módulo es 0.
+      }
+      // --- FIN: CORRECCIÓN CÁLCULO NOTA FINAL ---
 
       baseGrade = moduleGrade; // Asignamos el valor, ya no la declaramos.
       // --- INICIO: APLICAR AJUSTE POR APTITUD A LA NOTA FINAL ---

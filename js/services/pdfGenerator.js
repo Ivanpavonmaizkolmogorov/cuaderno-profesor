@@ -77,12 +77,40 @@ export function generateStudentReport({ student, modulesData, db, doc = null, is
       // --- FIN: DESGLOSE DE NOTA FINAL ---
       yPosition += 12;
 
+      // --- INICIO: SECCIÓN DE RESUMEN DE PRUEBAS PARA INFORME DE RECUPERACIÓN ---
+      if (isRecovery) {
+        const moduleActivities = allActividades.filter(act => act.moduleId === moduleInfo.module.id);
+        if (moduleActivities.length > 0) {
+          checkAndAddPage();
+          doc.setFontSize(12);
+          doc.setFont("helvetica", "bold");
+          doc.text("Resumen de Pruebas Evaluables Realizadas", pageMargin, yPosition);
+          yPosition += 8;
+
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "normal");
+
+          moduleActivities.forEach(act => {
+            checkAndAddPage();
+            const attempts = allGrades[student.id]?.[act.id] || [];
+            const maxGrade = attempts.length > 0 ? Math.max(...attempts.map(a => a.grade)) : null;
+            const gradeText = maxGrade !== null ? maxGrade.toFixed(2) : 'S.C.';
+
+            doc.text(`- ${act.name} (T${act.trimestre}):`, pageMargin + 5, yPosition);
+            doc.text(gradeText, pageMargin + contentWidth - 2, yPosition, { align: "right" });
+            yPosition += 5;
+          });
+
+          yPosition += 5; // Espacio extra después del resumen
+          doc.setDrawColor(200, 200, 200);
+          doc.line(pageMargin, yPosition - 3, pageMargin + contentWidth, yPosition - 3);
+          yPosition += 5;
+        }
+      }
+      // --- FIN: SECCIÓN DE RESUMEN ---
+
       // --- Tabla de Resultados de Aprendizaje (RAs) ---
       let rasToDisplay = moduleInfo.module.resultados_de_aprendizaje;
-
-      if (isRecovery) {
-        rasToDisplay = rasToDisplay.filter(ra => (moduleInfo.raTotals[ra.ra_id] || 0) < 5);
-      }
 
       rasToDisplay.forEach(ra => {
         checkAndAddPage();
@@ -102,11 +130,7 @@ export function generateStudentReport({ student, modulesData, db, doc = null, is
         doc.setFontSize(9);
         doc.setTextColor(50, 50, 50);
 
-        let cesToDisplay = ra.criterios_de_evaluacion;
-        if (isRecovery) {
-          cesToDisplay = cesToDisplay.filter(ce => (moduleInfo.ceFinalGrades[ce.ce_id] || 0) < 5);
-        }
-
+        const cesToDisplay = ra.criterios_de_evaluacion;
 
         cesToDisplay.forEach(ce => {
           checkAndAddPage();
@@ -157,7 +181,8 @@ export function generateStudentReport({ student, modulesData, db, doc = null, is
               doc.setFont("helvetica", "italic");
               doc.setTextColor(120, 120, 120);
 
-              doc.text('Actividades evaluables:', pageMargin + 8, yPosition);
+              const activityTitle = isRecovery ? 'Pruebas realizadas que evalúan este CE:' : 'Actividades evaluables:';
+              doc.text(activityTitle, pageMargin + 8, yPosition);
               yPosition += 4;
 
               notasDeActividades.forEach(notaAct => {
