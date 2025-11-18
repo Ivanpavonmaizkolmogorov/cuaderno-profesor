@@ -181,6 +181,50 @@ export function renderApp() {
 
     }
   }
+
+  // 5. Lógica para mostrar el modal de validación de recuperación
+  const recoveryData = ui.recoveryValidationData;
+  if (recoveryData) {
+    console.log('[LOG] renderApp: Detectados datos para el modal de recuperación. Renderizando...');
+    const modalContainer = document.getElementById('modal-container');
+    if (modalContainer) {
+      // Esta función ahora está en ui/pages.js y necesita ser creada.
+      // Asumimos que renderRecoveryValidationModal se encargará de la lógica de encontrar alumnos suspensos.
+      modalContainer.innerHTML = pages.renderRecoveryValidationModal(recoveryData);
+
+      // Listeners para el modal de recuperación
+      document.getElementById('cancel-recovery-validation-btn')?.addEventListener('click', () => {
+        modalContainer.innerHTML = '';
+        state.setUIProperty('recoveryValidationData', null);
+        state.setUIProperty('isGeneratingPDF', false); // Desbloquear PDF
+      });
+
+      document.getElementById('generate-recovery-report-btn')?.addEventListener('click', () => {
+        console.log('[LOG] Botón "Generar Informe de Recuperación" pulsado.');
+        const validations = {};
+        document.querySelectorAll('.recovery-ce-checkbox').forEach(checkbox => {
+          const { moduleId, studentId, ceId } = checkbox.dataset;
+
+          if (!validations[moduleId]) {
+            validations[moduleId] = {};
+          }
+          if (!validations[moduleId][studentId]) {
+            validations[moduleId][studentId] = {};
+          }
+
+          validations[moduleId][studentId][ceId] = {
+            isApproved: checkbox.checked
+          };
+        });
+
+        console.log('[LOG] Validaciones recolectadas:', validations);
+        handlers.handleGenerateRecoveryReport(validations);
+        // El handler se encargará de cerrar el modal y limpiar el estado.
+      });
+    } else {
+      console.error('[ERROR] No se encontró #modal-container para el modal de recuperación.');
+    }
+  }
 }
 
 /**

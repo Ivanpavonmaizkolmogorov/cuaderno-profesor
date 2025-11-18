@@ -5,6 +5,155 @@ import { renderProgressView } from '../progressView.js';
 import { getDB, getUI, getCalculatedGrades } from '../state.js';
 
 /**
+ * Renderiza el modal para que el usuario elija entre informe completo o de recuperación.
+ * @returns {string} El HTML del modal.
+ */
+export function renderReportTypeChoiceModal() {
+  console.log('[LOG][pages] Renderizando renderReportTypeChoiceModal');
+  return `
+    <div id="report-type-choice-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+        <div class="p-6 border-b dark:border-gray-700">
+          <h3 class="text-xl font-bold">Seleccionar Tipo de Informe</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">¿Qué tipo de informe PDF deseas generar?</p>
+        </div>
+        <div class="p-6 flex flex-col gap-4">
+          <button id="report-type-complete-btn" class="w-full text-left p-4 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-transparent hover:border-blue-500 transition-all">
+            <h4 class="font-bold text-lg">Informe Completo</h4>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Genera el informe estándar con todas las calificaciones, igual que siempre.</p>
+          </button>
+          <button id="report-type-recovery-btn" class="w-full text-left p-4 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-green-100 dark:hover:bg-green-900/50 border border-transparent hover:border-green-500 transition-all">
+            <h4 class="font-bold text-lg">Informe de Recuperación</h4>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Muestra solo los alumnos/as con RAs suspensos y permite validar los Criterios de Evaluación (CE) a recuperar.</p>
+          </button>
+        </div>
+        <div class="p-6 border-t dark:border-gray-700 text-right">
+          <button id="report-type-cancel-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Renderiza el modal para validar los CEs en un informe de recuperación.
+ * @param {object} recoveryData - Datos sobre el tipo de informe a generar.
+ * @returns {string} El HTML del modal de validación.
+ */
+export function renderRecoveryValidationModal(recoveryData) {
+  console.log('[LOG][pages] Renderizando renderRecoveryValidationModal con datos:', recoveryData);
+  const { db } = { db: getDB() };
+  const allCalculatedGrades = getCalculatedGrades();
+
+  let studentsWithFailures = [];
+
+  // 1. Recopilar alumnos con RAs suspensos según el contexto (single, full, etc.)
+  if (recoveryData.type === 'single') {
+    const { studentId, moduleId } = recoveryData;
+    const student = db.students.find(s => s.id === studentId);
+    const module = db.modules.find(m => m.id === moduleId);
+    const finalGrades = allCalculatedGrades[moduleId]?.Final?.[studentId];
+    if (student && module && finalGrades) {
+      const failedRas = Object.keys(finalGrades.raTotals).filter(raId => finalGrades.raTotals[raId] < 5);
+      if (failedRas.length > 0) {
+        studentsWithFailures.push({ student, module, finalGrades });
+      }
+    }
+  } else { // 'full' (para un alumno o para todos)
+    const studentsToProcess = recoveryData.studentId ? [db.students.find(s => s.id === recoveryData.studentId)] : db.students;
+    studentsToProcess.forEach(student => {
+      db.modules.forEach(module => {
+        if (module.studentIds?.includes(student.id)) {
+          const finalGrades = allCalculatedGrades[module.id]?.Final?.[student.id];
+          if (finalGrades) {
+            const failedRas = Object.keys(finalGrades.raTotals).filter(raId => finalGrades.raTotals[raId] < 5);
+            if (failedRas.length > 0) {
+              studentsWithFailures.push({ student, module, finalGrades });
+            }
+          }
+        }
+      });
+    });
+  }
+
+  // Agrupar por alumno para una mejor visualización
+  const studentsGrouped = studentsWithFailures.reduce((acc, { student, module, finalGrades }) => {
+    if (!acc[student.id]) {
+      acc[student.id] = { student, modules: [] };
+    }
+    acc[student.id].modules.push({ module, finalGrades });
+    return acc;
+  }, {});
+
+  if (Object.keys(studentsGrouped).length === 0) {
+    return `
+      <div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 text-center">
+          <h3 class="text-xl font-bold mb-4">Informe de Recuperación</h3>
+          <p class="text-gray-600 dark:text-gray-400">No se han encontrado alumnos/as con Resultados de Aprendizaje (RAs) suspensos para este informe.</p>
+          <button id="cancel-recovery-validation-btn" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Aceptar</button>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div id="recovery-validation-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div class="p-6 border-b dark:border-gray-700">
+          <h3 class="text-xl font-bold">Validación para Informe de Recuperación</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Revisa los Criterios de Evaluación (CE) suspensos. Marca la casilla si consideras que el CE está superado y no debe aparecer en el informe de recuperación.
+          </p>
+        </div>
+        <div class="p-6 overflow-y-auto space-y-6">
+          ${Object.values(studentsGrouped).map(({ student, modules }) => `
+            <div class="border rounded-lg">
+              <h4 class="text-lg font-bold p-3 bg-gray-100 dark:bg-gray-700 rounded-t-lg">${student.name}</h4>
+              <div class="p-3 space-y-4">
+                ${modules.map(({ module, finalGrades }) => `
+                  <div>
+                    <h5 class="font-semibold text-blue-600 dark:text-blue-400">${module.modulo}</h5>
+                    ${module.resultados_de_aprendizaje.filter(ra => (finalGrades.raTotals[ra.ra_id] || 0) < 5).map(ra => `
+                      <div class="pl-4 mt-2">
+                        <p class="font-medium">${ra.ra_id} - ${ra.ra_descripcion} <span class="font-bold text-red-500">(${(finalGrades.raTotals[ra.ra_id] || 0).toFixed(2)})</span></p>
+                        <div class="pl-4 mt-1 space-y-1">
+                          ${ra.criterios_de_evaluacion.filter(ce => (finalGrades.ceFinalGrades[ce.ce_id] || 0) < 5).map(ce => {
+                            const ceGrade = finalGrades.ceFinalGrades[ce.ce_id] || 0;
+                            const isChecked = db.recoveryValidations?.[module.id]?.[student.id]?.[ce.ce_id]?.isApproved || false;
+                            return `
+                              <label class="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                                <input 
+                                  type="checkbox" 
+                                  class="recovery-ce-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  data-module-id="${module.id}"
+                                  data-student-id="${student.id}"
+                                  data-ce-id="${ce.ce_id}"
+                                  ${isChecked ? 'checked' : ''}
+                                >
+                                <span class="text-sm">${ce.ce_id} - ${ce.ce_descripcion} <span class="font-semibold text-red-500">(${(ceGrade).toFixed(2)})</span></span>
+                              </label>
+                            `;
+                          }).join('')}
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="p-6 border-t dark:border-gray-700 flex justify-end gap-4">
+          <button id="cancel-recovery-validation-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+          <button id="generate-recovery-report-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Generar Informe de Recuperación</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
  * Ordena una lista de alumnos según el criterio y la dirección especificados.
  * @param {Array<object>} students - La lista de alumnos a ordenar.
  * @param {object} sortConfig - El objeto de configuración de ordenación { key, direction }.

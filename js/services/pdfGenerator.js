@@ -10,9 +10,10 @@ import { handleExportFullStudentReport } from '../handlers.js';
  * @param {Array<object>} options.modulesData - Array con los datos de los módulos y las notas calculadas.
  * @param {object} options.db - El objeto completo de la base de datos.
  * @param {jsPDF} [options.doc] - Un documento jsPDF existente para continuar dibujando en él.
+ * @param {boolean} [options.isRecovery=false] - Si es `true`, solo se mostrarán los RAs y CEs suspensos.
  * @returns {{doc: jsPDF, yPosition: number}|undefined} - Devuelve el documento y la posición Y si se proporciona un doc.
  */
-export function generateStudentReport({ student, modulesData, db, doc = null }) {
+export function generateStudentReport({ student, modulesData, db, doc = null, isRecovery = false }) {
   try {
     if (!student) return;
 
@@ -37,7 +38,8 @@ export function generateStudentReport({ student, modulesData, db, doc = null }) 
     // --- Título ---
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
-    doc.text("Informe de Calificaciones", doc.internal.pageSize.width / 2, yPosition, { align: "center" });
+    const reportTitle = isRecovery ? "Informe de Recuperación" : "Informe de Calificaciones";
+    doc.text(reportTitle, doc.internal.pageSize.width / 2, yPosition, { align: "center" });
     yPosition += 15;
 
     // --- Datos del Alumno ---
@@ -76,7 +78,13 @@ export function generateStudentReport({ student, modulesData, db, doc = null }) 
       yPosition += 12;
 
       // --- Tabla de Resultados de Aprendizaje (RAs) ---
-      moduleInfo.module.resultados_de_aprendizaje.forEach(ra => {
+      let rasToDisplay = moduleInfo.module.resultados_de_aprendizaje;
+
+      if (isRecovery) {
+        rasToDisplay = rasToDisplay.filter(ra => (moduleInfo.raTotals[ra.ra_id] || 0) < 5);
+      }
+
+      rasToDisplay.forEach(ra => {
         checkAndAddPage();
         const raGrade = moduleInfo.raTotals[ra.ra_id] || 0;
 
@@ -94,7 +102,13 @@ export function generateStudentReport({ student, modulesData, db, doc = null }) 
         doc.setFontSize(9);
         doc.setTextColor(50, 50, 50);
 
-        ra.criterios_de_evaluacion.forEach(ce => {
+        let cesToDisplay = ra.criterios_de_evaluacion;
+        if (isRecovery) {
+          cesToDisplay = cesToDisplay.filter(ce => (moduleInfo.ceFinalGrades[ce.ce_id] || 0) < 5);
+        }
+
+
+        cesToDisplay.forEach(ce => {
           checkAndAddPage();
           const ceGrade = (moduleInfo.ceFinalGrades && moduleInfo.ceFinalGrades[ce.ce_id] != null) ? moduleInfo.ceFinalGrades[ce.ce_id] : null;
           const ceDescriptionLines = doc.splitTextToSize(ce.ce_descripcion, 120);
@@ -193,7 +207,7 @@ export function generateStudentReport({ student, modulesData, db, doc = null }) 
 
     // --- Guardar el PDF ---
     if (isNewDoc) {
-      doc.save(`Informe_${student.name.replace(/ /g, "_")}.pdf`);
+      doc.save(`${isRecovery ? 'Recuperacion' : 'Informe'}_${student.name.replace(/ /g, "_")}.pdf`);
     } else {
       // Si estamos añadiendo a un documento existente, devolvemos el doc y la posición para el siguiente.
       return { doc, yPosition };

@@ -8,6 +8,7 @@ import { prepareModuleForProgressTracking, deleteTemarioPoint, deleteTemarioUnit
 import { renderImportTemarioModal } from './progressView.js';
 import { renderApp } from './main.js';import * as pages from './ui/pages.js';
 import { mergeTemario } from './services/dataImporter.js'; // Import the new mergeTemario function
+import { renderRecoveryValidationModal } from './ui/pages.js';
 import { exportToExcel } from './services/excelGenerator.js'; // <-- AÑADE ESTA LÍNEA
 
 
@@ -91,6 +92,10 @@ Jiménez Castro, María de la Sierra`;
   dataManager.downloadTextAsFile(content, 'plantilla_alumnos.txt', 'text/plain');
 }
 
+/**
+ * Inicia el proceso de exportación para un único informe de módulo de un alumno.
+ * Muestra un modal para elegir entre informe completo o de recuperación.
+ */
 export function handleExportSingleModuleReport(studentId, moduleId) {
   // --- INICIO: Bloqueo para evitar ejecuciones simultáneas ---
   if (state.getUI().isGeneratingPDF) {
@@ -101,9 +106,23 @@ export function handleExportSingleModuleReport(studentId, moduleId) {
   // Mostramos un indicador visual si es necesario (opcional)
   // --- FIN: Bloqueo ---
 
-  console.log("===== INICIANDO EXPORTACIÓN DE VISTA ACTUAL A PDF =====");
-  console.log(`Recibido studentId: ${studentId}`);
-  console.log(`Recibido moduleId: ${moduleId}`);
+  // Mostramos el modal de elección
+  showReportTypeChoiceModal({
+    onComplete: () => generateSingleModuleReport(studentId, moduleId, false),
+    onRecovery: () => showRecoveryValidationModal({ type: 'single', studentId, moduleId }),
+    onCancel: () => state.setUIProperty('isGeneratingPDF', false) // Liberar bloqueo si se cancela
+  });
+}
+
+/**
+ * Genera el informe de un solo módulo para un alumno.
+ * @param {string} studentId - ID del alumno.
+ * @param {string} moduleId - ID del módulo.
+ * @param {boolean} isRecovery - Si el informe es de recuperación.
+ * @param {object} [validations] - Validaciones de recuperación opcionales.
+ */
+function generateSingleModuleReport(studentId, moduleId, isRecovery, validations) {
+  console.log(`[LOG] generateSingleModuleReport: Iniciando generación para studentId=${studentId}, moduleId=${moduleId}, isRecovery=${isRecovery}`);
 
   const db = state.getDB();
   const student = db.students.find(s => s.id === studentId);
@@ -111,28 +130,54 @@ export function handleExportSingleModuleReport(studentId, moduleId) {
 
   if (!student || !module) {
     alert("Error: No se pudo encontrar el alumno/a o el módulo para exportar.");
-    state.setUIProperty('isGeneratingPDF', false); // Liberar bloqueo en caso de error
+    state.setUIProperty('isGeneratingPDF', false);
     return;
   }
 
+  // Aplicar validaciones si es un informe de recuperación
+  const finalGrades = calculateModuleGrades(module, [student], db.grades, db.actividades, null, db.aptitudes, isRecovery ? validations : null)[studentId] || { moduleGrade: 0, raTotals: {}, ceFinalGrades: {} };
+
   // Forzamos el cálculo de las notas finales para este alumno y módulo en el momento de la exportación.
   // Esto asegura que los datos son siempre correctos e independientes del estado de la UI.
-  const finalGrades = calculateModuleGrades(module, [student], db.grades, db.actividades, null, db.aptitudes)[studentId] || { moduleGrade: 0, raTotals: {}, ceFinalGrades: {} };
-
   const moduleDataForPdf = [{
     module,
     ...finalGrades
   }];
 
-  // Pasamos también las actividades y las notas en bruto para el desglose
   try {
-    generateStudentReport({ student, modulesData: moduleDataForPdf, db });
+    generateStudentReport({ student, modulesData: moduleDataForPdf, db, isRecovery });
   } finally {
     state.setUIProperty('isGeneratingPDF', false); // Liberar bloqueo al finalizar
   }
 }
 
+/**
+ * Inicia el proceso de exportación para el informe completo de un alumno (todos sus módulos).
+ * Muestra un modal para elegir entre informe completo o de recuperación.
+ */
 export function handleExportFullStudentReport(studentId) {
+  if (state.getUI().isGeneratingPDF) {
+    alert("Ya hay un proceso de generación de PDF en curso. Por favor, espera a que termine.");
+    return;
+  }
+  state.setUIProperty('isGeneratingPDF', true);
+
+  showReportTypeChoiceModal({
+    onComplete: () => generateFullStudentReport(studentId, false),
+    onRecovery: () => showRecoveryValidationModal({ type: 'full', studentId }),
+    onCancel: () => state.setUIProperty('isGeneratingPDF', false)
+  });
+}
+
+/**
+ * Genera el informe completo de un alumno (todos sus módulos).
+ * @param {string} studentId - ID del alumno.
+ * @param {boolean} isRecovery - Si el informe es de recuperación.
+ * @param {object} [validations] - Validaciones de recuperación opcionales.
+ */
+function generateFullStudentReport(studentId, isRecovery, validations) {
+  console.log(`[LOG] generateFullStudentReport: Iniciando para studentId=${studentId}, isRecovery=${isRecovery}`);
+
   const db = state.getDB();
   const student = db.students.find(s => s.id === studentId);
   if (!student) {
@@ -140,26 +185,24 @@ export function handleExportFullStudentReport(studentId) {
     return;
   }
 
-  // 1. Forzar el cálculo de notas para TODOS los módulos en los que el alumno está inscrito.
-  // Esto asegura que los datos son siempre correctos e independientes del estado de la UI.
-  const allCalculatedGrades = state.getCalculatedGrades();
   const enrolledModules = db.modules.filter(m => m.studentIds?.includes(studentId));
 
-  enrolledModules.forEach(module => {
-    if (!allCalculatedGrades[module.id]) {
-      allCalculatedGrades[module.id] = {};
-    }
-    // Calculamos solo la nota final (trimestre = null) para el informe.
-    allCalculatedGrades[module.id].Final = calculateModuleGrades(module, [student], db.grades, db.actividades, null);
-  });
+  try {
+    const modulesDataForPdf = enrolledModules.map(module => {
+      const moduleValidations = isRecovery ? validations?.[module.id] : null;
+      const studentCalculations = calculateModuleGrades(module, [student], db.grades, db.actividades, null, db.aptitudes, moduleValidations)[studentId] || { moduleGrade: 0, raTotals: {}, ceFinalGrades: {} };
+      return { module, ...studentCalculations };
+    });
 
-  // 2. Construir el array de datos para el PDF usando las notas recién calculadas.
-  const modulesDataForPdf = enrolledModules.map(module => {
-    const studentCalculations = allCalculatedGrades[module.id]?.Final?.[studentId] || { moduleGrade: 0, raTotals: {}, ceFinalGrades: {} };
-    return { module, ...studentCalculations };
-  });
-
-  generateStudentReport({ student, modulesData: modulesDataForPdf, db });
+    generateStudentReport({
+      student,
+      modulesData: modulesDataForPdf,
+      db,
+      isRecovery
+    });
+  } finally {
+    state.setUIProperty('isGeneratingPDF', false);
+  }
 }
 
 /**
@@ -183,20 +226,122 @@ export async function handleExportAllStudentReports() {
     return;
   }
 
-  state.setUIProperty('isGeneratingPDF', true); // Bloqueamos aquí, después de las confirmaciones
-
-  try {
-    // Simplificamos: ahora solo genera un único archivo combinado.
-    if (window.confirm(`Se generará un único archivo PDF con los informes de todos los alumnos/as (${allStudents.length}).\n\n¿Quieres continuar?`)) {
-      console.log("[handleExportAllStudentReports] Iniciando generación de informe combinado.");
-      // La función generateCombinedReport se encargará de todos los cálculos necesarios.
-      generateCombinedReport(db);
-      alert("Informe combinado generado con éxito.");
-    }
-  } finally {
-    state.setUIProperty('isGeneratingPDF', false); // Liberamos el bloqueo al final de todo
-  }
+  showReportTypeChoiceModal({
+    onComplete: () => {
+      if (window.confirm(`Se generará un único archivo PDF con los informes COMPLETOS de todos los alumnos/as (${allStudents.length}).\n\n¿Quieres continuar?`)) {
+        state.setUIProperty('isGeneratingPDF', true);
+        try {
+          generateCombinedReport(db);
+          alert("Informe combinado generado con éxito.");
+        } finally {
+          state.setUIProperty('isGeneratingPDF', false);
+        }
+      }
+    },
+    onRecovery: () => {
+      state.setUIProperty('isGeneratingPDF', true);
+      showRecoveryValidationModal({ type: 'full' });
+    },
+    onCancel: () => { /* No hacer nada, no hay bloqueo activo aún */ }
+  });
 }
+
+/**
+ * Muestra un modal genérico para elegir el tipo de informe.
+ * @param {object} callbacks - Objeto con los callbacks a ejecutar.
+ * @param {function} callbacks.onComplete - Callback para informe completo.
+ * @param {function} callbacks.onRecovery - Callback para informe de recuperación.
+ * @param {function} callbacks.onCancel - Callback si se cancela.
+ */
+function showReportTypeChoiceModal({ onComplete, onRecovery, onCancel }) {
+  console.log('[LOG] Mostrando modal de elección de tipo de informe.');
+  const modalContainer = document.getElementById('modal-container');
+  if (!modalContainer) {
+    console.error('[ERROR] Contenedor de modal no encontrado.');
+    onCancel();
+    return;
+  }
+
+  modalContainer.innerHTML = pages.renderReportTypeChoiceModal();
+
+  const closeModal = () => {
+    modalContainer.innerHTML = '';
+  };
+
+  document.getElementById('report-type-complete-btn')?.addEventListener('click', () => {
+    closeModal();
+    onComplete();
+  });
+
+  document.getElementById('report-type-recovery-btn')?.addEventListener('click', () => {
+    closeModal();
+    onRecovery();
+  });
+
+  document.getElementById('report-type-cancel-btn')?.addEventListener('click', () => {
+    closeModal();
+    onCancel();
+  });
+}
+
+/**
+ * Muestra el modal de validación para informes de recuperación.
+ * @param {object} data - Datos para configurar el modal.
+ * @param {'single'|'full'|'module'} data.type - El tipo de informe.
+ * @param {string} [data.studentId] - ID del alumno (para 'single').
+ * @param {string} [data.moduleId] - ID del módulo (para 'single' o 'module').
+ */
+function showRecoveryValidationModal(data) {
+  console.log('[LOG] showRecoveryValidationModal: Mostrando modal de validación.', data);
+  state.setUIProperty('recoveryValidationData', data);
+  renderApp(); // Esto renderizará el modal a través de la lógica en main.js
+}
+
+/**
+ * Guarda las validaciones de recuperación y lanza la generación del informe.
+ * @param {object} validations - Objeto con las validaciones { moduleId: { studentId: { ceId: { isApproved: boolean } } } }.
+ */
+export function handleGenerateRecoveryReport(validations) {
+  const db = state.getDB();
+  const { type, studentId, moduleId } = state.getUI().recoveryValidationData;
+  console.log(`[LOG] handleGenerateRecoveryReport: Iniciando con tipo=${type}`);
+
+  // 1. Guardar las validaciones en la base de datos
+  db.recoveryValidations = validations;
+  state.saveDB();
+
+  // 2. Lanzar la generación del informe correspondiente
+  switch (type) {
+    case 'single':
+      generateSingleModuleReport(studentId, moduleId, true, validations[moduleId]);
+      break;
+    case 'full':
+      if (studentId) { // Informe completo de un solo alumno
+        generateFullStudentReport(studentId, true, validations);
+      } else { // Informe combinado de todos
+        // Esta lógica es más compleja, por ahora lanzamos una alerta.
+        // TODO: Implementar un `generateCombinedRecoveryReport` si es necesario.
+        alert("La generación de informes de recuperación combinados para todos los alumnos aún no está implementada. Se generará un informe por cada alumno con recuperaciones.");
+        Object.keys(validations).forEach(modId => {
+          Object.keys(validations[modId]).forEach(studId => {
+            generateFullStudentReport(studId, true, validations);
+          });
+        });
+        state.setUIProperty('isGeneratingPDF', false);
+      }
+      break;
+    case 'module':
+      // TODO: Implementar la lógica para exportar un informe de recuperación de un módulo completo.
+      alert("La exportación de informes de recuperación para un módulo completo aún no está implementada.");
+      state.setUIProperty('isGeneratingPDF', false);
+      break;
+  }
+
+  // 3. Limpiar el estado de la UI
+  state.setUIProperty('recoveryValidationData', null);
+  renderApp(); // Para cerrar el modal
+}
+
 export function handleSetPage(newPage) {
   state.setPage(newPage);
   renderApp();

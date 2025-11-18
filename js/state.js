@@ -12,6 +12,7 @@ let state = {
     grades: {}, // { studentId: { actividadId: [ {id, grade, date, type, observation} ] } }
     actividades: [], // { id, moduleId, name, trimestre, ceIds: [] }
     comments: {},
+    recoveryValidations: {}, // { moduleId: { studentId: { ceId: { isApproved: boolean } } } }
     aptitudes: {}, // { moduleId: { studentId: { T1: { positives: [], negatives: [] } } } }
     trimesterGrades: {}, // { moduleId: { studentId: { T1: 7.5, T2: 8.0, ... } } }
   },
@@ -24,6 +25,7 @@ let state = {
     selectedActividadId: null, // ID de la actividad para la página de detalle
     studentPageModuleFilter: 'all', // 'all' o un ID de módulo
     studentNameSuggestions: null, // { suggestions: [], moduleId: '' }
+    recoveryValidationData: null, // { type: 'single'|'module'|'full', studentId?, moduleId? }
     expandedRaId: null, // Inicializamos a null para que siempre exista
     tableViewSort: { key: 'name', direction: 'asc' }, // Criterio de ordenación para la vista de tabla
     isGeneratingPDF: false, // Flag para evitar exportaciones simultáneas

@@ -1,8 +1,8 @@
 // --- LÓGICA DE CÁLCULO ---
 import { getDB } from '../state.js';
 
-export function calculateModuleGrades(module, students, grades, actividades, trimestre, aptitudes = {}) {
-  console.log(`[LOG][calculateModuleGrades] Iniciando cálculo para Módulo: "${module.modulo}", Trimestre: ${trimestre || 'Final'}`);
+export function calculateModuleGrades(module, students, grades, actividades, trimestre, aptitudes = {}, recoveryValidations = null) {
+  console.log(`[LOG][calculateModuleGrades] Módulo: "${module.modulo}", Trimestre: ${trimestre || 'Final'}, Recuperación: ${!!recoveryValidations}`);
   if (!module || !students || students.length === 0) return {};
 
   const studentData = {};
@@ -17,7 +17,7 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
     const ceFinalGrades = {};
 
     // 1. Calcular la nota final de cada CE basándose en las actividades
-    console.log(`[LOG][calculateModuleGrades] Calculando notas de CEs para Alumno: ${student.name}`);
+    // console.log(`[LOG][calculateModuleGrades] Calculando notas de CEs para Alumno: ${student.name}`); // Demasiado verboso
     const allCes = ras.flatMap(ra => ra.criterios_de_evaluacion);
     allCes.forEach(ce => {
       const actividadesQueEvaluanEsteCE = moduleActividades.filter(act => act.ceIds.includes(ce.ce_id));
@@ -31,7 +31,7 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
           // Usamos el peso de la actividad, con 1 como valor por defecto si no existe.
           const activityWeight = act.peso || 1;
           gradesAndWeights.push({ grade: maxAttemptGrade, weight: activityWeight });
-          console.log(`[LOG][calculateModuleGrades]   - Para CE '${ce.ce_id}', Actividad '${act.name}' aporta: Nota=${maxAttemptGrade}, Peso=${activityWeight}`);
+          // console.log(`[LOG][calculateModuleGrades]   - Para CE '${ce.ce_id}', Actividad '${act.name}' aporta: Nota=${maxAttemptGrade}, Peso=${activityWeight}`);
         }
       });
 
@@ -41,7 +41,7 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
         const totalWeight = gradesAndWeights.reduce((sum, item) => sum + item.weight, 0);
         const weightedAverage = totalWeight > 0 ? totalWeightedGrade / totalWeight : 0;
         ceFinalGrades[ce.ce_id] = weightedAverage;
-        console.log(`[LOG][calculateModuleGrades]   -> Nota final (ponderada) para CE '${ce.ce_id}': ${weightedAverage.toFixed(2)} (Suma Ponderada: ${totalWeightedGrade.toFixed(2)}, Suma Pesos: ${totalWeight})`);
+        // console.log(`[LOG][calculateModuleGrades]   -> Nota final (ponderada) para CE '${ce.ce_id}': ${weightedAverage.toFixed(2)} (Suma Ponderada: ${totalWeightedGrade.toFixed(2)}, Suma Pesos: ${totalWeight})`);
       }
     });
 
@@ -55,6 +55,12 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
       let raTotalWeight = 0;
 
       for (const ce of ra.criterios_de_evaluacion) {
+        // --- INICIO: LÓGICA DE RECUPERACIÓN ---
+        // Si es un informe de recuperación y el CE ha sido validado como aprobado, lo saltamos.
+        if (recoveryValidations && recoveryValidations[student.id]?.[ce.ce_id]?.isApproved) {
+          console.log(`[LOG][calculateModuleGrades] RECUPERACIÓN: Saltando CE '${ce.ce_id}' para '${student.name}' porque fue validado.`);
+          continue;
+        }
         const weight = ce.peso || 0;
         // Para la nota final (trimestre es null), si un CE no tiene nota, su nota es 0.
         // Para una nota trimestral, solo se consideran los CEs con nota en ese trimestre.
@@ -136,6 +142,12 @@ export function calculateModuleGrades(module, students, grades, actividades, tri
 
       // Iterar a través de todos los CEs del módulo (allCes ya contiene todos los CEs)
       allCes.forEach(ce => {
+        // --- INICIO: LÓGICA DE RECUPERACIÓN ---
+        if (recoveryValidations && recoveryValidations[student.id]?.[ce.ce_id]?.isApproved) {
+          console.log(`[LOG][calculateModuleGrades] RECUPERACIÓN FINAL: Saltando CE '${ce.ce_id}' para '${student.name}' porque fue validado.`);
+          return; // Usamos return porque estamos en un forEach
+        }
+
         const grade = ceFinalGrades[ce.ce_id] ?? 0; // Si no hay nota, es un 0 para la final
         const weight = ce.peso || 0;
         finalCeWeightedTotal += (grade * weight);
