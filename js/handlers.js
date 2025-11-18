@@ -3,7 +3,7 @@ import { setUIProperty, getUI, setSearchProperty } from './state.js'; // Importa
 import * as dataManager from './services/dataManager.js';
 import { parseStudentNames } from './services/nameParser.js';
 import { calculateModuleGrades } from './services/calculations.js';
-import { generateStudentReport, generateCombinedReport } from './services/pdfGenerator.js';
+import { generateStudentReport, generateCombinedReport, generateCombinedRecoveryReport } from './services/pdfGenerator.js';
 import { prepareModuleForProgressTracking, deleteTemarioPoint, deleteTemarioUnit } from './utils.js';
 import { renderImportTemarioModal } from './progressView.js';
 import { renderApp } from './main.js';import * as pages from './ui/pages.js';
@@ -325,15 +325,10 @@ export function handleGenerateRecoveryReport(validations) {
       if (studentId) { // Informe completo de un solo alumno
         generateFullStudentReport(studentId, true, validations);
       } else { // Informe combinado de todos
-        // Esta lógica es más compleja, por ahora lanzamos una alerta.
-        // TODO: Implementar un `generateCombinedRecoveryReport` si es necesario.
-        alert("La generación de informes de recuperación combinados para todos los alumnos aún no está implementada. Se generará un informe por cada alumno con recuperaciones.");
-        Object.keys(validations).forEach(modId => {
-          Object.keys(validations[modId]).forEach(studId => {
-            generateFullStudentReport(studId, true, validations);
-          });
-        });
-        state.setUIProperty('isGeneratingPDF', false);
+        // --- INICIO: CORRECCIÓN PARA GENERAR PDF COMBINADO ---
+        generateCombinedRecoveryReport(db, validations);
+        // La propia función se encargará de liberar el bloqueo del PDF
+        // --- FIN: CORRECCIÓN ---
       }
       break;
     case 'module':

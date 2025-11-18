@@ -299,3 +299,55 @@ export function generateCombinedReport(db) {
 
   doc.save(`Informe_Completo_Todos_Alumnos.pdf`);
 }
+
+/**
+ * Genera un único informe PDF combinado con los datos de recuperación de todos los alumnos que tengan RAs suspensos.
+ * @param {object} db - El objeto completo de la base de datos.
+ * @param {object} validations - Objeto con las validaciones de recuperación.
+ */
+export function generateCombinedRecoveryReport(db, validations) {
+  try {
+    const doc = new jsPDF();
+    const allStudents = db.students;
+    const allCalculatedGrades = getCalculatedGrades();
+    let studentCount = 0;
+
+    allStudents.forEach((student) => {
+      // 1. Comprobar si el alumno tiene algún RA suspenso en algún módulo
+      const hasFailures = db.modules.some(module => {
+        if (module.studentIds?.includes(student.id)) {
+          const finalGrades = allCalculatedGrades[module.id]?.Final?.[student.id];
+          return finalGrades && Object.values(finalGrades.raTotals).some(grade => grade < 5);
+        }
+        return false;
+      });
+
+      if (!hasFailures) return; // Si no tiene suspensos, lo saltamos
+
+      console.log(`[generateCombinedRecoveryReport] Añadiendo alumno con recuperaciones: ${student.name}`);
+      studentCount++;
+
+      // 2. Obtener los módulos en los que está matriculado.
+      const enrolledModules = db.modules.filter(m => m.studentIds?.includes(student.id));
+
+      // 3. Calcular las notas para esos módulos, aplicando las validaciones.
+      const modulesDataForPdf = enrolledModules.map(module => {
+        const moduleValidations = validations?.[module.id];
+        const finalGrades = calculateModuleGrades(module, [student], db.grades, db.actividades, null, db.aptitudes, moduleValidations)[student.id] || { moduleGrade: 0, raTotals: {}, ceFinalGrades: {} };
+        return { module, ...finalGrades };
+      });
+
+      // 4. Si no es el primer alumno, añadimos una nueva página.
+      if (studentCount > 1) {
+        doc.addPage();
+      }
+
+      // 5. Dibujar el informe del alumno en el documento existente.
+      generateStudentReport({ student, modulesData: modulesDataForPdf, db, doc, isRecovery: true });
+    });
+
+    doc.save(`Informe_Recuperacion_Combinado.pdf`);
+  } finally {
+    getDB.setUIProperty('isGeneratingPDF', false); // Liberar el bloqueo del PDF
+  }
+}
