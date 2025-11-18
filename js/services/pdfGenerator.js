@@ -1,5 +1,5 @@
 const { jsPDF } = window.jspdf;
-import { getDB, getCalculatedGrades } from '../state.js';
+import { getDB, getCalculatedGrades, setUIProperty } from '../state.js';
 import { calculateModuleGrades } from './calculations.js';
 import { handleExportFullStudentReport } from '../handlers.js';
 
@@ -348,6 +348,6 @@ export function generateCombinedRecoveryReport(db, validations) {
 
     doc.save(`Informe_Recuperacion_Combinado.pdf`);
   } finally {
-    getDB.setUIProperty('isGeneratingPDF', false); // Liberar el bloqueo del PDF
+    setUIProperty('isGeneratingPDF', false); // Liberar el bloqueo del PDF
   }
 }
