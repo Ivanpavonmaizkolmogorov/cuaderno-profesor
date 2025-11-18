@@ -1656,7 +1656,17 @@ export function renderActividadesManagement(module) {
                 <label for="act-peso" class="text-sm font-medium">Peso (se autocompleta al elegir un tipo)</label>
                 <input type="number" id="act-peso" name="peso" value="1" step="0.1" min="0" required class="w-full p-2 mt-1 border rounded-md dark:bg-gray-900" name="peso">
               </div>
-              <p class="text-sm mb-2">Criterios de Evaluación a los que se asocia:</p>
+              <div>
+                <p class="text-sm mb-2">Criterios de Evaluación a los que se asocia:</p>
+                <!-- INICIO: Leyenda de colores -->
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-red-500"></span>No evaluado</span>
+                  <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-green-500"></span>Evaluado</span>
+                  <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-blue-500"></span>Dual</span>
+                  <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-orange-500"></span>Dual y Evaluado</span>
+                </div>
+                <!-- FIN: Leyenda de colores -->
+              </div>
               <div class="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1" id="ce-checkbox-container">
                 ${sortedUds.map(ud => `
                   <div class="py-1">
@@ -1669,17 +1679,28 @@ export function renderActividadesManagement(module) {
                       <h5 class="text-sm font-bold text-gray-500 dark:text-gray-400">${ud}</h5>
                     `}
                     <div class="pl-6 mt-1 space-y-1">
-                      ${cesByUd[ud].map(ce => `
+                      ${cesByUd[ud].map(ce => {
+                        const isEvaluated = usedCeIds.has(ce.ce_id);
+                        const isDual = ce.dual;
+                        let ceColorClass = 'text-red-600 dark:text-red-400'; // Por defecto: No evaluado
+                        if (isDual && isEvaluated) {
+                          ceColorClass = 'text-orange-500 dark:text-orange-400'; // Dual y Evaluado
+                        } else if (isDual) {
+                          ceColorClass = 'text-blue-600 dark:text-blue-400'; // Solo Dual
+                        } else if (isEvaluated) {
+                          ceColorClass = 'text-green-600 dark:text-green-400'; // Solo Evaluado
+                        }
+                        return `
                         <label class="flex items-center gap-2 text-sm">
                           <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-ud-${ud.replace(/ /g, '-')}">
-                          <span class="${usedCeIds.has(ce.ce_id) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} flex items-center gap-1">
+                          <span class="${ceColorClass} flex items-center gap-1">
                             ${ce.ce_id} (${ce.peso}%) - ${ce.ce_descripcion}
                             ${ceUdInfo[ce.ce_id]?.length > 1 ? `
                               <span class="text-xs font-semibold text-blue-500" title="Este CE pertenece a: ${ceUdInfo[ce.ce_id].join(', ')}">(${ceUdInfo[ce.ce_id].join(', ')})</span>
                             ` : ''}
                           </span>
                         </label>
-                      `).join('')}
+                      `}).join('')}
                     </div>
                   </div>
                 `).join('')}
