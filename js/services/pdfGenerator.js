@@ -21,6 +21,7 @@ export function generateStudentReport({ student, modulesData, db, doc = null, is
     if (isNewDoc) {
       doc = new jsPDF();
     }
+    doc.setTextColor(0, 0, 0); // CORRECCIÓN: Reiniciar el color del texto a negro.
     let yPosition = 20;
     const pageMargin = 14;
     const contentWidth = doc.internal.pageSize.width - (pageMargin * 2);
