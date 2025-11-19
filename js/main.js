@@ -819,6 +819,14 @@ function attachEventListeners() {
       }
     });
 
+    // Listener para clics en las cabeceras de la tabla de aptitud para ordenar
+    document.querySelector('.aptitud-table thead')?.addEventListener('click', (e) => {
+      const header = e.target.closest('th[data-sort-key]');
+      if (header) {
+        handlers.handleSortAptitudTable(header.dataset.sortKey);
+      }
+    });
+
     // Listener para clics en las filas de la tabla en la vista de alumno
     document.querySelector('.calificaciones-table tbody')?.addEventListener('click', (e) => {
       const row = e.target.closest('tr[data-student-id]');

@@ -482,6 +482,21 @@ export function handleSortTableView(sortKey) {
   renderApp();
 }
 
+export function handleSortAptitudTable(sortKey) {
+  console.log(`[LOG][handleSortAptitudTable] -> Solicitada ordenación por: ${sortKey}`);
+  const currentSort = state.getUI().aptitudSort || { key: 'name', order: 'asc' };
+  let newOrder = 'asc';
+
+  // Si se hace clic en la misma columna, se invierte el orden. Si no, se establece a ascendente.
+  if (currentSort.key === sortKey && currentSort.order === 'asc') {
+    newOrder = 'desc';
+  }
+
+  console.log(`[LOG][handleSortAptitudTable] -> Nuevo estado de ordenación: key=${sortKey}, order=${newOrder}`);
+  state.setUIProperty('aptitudSort', { key: sortKey, order: newOrder });
+  renderApp();
+}
+
 
 export function handleReorderStudents(moduleId, orderedStudentIds) {
   const db = state.getDB();
