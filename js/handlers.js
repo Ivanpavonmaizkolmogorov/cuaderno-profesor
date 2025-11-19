@@ -1913,3 +1913,40 @@ export function handleCopyStudentNames(moduleId) {
     alert('Error al copiar los nombres.');
   });
 }
+
+/**
+ * Alterna una propiedad (dual, consulta) de un CE.
+ * @param {string} moduleId - ID del módulo.
+ * @param {string} raId - ID del RA.
+ * @param {string} ceId - ID del CE.
+ * @param {string} property - Propiedad a alternar ('dual' o 'consulta').
+ */
+export function handleToggleCeProperty(moduleId, raId, ceId, property) {
+  console.log(`[LOG][handleToggleCeProperty] Toggling ${property} for CE ${ceId} in RA ${raId} (Module: ${moduleId})`);
+  const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
+  if (!module) return;
+
+  const ra = module.resultados_de_aprendizaje.find(r => r.ra_id === raId);
+  if (!ra) return;
+
+  const ce = ra.criterios_de_evaluacion.find(c => c.ce_id === ceId);
+  if (!ce) return;
+
+  // Alternar la propiedad
+  ce[property] = !ce[property];
+
+  state.saveDB();
+  renderApp();
+}
+
+/**
+ * Alterna el estado expandido de un acordeón de RA.
+ * @param {string} raId - El ID del RA a alternar.
+ */
+export function handleToggleRaAccordion(raId) {
+  const ui = state.getUI();
+  const newExpandedId = ui.expandedRaId === raId ? null : raId;
+  state.setUIProperty('expandedRaId', newExpandedId);
+  renderApp();
+}

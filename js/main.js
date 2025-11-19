@@ -789,6 +789,17 @@ function attachEventListeners() {
     document.getElementById('view-distribution-btn')?.addEventListener('click', () => {
       handlers.handleSetModuleView('distribucion');
     });
+    document.getElementById('view-config-ces-btn')?.addEventListener('click', () => {
+      handlers.handleSetModuleView('config-ces');
+    });
+
+    // Listener para los botones de toggle de propiedades de CE (Dual/Consulta)
+    document.querySelectorAll('.toggle-ce-property-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const { moduleId, raId, ceId, property } = e.currentTarget.dataset;
+        handlers.handleToggleCeProperty(moduleId, raId, ceId, property);
+      });
+    });
 
     // Listener para los botones de "Ver detalles de RA" en el resumen de pesos
     document.querySelectorAll('.view-ra-details-btn').forEach(button => {
@@ -1197,10 +1208,17 @@ function attachEventListeners() {
     }
 
     document.querySelectorAll('.ra-accordion-toggle').forEach(button => {
-      button.addEventListener('click', () => {
-        const content = document.getElementById(button.dataset.contentId);
-        content?.classList.toggle('hidden');
-        button.querySelector('.chevron-icon')?.classList.toggle('rotate-90');
+      button.addEventListener('click', (e) => {
+        // Usar el handler para persistir el estado en el store
+        const raId = e.currentTarget.dataset.raId;
+        if (raId) {
+          handlers.handleToggleRaAccordion(raId);
+        } else {
+          // Fallback para casos donde no haya raId (si los hay, aunque deberían tenerlo)
+          const content = document.getElementById(button.dataset.contentId);
+          content?.classList.toggle('hidden');
+          button.querySelector('.chevron-icon')?.classList.toggle('rotate-90');
+        }
       });
     });
 

@@ -119,9 +119,9 @@ export function renderRecoveryValidationModal(recoveryData) {
                         <p class="font-medium">${ra.ra_id} - ${ra.ra_descripcion} <span class="font-bold text-red-500">(${(finalGrades.raTotals[ra.ra_id] || 0).toFixed(2)})</span></p>
                         <div class="pl-4 mt-1 space-y-1">
                           ${ra.criterios_de_evaluacion.filter(ce => (finalGrades.ceFinalGrades[ce.ce_id] || 0) < 5).map(ce => {
-                            const ceGrade = finalGrades.ceFinalGrades[ce.ce_id] || 0;
-                            const isChecked = db.recoveryValidations?.[module.id]?.[student.id]?.[ce.ce_id]?.isApproved || false;
-                            return `
+    const ceGrade = finalGrades.ceFinalGrades[ce.ce_id] || 0;
+    const isChecked = db.recoveryValidations?.[module.id]?.[student.id]?.[ce.ce_id]?.isApproved || false;
+    return `
                               <label class="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-900/50">
                                 <input 
                                   type="checkbox" 
@@ -134,7 +134,7 @@ export function renderRecoveryValidationModal(recoveryData) {
                                 <span class="text-sm">${ce.ce_id} - ${ce.ce_descripcion} <span class="font-semibold text-red-500">(${(ceGrade).toFixed(2)})</span></span>
                               </label>
                             `;
-                          }).join('')}
+  }).join('')}
                         </div>
                       </div>
                     `).join('')}
@@ -378,24 +378,24 @@ export function renderAlumnosPage() {
     studentListHtml = `
       <div id="all-students-container" class="space-y-6">
         ${studentsToDisplay.map(student => {
-          // Encontrar todos los módulos para este alumno
-          const enrolledModules = db.modules
-            .filter(m => m.studentIds?.includes(student.id))
-            .map(module => { 
-              // Usamos las notas ya calculadas y almacenadas en el estado
-              const calculatedGrades = getCalculatedGrades();
-              const finalGrade = calculatedGrades[module.id]?.Final?.[student.id]?.moduleGrade || 0;
-              return { name: module.modulo, grade: finalGrade };
-            });
+      // Encontrar todos los módulos para este alumno
+      const enrolledModules = db.modules
+        .filter(m => m.studentIds?.includes(student.id))
+        .map(module => {
+          // Usamos las notas ya calculadas y almacenadas en el estado
+          const calculatedGrades = getCalculatedGrades();
+          const finalGrade = calculatedGrades[module.id]?.Final?.[student.id]?.moduleGrade || 0;
+          return { name: module.modulo, grade: finalGrade };
+        });
 
-          // --- INICIO: LÓGICA DE ETIQUETAS DE DIVERSIDAD ---
-          const diversityTags = student.diversityTags || [];
-          const tagsHtml = diversityTags.map(tag => `
+      // --- INICIO: LÓGICA DE ETIQUETAS DE DIVERSIDAD ---
+      const diversityTags = student.diversityTags || [];
+      const tagsHtml = diversityTags.map(tag => `
             <span class="ml-2 text-xs font-semibold text-purple-800 bg-purple-100 dark:text-purple-100 dark:bg-purple-800 px-2 py-0.5 rounded-full">${tag}</span>
           `).join('');
-          // --- FIN: LÓGICA DE ETIQUETAS DE DIVERSIDAD ---
+      // --- FIN: LÓGICA DE ETIQUETAS DE DIVERSIDAD ---
 
-          return `
+      return `
             <div key="${student.id}" draggable="true" data-student-id="${student.id}" class="student-draggable bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 border-l-4 border-blue-500 transition-opacity">
               <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center gap-4">
@@ -434,7 +434,7 @@ export function renderAlumnosPage() {
               ` : `<p class="text-gray-500 dark:text-gray-400">Este alumno/a no está matriculado en ningún módulo.</p>`}
             </div>
           `;
-        }).join('')}
+    }).join('')}
       </div>
     `;
   } else {
@@ -444,7 +444,7 @@ export function renderAlumnosPage() {
       </p>
     `;
   }
-  
+
   return `
     <div class="container mx-auto px-6 py-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -555,15 +555,15 @@ export function renderStudentModuleDetail(student, module) {
       <div class="lg:col-span-2">
         <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Desglose de Calificaciones</h4>
         <div class="space-y-3">
-          ${module.resultados_de_aprendizaje.map(ra => 
-              renderRaAccordion(
-                  ra, 
-                  studentGrades, 
-                  (finalGrades.raTotals && typeof finalGrades.raTotals[ra.ra_id] === 'number') ? finalGrades.raTotals[ra.ra_id] : 0,
-                  student.id, // studentId
-                  true // Forzar solo lectura en esta vista
-              )
-          ).join('')}
+          ${module.resultados_de_aprendizaje.map(ra =>
+    renderRaAccordion(
+      ra,
+      studentGrades,
+      (finalGrades.raTotals && typeof finalGrades.raTotals[ra.ra_id] === 'number') ? finalGrades.raTotals[ra.ra_id] : 0,
+      student.id, // studentId
+      true // Forzar solo lectura en esta vista
+    )
+  ).join('')}
         </div>
       </div>
       <!-- Columna 2: Comentarios -->
@@ -578,8 +578,8 @@ export function renderStudentModuleDetail(student, module) {
 export function renderModulosPage() {
   const { modules, students } = getDB();
   const { selectedModuleId } = getUI();
-  const selectedModule = modules.find(m => m.id === selectedModuleId);  
-  
+  const selectedModule = modules.find(m => m.id === selectedModuleId);
+
   let moduleSelectHtml = '';
   if (modules && modules.length > 0) {
     moduleSelectHtml = `
@@ -612,7 +612,7 @@ export function renderModulosPage() {
       </p>
     `;
   }
-  
+
   let moduleDetailHtml = '';
   if (selectedModule) {
     const moduleStudents = (selectedModule.studentIds || [])
@@ -737,15 +737,15 @@ export function renderStudentFormatModal(nameSuggestions, moduleId) {
                     <label class="block text-xs text-gray-500 dark:text-gray-400">Arrastra las palabras para corregir el formato:</label>
                     <div id="${item.id}" class="name-editor-container flex items-center gap-2 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 min-h-[44px]">
                       ${(() => {
-                        const [lastNamesStr = '', firstNamesStr = ''] = item.suggested.split(',').map(s => s.trim());
-                        const lastNameParts = lastNamesStr.split(' ').filter(Boolean);
-                        const firstNameParts = firstNamesStr.split(' ').filter(Boolean);
+      const [lastNamesStr = '', firstNamesStr = ''] = item.suggested.split(',').map(s => s.trim());
+      const lastNameParts = lastNamesStr.split(' ').filter(Boolean);
+      const firstNameParts = firstNamesStr.split(' ').filter(Boolean);
 
-                        const renderPills = (words) => words.map(word => 
-                          `<span draggable="true" class="name-pill cursor-move bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-sm font-medium px-2.5 py-0.5 rounded-full" data-word="${word}">${word}</span>`
-                        ).join('');
+      const renderPills = (words) => words.map(word =>
+        `<span draggable="true" class="name-pill cursor-move bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-sm font-medium px-2.5 py-0.5 rounded-full" data-word="${word}">${word}</span>`
+      ).join('');
 
-                        return `
+      return `
                           <div class="name-drop-zone flex-1 flex flex-wrap gap-1 p-1 min-h-[30px] bg-gray-100 dark:bg-gray-800 rounded" data-part="lastNames">
                             ${renderPills(lastNameParts)}
                           </div>
@@ -754,7 +754,7 @@ export function renderStudentFormatModal(nameSuggestions, moduleId) {
                             ${renderPills(firstNameParts)}
                           </div>
                         `;
-                      })()}
+    })()}
                     </div>
                   </div>
                 </div>
@@ -846,29 +846,30 @@ function renderModuloDetalle(module, moduleStudents) {
     console.warn(`[WARN] Forzando cambio a vista 'tabla' porque no hay alumno seleccionado o no existe en el módulo.`);
   }
 
-  const classTabla = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-        moduleView === 'tabla'
-          ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
-          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
-      }`;
-  const classAlumno = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-        moduleView === 'alumno'
-          ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
-          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
-      }`;
-  const classIndice = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-        moduleView === 'indice'
-          ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
-          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
+  const classTabla = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'tabla'
+    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
+    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
+    }`;
+  const classAlumno = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'alumno'
+    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
+    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
+    }`;
+  const classIndice = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'indice'
+    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
+    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
   const classDistribucion = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'distribucion' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
-      
+  const classConfigCes = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'config-ces' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
+
   let contentHtml = '';
   if (moduleView === 'indice') {
-      console.log('[LOG][renderModuloDetalle] La vista es "indice", preparando contenedor #progress-view-container.');
-      contentHtml = `<div id="progress-view-container" class="p-4 md:p-6"></div>`; // Contenedor para la vista de progreso
-    } else if (moduleView === 'distribucion') {
-      console.log('[LOG][renderModuloDetalle] La vista es "distribucion", llamando a renderWeightDistributionView.');
-      contentHtml = renderWeightDistributionView(module); // ¡Esta es la corrección!
+    console.log('[LOG][renderModuloDetalle] La vista es "indice", preparando contenedor #progress-view-container.');
+    contentHtml = `<div id="progress-view-container" class="p-4 md:p-6"></div>`; // Contenedor para la vista de progreso
+  } else if (moduleView === 'distribucion') {
+    console.log('[LOG][renderModuloDetalle] La vista es "distribucion", llamando a renderWeightDistributionView.');
+    contentHtml = renderWeightDistributionView(module); // ¡Esta es la corrección!
+  } else if (moduleView === 'config-ces') {
+    console.log('[LOG][renderModuloDetalle] La vista es "config-ces", llamando a renderCeConfigView.');
+    contentHtml = renderCeConfigView(module);
   } else if (moduleStudents.length > 0) {
     // La vista por defecto (y única para calificar) es ahora la de alumno.
     contentHtml = renderAlumnoView(module, moduleStudents);
@@ -876,7 +877,7 @@ function renderModuloDetalle(module, moduleStudents) {
     // Si no hay alumnos, mostramos el mensaje correspondiente.
     contentHtml = `<p class="text-center text-gray-500 dark:text-gray-400 my-10">Añade alumnos/as en la sección de gestión para empezar a calificar.</p>`;
   }
-  
+
   return `
     <div>
       ${gestionAlumnosHtml}
@@ -885,7 +886,7 @@ function renderModuloDetalle(module, moduleStudents) {
       ${gestionAptitudHtml}
       <hr class="my-8 border-gray-300 dark:border-gray-700">
       <!-- Selector de Vista -->
-      <div class="mb-6 flex justify-center gap-2 p-2 bg-gray-200 dark:bg-gray-800 rounded-lg">
+      <div class="mb-6 flex flex-wrap justify-center gap-2 p-2 bg-gray-200 dark:bg-gray-800 rounded-lg">
         <button id="view-alumno-btn" class="${classAlumno}" ${moduleStudents.length === 0 ? 'disabled' : ''}>
           ${ICONS.User} Vista Alumnos/as
         </button>
@@ -894,6 +895,9 @@ function renderModuloDetalle(module, moduleStudents) {
         </button>
         <button id="view-distribution-btn" class="${classDistribucion}">
           ${ICONS.PieChart} Distribución de Pesos
+        </button>
+        <button id="view-config-ces-btn" class="${classConfigCes}">
+          ${ICONS.Settings} Configuración CEs
         </button>
       </div>
 
@@ -975,14 +979,14 @@ export function renderWeightDistributionView(module) {
 
       <div class="space-y-6">
         ${module.resultados_de_aprendizaje.map(ra => {
-          const currentRaWeight = raAccumulatedWeights[ra.ra_id] || 0;
-          const raPercentage = totalModuleActivityWeight > 0 ? (currentRaWeight / totalModuleActivityWeight * 100) : 0;
-          console.log(`[LOG][renderWeightDistributionView]   - Checking expandedRaId for RA '${ra.ra_id}'. Current ui?.expandedRaId: ${ui?.expandedRaId}`);
-          const isExpanded = ui?.expandedRaId === ra.ra_id; // Usamos encadenamiento opcional para evitar el TypeError
-          console.log(`[LOG][renderWeightDistributionView]   - RA '${ra.ra_id}': Peso=${currentRaWeight.toFixed(1)}, Porcentaje=${raPercentage.toFixed(1)}%`);
-          const raContentId = `ra-distribution-content-${ra.ra_id}`;
+    const currentRaWeight = raAccumulatedWeights[ra.ra_id] || 0;
+    const raPercentage = totalModuleActivityWeight > 0 ? (currentRaWeight / totalModuleActivityWeight * 100) : 0;
+    console.log(`[LOG][renderWeightDistributionView]   - Checking expandedRaId for RA '${ra.ra_id}'. Current ui?.expandedRaId: ${ui?.expandedRaId}`);
+    const isExpanded = ui?.expandedRaId === ra.ra_id; // Usamos encadenamiento opcional para evitar el TypeError
+    console.log(`[LOG][renderWeightDistributionView]   - RA '${ra.ra_id}': Peso=${currentRaWeight.toFixed(1)}, Porcentaje=${raPercentage.toFixed(1)}%`);
+    const raContentId = `ra-distribution-content-${ra.ra_id}`;
 
-          return `
+    return `
             <!-- RA: ${ra.ra_id} -->
             <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
               <button class="ra-accordion-toggle w-full flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors" data-content-id="${raContentId}">
@@ -1000,23 +1004,23 @@ export function renderWeightDistributionView(module) {
                 <h5 class="font-semibold text-gray-700 dark:text-gray-300 mb-3">Criterios de Evaluación:</h5>
                 <div class="space-y-2">
                   ${ra.criterios_de_evaluacion.map(ce => {
-                    const currentCeWeight = ceAccumulatedWeights[ce.ce_id] || 0;
-                    const cePercentageOfRa = currentRaWeight > 0 ? (currentCeWeight / currentRaWeight * 100) : 0;
-                    const activitiesForCe = moduleActivities.filter(act => act.ceIds.includes(ce.ce_id));
-                    const activitiesListHtml = activitiesForCe.length > 0 ? `
+      const currentCeWeight = ceAccumulatedWeights[ce.ce_id] || 0;
+      const cePercentageOfRa = currentRaWeight > 0 ? (currentCeWeight / currentRaWeight * 100) : 0;
+      const activitiesForCe = moduleActivities.filter(act => act.ceIds.includes(ce.ce_id));
+      const activitiesListHtml = activitiesForCe.length > 0 ? `
                       <div class="mt-2 text-xs text-gray-600 dark:text-gray-400">
                         <span class="font-semibold">Actividades que evalúan este CE:</span>
                         <ul class="list-disc list-inside ml-2">
                           ${activitiesForCe.map(act => {
-                            const activityWeight = act.peso || 1;
-                            const percentageOfCe = currentCeWeight > 0 ? (activityWeight / currentCeWeight * 100) : 0;
-                            return `<li>${act.name} (Peso: ${activityWeight}, <span class="font-bold">${percentageOfCe.toFixed(1)}%</span>)</li>`;
-                          }).join('')}
+        const activityWeight = act.peso || 1;
+        const percentageOfCe = currentCeWeight > 0 ? (activityWeight / currentCeWeight * 100) : 0;
+        return `<li>${act.name} (Peso: ${activityWeight}, <span class="font-bold">${percentageOfCe.toFixed(1)}%</span>)</li>`;
+      }).join('')}
                         </ul>
                       </div>
                     ` : `<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Ninguna actividad evalúa este CE.</p>`;
-                    console.log(`[LOG][renderWeightDistributionView]     - CE '${ce.ce_id}': Peso=${currentCeWeight.toFixed(1)}, Porcentaje del RA=${cePercentageOfRa.toFixed(1)}%`);
-                    return `
+      console.log(`[LOG][renderWeightDistributionView]     - CE '${ce.ce_id}': Peso=${currentCeWeight.toFixed(1)}, Porcentaje del RA=${cePercentageOfRa.toFixed(1)}%`);
+      return `
                       <div class="flex justify-between items-center p-2 rounded-md bg-gray-100 dark:bg-gray-900/50">
                         <div><p class="text-sm text-gray-800 dark:text-gray-200">${ce.ce_id} - ${ce.ce_descripcion}</p>${activitiesListHtml}</div>
                         <span class="font-medium text-gray-900 dark:text-gray-100">
@@ -1024,12 +1028,12 @@ export function renderWeightDistributionView(module) {
                         </span>
                       </div>
                     `;
-                  }).join('')}
+    }).join('')}
                 </div>
               </div>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
     </div>
   `;
@@ -1181,11 +1185,11 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
         <!-- FIN: CORRECCIÓN -->
         <!-- Columnas de Actividades Evaluables -->
         ${moduleActividades.map(act => {
-          const totalWeightForTrimester = trimesterTotalWeights[act.trimestre] || 0;
-          const activityWeight = act.peso || 1;
-          const percentage = totalWeightForTrimester > 0 ? (activityWeight / totalWeightForTrimester) * 100 : 0;
+    const totalWeightForTrimester = trimesterTotalWeights[act.trimestre] || 0;
+    const activityWeight = act.peso || 1;
+    const percentage = totalWeightForTrimester > 0 ? (activityWeight / totalWeightForTrimester) * 100 : 0;
 
-          return `
+    return `
             <th key="${act.id}" scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
               <button class="open-actividad-panel-btn w-full h-full" data-actividad-id="${act.id}" title="Gestionar y calificar actividad: ${act.name}\nCEs: ${act.ceIds.join(', ')}">
                 <span class="block">${act.name}</span>
@@ -1194,7 +1198,7 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
               </button>
             </th>
           `;
-        }).join('')}
+  }).join('')}
         ${ras.map(ra => `
           <th key="${ra.ra_id}" scope="col" class="px-2 py-3 text-center text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider bg-blue-50 dark:bg-blue-900" title="${ra.ra_descripcion}">
             <button class="open-ce-list-modal-btn p-2 rounded-md hover:bg-blue-100 dark:hover:bg-blue-800 w-full h-full" data-ra-id="${ra.ra_id}" data-module-id="${module.id}">
@@ -1208,46 +1212,46 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
       </tr>
     </thead>
   `;
-  
+
   const bodyHtml = `
     <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
       ${moduleStudents.map(student => {
-        const studentGrades = grades[student.id] || {};
-        const studentAllCalcs = calculatedGrades[module.id] || {};
-        
-        const t1Grade = studentAllCalcs.T1?.[student.id]?.moduleGrade;
-        const t2Grade = studentAllCalcs.T2?.[student.id]?.moduleGrade;
-        const t3Grade = studentAllCalcs.T3?.[student.id]?.moduleGrade;
-        const t1Breakdown = studentAllCalcs.T1?.[student.id]?.breakdown;
-        const t2Breakdown = studentAllCalcs.T2?.[student.id]?.breakdown;
-        const t3Breakdown = studentAllCalcs.T3?.[student.id]?.breakdown;
-        const finalCalcs = studentAllCalcs.Final?.[student.id] || { raTotals: {}, moduleGrade: 0, breakdown: {} };
-        
-        const isSelectedInAlumnoView = ui.moduleView === 'alumno' && ui.selectedStudentIdForView === student.id;
+    const studentGrades = grades[student.id] || {};
+    const studentAllCalcs = calculatedGrades[module.id] || {};
 
-        return `
+    const t1Grade = studentAllCalcs.T1?.[student.id]?.moduleGrade;
+    const t2Grade = studentAllCalcs.T2?.[student.id]?.moduleGrade;
+    const t3Grade = studentAllCalcs.T3?.[student.id]?.moduleGrade;
+    const t1Breakdown = studentAllCalcs.T1?.[student.id]?.breakdown;
+    const t2Breakdown = studentAllCalcs.T2?.[student.id]?.breakdown;
+    const t3Breakdown = studentAllCalcs.T3?.[student.id]?.breakdown;
+    const finalCalcs = studentAllCalcs.Final?.[student.id] || { raTotals: {}, moduleGrade: 0, breakdown: {} };
+
+    const isSelectedInAlumnoView = ui.moduleView === 'alumno' && ui.selectedStudentIdForView === student.id;
+
+    return `
           <tr key="${student.id}" data-student-id="${student.id}" class="hover:bg-gray-50 dark:hover:bg-gray-800 ${isSelectedInAlumnoView ? 'bg-blue-100 dark:bg-blue-900/50' : ''} ${ui.moduleView === 'alumno' ? 'cursor-pointer' : ''}">
             <td class="sticky left-0 z-10 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800">
               ${student.name}
             </td>
             <!-- INICIO: CORRECCIÓN - Celdas de notas trimestrales con colores según aptitud -->
             ${[
-              { grade: t1Grade, breakdown: t1Breakdown },
-              { grade: t2Grade, breakdown: t2Breakdown },
-              { grade: t3Grade, breakdown: t3Breakdown }
-            ].map(data => {
-              let bgColor = 'bg-gray-100 dark:bg-gray-700';
-              let title = '';
-              if (data.breakdown) {
-                title = `Base: ${data.breakdown.baseGrade.toFixed(2)}\nAjuste: ${data.breakdown.totalAdjustment.toFixed(2)}`;
-                if (data.breakdown.positiveAdjustment > data.breakdown.negativeAdjustment) {
-                  bgColor = 'bg-green-100 dark:bg-green-900/50';
-                } else if (data.breakdown.negativeAdjustment > data.breakdown.positiveAdjustment) {
-                  bgColor = 'bg-red-100 dark:bg-red-900/50';
-                }
-              }
-              return `<td class="px-3 py-4 text-center text-sm font-semibold ${bgColor}" title="${title}">${data.grade?.toFixed(2) || '-'}</td>`;
-            }).join('')}
+        { grade: t1Grade, breakdown: t1Breakdown },
+        { grade: t2Grade, breakdown: t2Breakdown },
+        { grade: t3Grade, breakdown: t3Breakdown }
+      ].map(data => {
+        let bgColor = 'bg-gray-100 dark:bg-gray-700';
+        let title = '';
+        if (data.breakdown) {
+          title = `Base: ${data.breakdown.baseGrade.toFixed(2)}\nAjuste: ${data.breakdown.totalAdjustment.toFixed(2)}`;
+          if (data.breakdown.positiveAdjustment > data.breakdown.negativeAdjustment) {
+            bgColor = 'bg-green-100 dark:bg-green-900/50';
+          } else if (data.breakdown.negativeAdjustment > data.breakdown.positiveAdjustment) {
+            bgColor = 'bg-red-100 dark:bg-red-900/50';
+          }
+        }
+        return `<td class="px-3 py-4 text-center text-sm font-semibold ${bgColor}" title="${title}">${data.grade?.toFixed(2) || '-'}</td>`;
+      }).join('')}
             
             <!-- Celda para la nota final -->
             <td 
@@ -1259,32 +1263,32 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
             <!-- FIN: CORRECCIÓN -->
 
             ${moduleActividades.map(act => {
-              const attempts = studentGrades[act.id] || [];
-              const finalGrade = attempts.length > 0 ? Math.max(...attempts.map(a => a.grade)) : null;
-              return `
+        const attempts = studentGrades[act.id] || [];
+        const finalGrade = attempts.length > 0 ? Math.max(...attempts.map(a => a.grade)) : null;
+        return `
                 <td key="${act.id}" class="px-2 py-4 whitespace-nowrap text-sm">
                   <div class="w-20 mx-auto p-2 text-center font-semibold ${finalGrade === null ? 'text-gray-400' : (finalGrade >= 5 ? 'text-green-600' : 'text-red-600')}">
                     ${finalGrade !== null ? finalGrade.toFixed(2) : '-'}
                   </div>
                 </td>
               `
-            }).join('')}
+      }).join('')}
             
             ${ras.map(ra => {
-              const raGrade = (finalCalcs.raTotals && finalCalcs.raTotals[ra.ra_id] != null) ? finalCalcs.raTotals[ra.ra_id].toFixed(2) : '0.00';
-              return `
+        const raGrade = (finalCalcs.raTotals && finalCalcs.raTotals[ra.ra_id] != null) ? finalCalcs.raTotals[ra.ra_id].toFixed(2) : '0.00';
+        return `
                 <td key="${ra.ra_id}" class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-900">
                   ${raGrade}
                 </td>
               `
-            }).join('')}
+      }).join('')}
             
             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900">
               ${finalCalcs.moduleGrade != null ? finalCalcs.moduleGrade.toFixed(2) : '0.00'}
             </td>
           </tr>
         `
-      }).join('')}
+  }).join('')}
     </tbody>
   `;
 
@@ -1331,21 +1335,21 @@ export function renderCeListModal(module, raId) {
           </p>
           <div class="space-y-3">
             ${ra.criterios_de_evaluacion.map(ce => {
-              const currentCeWeight = ceAccumulatedWeights[ce.ce_id] || 0;
-              const activitiesForCe = moduleActivities.filter(act => act.ceIds.includes(ce.ce_id));
-              const activitiesListHtml = activitiesForCe.length > 0 ? `
+    const currentCeWeight = ceAccumulatedWeights[ce.ce_id] || 0;
+    const activitiesForCe = moduleActivities.filter(act => act.ceIds.includes(ce.ce_id));
+    const activitiesListHtml = activitiesForCe.length > 0 ? `
                 <div class="mt-2 text-xs text-gray-600 dark:text-gray-400">
                   <ul class="list-disc list-inside ml-2">
                     ${activitiesForCe.map(act => {
-                      const activityWeight = act.peso || 1;
-                      const percentageOfCe = currentCeWeight > 0 ? (activityWeight / currentCeWeight * 100) : 0;
-                      return `<li>${act.name} (Peso: ${activityWeight}, <span class="font-bold">${percentageOfCe.toFixed(1)}%</span>)</li>`;
-                    }).join('')}
+      const activityWeight = act.peso || 1;
+      const percentageOfCe = currentCeWeight > 0 ? (activityWeight / currentCeWeight * 100) : 0;
+      return `<li>${act.name} (Peso: ${activityWeight}, <span class="font-bold">${percentageOfCe.toFixed(1)}%</span>)</li>`;
+    }).join('')}
                   </ul>
                 </div>
               ` : ``;
 
-              return `
+    return `
               <div class="p-3 rounded-md ${ce.dual ? 'bg-blue-50 dark:bg-blue-900/50' : 'bg-gray-50 dark:bg-gray-900/20'}">
                 <div class="flex items-start gap-4">
                   <button 
@@ -1405,22 +1409,22 @@ export function renderRaDetailModal(module, raId) {
         <div class="p-6 overflow-y-auto">
           <div class="space-y-4">
             ${ra.criterios_de_evaluacion.map(ce => {
-              const currentCeWeight = ceAccumulatedWeights[ce.ce_id] || 0;
-              const activitiesForCe = moduleActivities.filter(act => act.ceIds.includes(ce.ce_id));
-              const activitiesListHtml = activitiesForCe.length > 0 ? `
+    const currentCeWeight = ceAccumulatedWeights[ce.ce_id] || 0;
+    const activitiesForCe = moduleActivities.filter(act => act.ceIds.includes(ce.ce_id));
+    const activitiesListHtml = activitiesForCe.length > 0 ? `
                 <div class="mt-2 text-xs text-gray-600 dark:text-gray-400">
                   <span class="font-semibold">Actividades que evalúan este CE:</span>
                   <ul class="list-disc list-inside ml-2">
                     ${activitiesForCe.map(act => {
-                      const activityWeight = act.peso || 1;
-                      const percentageOfCe = currentCeWeight > 0 ? (activityWeight / currentCeWeight * 100) : 0;
-                      return `<li>${act.name} (Peso: ${activityWeight}, <span class="font-bold">${percentageOfCe.toFixed(1)}%</span>)</li>`;
-                    }).join('')}
+      const activityWeight = act.peso || 1;
+      const percentageOfCe = currentCeWeight > 0 ? (activityWeight / currentCeWeight * 100) : 0;
+      return `<li>${act.name} (Peso: ${activityWeight}, <span class="font-bold">${percentageOfCe.toFixed(1)}%</span>)</li>`;
+    }).join('')}
                   </ul>
                 </div>
               ` : `<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Ninguna actividad evalúa este CE.</p>`;
 
-              return `
+    return `
                 <div class="p-3 rounded-md bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700">
                   <div class="flex justify-between items-start">
                     <div>
@@ -1432,7 +1436,7 @@ export function renderRaDetailModal(module, raId) {
                   ${activitiesListHtml}
                 </div>
               `;
-            }).join('')}
+  }).join('')}
           </div>
         </div>
         <div class="p-4 border-t dark:border-gray-700 text-right">
@@ -1526,7 +1530,7 @@ export function renderActividadesManagement(module) {
 
   // --- INICIO: LÓGICA DE BÚSQUEDA ---
   const searchTerm = ui.activitySearchTerm || '';
-  const filteredModuleActividades = moduleActividades.filter(act => 
+  const filteredModuleActividades = moduleActividades.filter(act =>
     act.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
   // --- FIN: LÓGICA DE BÚSQUEDA ---
@@ -1559,7 +1563,7 @@ export function renderActividadesManagement(module) {
   if (!cesByUd[fallbackKey]) {
     cesByUd[fallbackKey] = [];
   }
-  
+
   const groupedCeIds = new Set(Object.values(cesByUd).flatMap(ceList => ceList.map(ce => ce.ce_id)));
   allModuleCes.forEach(ce => {
     if (!groupedCeIds.has(ce.ce_id)) {
@@ -1593,10 +1597,10 @@ export function renderActividadesManagement(module) {
             <input type="text" id="activity-search-input" value="${searchTerm}" class="w-full p-2 mb-3 border rounded-md dark:bg-gray-900" placeholder="Buscar actividad...">
             <div id="activity-list-container" class="space-y-2 max-h-60 overflow-y-auto">
               ${filteredModuleActividades.length > 0 ? filteredModuleActividades.map(act => {
-                const totalWeightForTrimester = trimesterTotalWeights[act.trimestre] || 0;
-                const activityWeight = act.peso || 1;
-                const percentage = totalWeightForTrimester > 0 ? (activityWeight / totalWeightForTrimester) * 100 : 0;
-                return `
+    const totalWeightForTrimester = trimesterTotalWeights[act.trimestre] || 0;
+    const activityWeight = act.peso || 1;
+    const percentage = totalWeightForTrimester > 0 ? (activityWeight / totalWeightForTrimester) * 100 : 0;
+    return `
                 <div draggable="true" data-actividad-id="${act.id}" class="activity-draggable flex items-center gap-2 bg-gray-100 dark:bg-gray-700 p-2 rounded-md group">
                   <span class="drag-handle cursor-move text-gray-400" title="Arrastrar para reordenar">${ICONS.GripVertical}</span>
                   <button class="open-actividad-panel-btn flex-grow text-left" data-actividad-id="${act.id}">
@@ -1684,20 +1688,20 @@ export function renderActividadesManagement(module) {
                     `}
                     <div class="pl-6 mt-1 space-y-1">
                       ${cesByUd[ud].map(ce => {
-                        // LOG: Añadimos logs para depurar el estado de cada CE
-                        console.log(`[DEBUG][Color CE] Procesando CE: ${ce.ce_id}, es Dual: ${ce.dual}, está en usedCeIds: ${usedCeIds.has(ce.ce_id)}`);
+      // LOG: Añadimos logs para depurar el estado de cada CE
+      console.log(`[DEBUG][Color CE] Procesando CE: ${ce.ce_id}, es Dual: ${ce.dual}, está en usedCeIds: ${usedCeIds.has(ce.ce_id)}`);
 
-                        const isEvaluated = usedCeIds.has(ce.ce_id);
-                        const isDual = ce.dual === true; // CORRECCIÓN: Aseguramos que la comprobación sea estrictamente booleana.
-                        let ceColorClass = 'text-red-600 dark:text-red-400'; // Por defecto: No evaluado
-                        if (isDual && isEvaluated) {
-                          ceColorClass = 'text-pink-500 dark:text-pink-400'; // Dual y Evaluado (Fucsia)
-                        } else if (isDual) {
-                          ceColorClass = 'text-blue-600 dark:text-blue-400'; // Solo Dual
-                        } else if (isEvaluated) {
-                          ceColorClass = 'text-green-600 dark:text-green-400'; // Solo Evaluado en centro
-                        }
-                        return `
+      const isEvaluated = usedCeIds.has(ce.ce_id);
+      const isDual = ce.dual === true; // CORRECCIÓN: Aseguramos que la comprobación sea estrictamente booleana.
+      let ceColorClass = 'text-red-600 dark:text-red-400'; // Por defecto: No evaluado
+      if (isDual && isEvaluated) {
+        ceColorClass = 'text-pink-500 dark:text-pink-400'; // Dual y Evaluado (Fucsia)
+      } else if (isDual) {
+        ceColorClass = 'text-blue-600 dark:text-blue-400'; // Solo Dual
+      } else if (isEvaluated) {
+        ceColorClass = 'text-green-600 dark:text-green-400'; // Solo Evaluado en centro
+      }
+      return `
                         <label class="flex items-center gap-2 text-sm">
                           <input type="checkbox" name="ceIds" value="${ce.ce_id}" class="ce-checkbox-for-ud-${ud.replace(/ /g, '-')}">
                           <span class="${ceColorClass} flex items-center gap-1">
@@ -1818,10 +1822,10 @@ export function renderActividadDetailPage() {
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
                 ${moduleStudents.map(student => {
-                  const attempts = grades[student.id]?.[actividad.id] || [];
-                  const finalGrade = attempts.length > 0 ? Math.max(...attempts.map(a => a.grade)) : null;
+    const attempts = grades[student.id]?.[actividad.id] || [];
+    const finalGrade = attempts.length > 0 ? Math.max(...attempts.map(a => a.grade)) : null;
 
-                  return `
+    return `
                     <tr class="align-top">
                       <td class="px-4 py-4 font-semibold">${student.name}</td>
                       <td class="px-4 py-4 text-center font-bold text-xl ${finalGrade === null ? '' : (finalGrade >= 5 ? 'text-green-500' : 'text-red-500')}">
@@ -1855,7 +1859,7 @@ export function renderActividadDetailPage() {
                       </td>
                     </tr>
                   `;
-                }).join('')}
+  }).join('')}
               </tbody>
             </table>
           </div>
@@ -1873,7 +1877,7 @@ export function renderActividadDetailPage() {
 function renderClipboardPanel(actividad, module) {
   // 1. Obtener los CEs completos de la actividad
   const ceIds = new Set(actividad.ceIds);
-  const allModuleCes = module.resultados_de_aprendizaje.flatMap(ra => 
+  const allModuleCes = module.resultados_de_aprendizaje.flatMap(ra =>
     ra.criterios_de_evaluacion.map(ce => ({ ...ce, ra_id: ra.ra_id, ra_descripcion: ra.ra_descripcion }))
   );
   const actividadCes = allModuleCes.filter(ce => ceIds.has(ce.ce_id));
@@ -1985,20 +1989,20 @@ function renderAlumnoView(module, moduleStudents) {
   const sortedStudents = sortStudentsForTableView(moduleStudents, ui.tableViewSort, calculatedGrades[module.id]);
 
   if (!moduleStudents || moduleStudents.length === 0) {
-       return `<p class="text-center text-gray-500 dark:text-gray-400 mt-10">No hay alumnos/as para mostrar en esta vista.</p>`;
+    return `<p class="text-center text-gray-500 dark:text-gray-400 mt-10">No hay alumnos/as para mostrar en esta vista.</p>`;
   }
-  
+
   const currentStudent = moduleStudents.find(s => s.id === selectedStudentIdForView);
   // Usamos la lista ordenada para la navegación
   const studentIndex = sortedStudents.findIndex(s => s.id === selectedStudentIdForView);
   const prevStudent = studentIndex > 0 ? sortedStudents[studentIndex - 1] : null;
   const nextStudent = studentIndex < sortedStudents.length - 1 ? sortedStudents[studentIndex + 1] : null;
-  
+
   if (!currentStudent || studentIndex === -1) {
-       console.error("Error: Could not find student with ID:", selectedStudentIdForView);
-       return `<p class="text-center text-red-500 dark:text-red-400 mt-10">Error: Alumno/a no encontrado.</p>`;
+    console.error("Error: Could not find student with ID:", selectedStudentIdForView);
+    return `<p class="text-center text-red-500 dark:text-red-400 mt-10">Error: Alumno/a no encontrado.</p>`;
   }
-  
+
   const isFirstStudent = studentIndex === 0;
   const isLastStudent = studentIndex === sortedStudents.length - 1;
 
@@ -2326,6 +2330,71 @@ function renderCommentForm(student, module) {
           </div>
         </div>
       `).join('') : '<p class="text-sm text-gray-500">No hay comentarios para este alumno/a en este módulo.</p>'}
+    </div>
+  `;
+}
+
+/**
+ * Renderiza la vista de configuración de CEs (Dual / Consulta).
+ * @param {object} module - El objeto del módulo seleccionado.
+ * @returns {string} El HTML de la vista de configuración.
+ */
+export function renderCeConfigView(module) {
+  const { ui } = { ui: getUI() };
+
+  return `
+    <div class="p-4 md:p-6 bg-white dark:bg-gray-800 shadow-lg rounded-lg">
+      <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Configuración de Criterios de Evaluación</h3>
+      <p class="text-gray-600 dark:text-gray-400 mb-4">
+        Marca los CEs que se evalúan en la empresa (Dual) o que son solo de consulta (no computan).
+      </p>
+
+      <div class="space-y-6">
+        ${module.resultados_de_aprendizaje.map(ra => {
+    const isExpanded = ui?.expandedRaId === ra.ra_id;
+    const raContentId = `ra-config-content-${ra.ra_id}`;
+
+    return `
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+              <button class="ra-accordion-toggle w-full flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors" data-content-id="${raContentId}" data-ra-id="${ra.ra_id}">
+                <div class="text-left">
+                  <h4 class="font-semibold text-gray-900 dark:text-white">${ra.ra_id} - ${ra.ra_descripcion}</h4>
+                </div>
+                <span class="chevron-icon transform transition-transform ${isExpanded ? 'rotate-90' : ''}">${ICONS.ChevronRight}</span>
+              </button>
+              
+              <div id="${raContentId}" class="accordion-content ${isExpanded ? '' : 'hidden'} p-4 bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                ${ra.criterios_de_evaluacion.map(ce => `
+                  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded-lg transition-colors">
+                    <div class="flex-grow">
+                      <div class="flex items-center gap-2">
+                        <span class="font-bold text-gray-900 dark:text-white">${ce.ce_id}</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">(${ce.peso}%)</span>
+                      </div>
+                      <p class="text-sm text-gray-700 dark:text-gray-300 mt-1">${ce.ce_descripcion}</p>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 shrink-0">
+                      <!-- Toggle Dual -->
+                      <button 
+                        class="toggle-ce-property-btn flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${ce.dual ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}"
+                        data-module-id="${module.id}"
+                        data-ra-id="${ra.ra_id}"
+                        data-ce-id="${ce.ce_id}"
+                        data-property="dual"
+                        title="${ce.dual ? 'Desmarcar como Dual' : 'Marcar como Dual'}"
+                      >
+                        ${ICONS.Briefcase}
+                        <span class="text-sm font-medium">Dual</span>
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+  }).join('')}
+      </div>
     </div>
   `;
 }
