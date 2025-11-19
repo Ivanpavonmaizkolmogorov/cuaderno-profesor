@@ -32,7 +32,7 @@ export function renderApp() {
       let moduleStudents = (selectedModule.studentIds || [])
         .map(studentId => db.students.find(s => s.id === studentId))
         .filter(Boolean);
-      
+
       moduleStudents = sortStudentsForTableView(moduleStudents, ui.tableViewSort, state.getCalculatedGrades()[selectedModule.id]);
 
       const allCalculatedGrades = state.getCalculatedGrades();
@@ -52,7 +52,7 @@ export function renderApp() {
   // 1. Renderizar Header
   const headerContainer = document.getElementById('header-container');
   if (headerContainer) {
-      headerContainer.innerHTML = renderHeader(ui.page, db);
+    headerContainer.innerHTML = renderHeader(ui.page, db);
   }
 
   // --- INICIO: RENDERIZAR BARRA DE BÚSQUEDA ---
@@ -61,35 +61,35 @@ export function renderApp() {
     searchBarContainer.innerHTML = renderSearchBar(ui.search);
     attachSearchEventListeners(); // Añadir listeners específicos de la búsqueda
   }
-  
+
   // 2. Renderizar contenido de la página
   const contentContainer = document.getElementById('content-container');
   if (contentContainer) {
-      // Limpiamos el contenedor principal. Ahora no necesitamos gestionar la visibilidad.
-      contentContainer.innerHTML = '';
+    // Limpiamos el contenedor principal. Ahora no necesitamos gestionar la visibilidad.
+    contentContainer.innerHTML = '';
 
-      switch (ui.page) {
-        case 'configuracion':
-          contentContainer.innerHTML = pages.renderConfiguracionPage();
-          break;
-        case 'alumnos':
-          contentContainer.innerHTML = pages.renderAlumnosPage();
-          break;
-        case 'modulos':
-          contentContainer.innerHTML = pages.renderModulosPage();
-          break;
-        case 'actividadDetail':
-          contentContainer.innerHTML = pages.renderActividadDetailPage();
-          break;
-        case 'distribucion': // Nueva vista
-          contentContainer.innerHTML = renderWeightDistributionView(selectedModule);
-          state.setUIProperty('expandedRaId', null); // Clear after rendering
-          break;
-        default:
-          contentContainer.innerHTML = `<p class="text-center text-red-500 p-10">Error: Página no reconocida.</p>`;
-      }
+    switch (ui.page) {
+      case 'configuracion':
+        contentContainer.innerHTML = pages.renderConfiguracionPage();
+        break;
+      case 'alumnos':
+        contentContainer.innerHTML = pages.renderAlumnosPage();
+        break;
+      case 'modulos':
+        contentContainer.innerHTML = pages.renderModulosPage();
+        break;
+      case 'actividadDetail':
+        contentContainer.innerHTML = pages.renderActividadDetailPage();
+        break;
+      case 'distribucion': // Nueva vista
+        contentContainer.innerHTML = renderWeightDistributionView(selectedModule);
+        state.setUIProperty('expandedRaId', null); // Clear after rendering
+        break;
+      default:
+        contentContainer.innerHTML = `<p class="text-center text-red-500 p-10">Error: Página no reconocida.</p>`;
+    }
   }
-  
+
   // 3. (Re)Añadir event listeners
   attachEventListeners();
 
@@ -124,7 +124,7 @@ export function renderApp() {
         const finalNames = Array.from(document.querySelectorAll('.name-editor-container')).map(container => {
           const lastNamesZone = container.querySelector('[data-part="lastNames"]');
           const firstNamesZone = container.querySelector('[data-part="firstNames"]');
-          
+
           const lastNames = Array.from(lastNamesZone.querySelectorAll('.name-pill')).map(pill => pill.dataset.word).join(' ');
           const firstNames = Array.from(firstNamesZone.querySelectorAll('.name-pill')).map(pill => pill.dataset.word).join(' ');
 
@@ -401,7 +401,7 @@ function attachEventListeners() {
     if (e.target.classList.contains('ra-master-checkbox')) {
       const raId = e.target.dataset.raId;
       const isChecked = e.target.checked;
-      
+
       // Buscar el contenedor padre más cercano para limitar el querySelector
       const form = e.target.closest('form');
       if (form) {
@@ -415,7 +415,7 @@ function attachEventListeners() {
     if (e.target.classList.contains('ud-master-checkbox')) {
       const udRef = e.target.dataset.udRef;
       const isChecked = e.target.checked;
-      
+
       const form = e.target.closest('form');
       if (form) {
         form.querySelectorAll(`.ce-checkbox-for-ud-${udRef.replace(/ /g, '-')}`).forEach(checkbox => {
@@ -433,62 +433,62 @@ function attachEventListeners() {
   if (document.body.dataset.globalListenerAttached !== 'true') {
     document.body.dataset.globalListenerAttached = 'true'; // Marcamos como añadido para evitar duplicados.
     document.body.addEventListener('click', (e) => {
-    const pageNavBtn = e.target.closest('button[data-page]');
-    if (pageNavBtn) {
-      e.preventDefault();
-      handlers.handleSetPage(pageNavBtn.dataset.page);
-    }
+      const pageNavBtn = e.target.closest('button[data-page]');
+      if (pageNavBtn) {
+        e.preventDefault();
+        handlers.handleSetPage(pageNavBtn.dataset.page);
+      }
 
-    // --- INICIO: Lógica para paneles plegables ---
-    // Este listener se añade al body para que sea global y persistente,
-    // capturando clics en cualquier panel plegable que se renderice.
-    const collapsibleToggleBtn = e.target.closest('.collapsible-toggle');
-    if (collapsibleToggleBtn && collapsibleToggleBtn.dataset.panelId) {
-      handlers.handleTogglePanel(collapsibleToggleBtn.dataset.panelId);
-    }
-    // --- FIN: Lógica para paneles plegables ---
+      // --- INICIO: Lógica para paneles plegables ---
+      // Este listener se añade al body para que sea global y persistente,
+      // capturando clics en cualquier panel plegable que se renderice.
+      const collapsibleToggleBtn = e.target.closest('.collapsible-toggle');
+      if (collapsibleToggleBtn && collapsibleToggleBtn.dataset.panelId) {
+        handlers.handleTogglePanel(collapsibleToggleBtn.dataset.panelId);
+      }
+      // --- FIN: Lógica para paneles plegables ---
 
-    // Botones de sugerencia de motivos en el modal de aptitud
-    const suggestionButton = e.target.closest('.reason-suggestion-btn');
-    if (suggestionButton) {
-      const reason = suggestionButton.dataset.reason;
-      const baseValue = suggestionButton.dataset.baseValue;
-      const reasonInput = document.getElementById('aptitud-reason-display');
-      const baseValueInput = document.getElementById('aptitud-base-value');
+      // Botones de sugerencia de motivos en el modal de aptitud
+      const suggestionButton = e.target.closest('.reason-suggestion-btn');
+      if (suggestionButton) {
+        const reason = suggestionButton.dataset.reason;
+        const baseValue = suggestionButton.dataset.baseValue;
+        const reasonInput = document.getElementById('aptitud-reason-display');
+        const baseValueInput = document.getElementById('aptitud-base-value');
 
-      if (reasonInput) reasonInput.value = reason;
-      if (baseValueInput) baseValueInput.value = baseValue;
+        if (reasonInput) reasonInput.value = reason;
+        if (baseValueInput) baseValueInput.value = baseValue;
 
-      console.log(`[LOG][DELEGATION] Sugerencia de motivo aplicada: "${reason}", Valor: ${baseValue}`);
-      reasonInput.focus();
-    }
+        console.log(`[LOG][DELEGATION] Sugerencia de motivo aplicada: "${reason}", Valor: ${baseValue}`);
+        reasonInput.focus();
+      }
 
-    // Botón 'x' para eliminar una sugerencia de motivo
-    const deleteSuggestionBtn = e.target.closest('.delete-suggestion-btn');
-    if (deleteSuggestionBtn) {
-      e.stopPropagation(); // Evita que el clic se propague al botón de sugerencia principal
-      const { reasonId, moduleId, type } = deleteSuggestionBtn.dataset;
-      console.log(`[LOG][DELEGATION] Clic en eliminar sugerencia. ID: ${reasonId}, Módulo: ${moduleId}, Tipo: ${type}`);
-      handlers.handleDeleteAptitudeReason(moduleId, reasonId, type);
-    }
+      // Botón 'x' para eliminar una sugerencia de motivo
+      const deleteSuggestionBtn = e.target.closest('.delete-suggestion-btn');
+      if (deleteSuggestionBtn) {
+        e.stopPropagation(); // Evita que el clic se propague al botón de sugerencia principal
+        const { reasonId, moduleId, type } = deleteSuggestionBtn.dataset;
+        console.log(`[LOG][DELEGATION] Clic en eliminar sugerencia. ID: ${reasonId}, Módulo: ${moduleId}, Tipo: ${type}`);
+        handlers.handleDeleteAptitudeReason(moduleId, reasonId, type);
+      }
 
-    // Botones de borrado masivo de aptitudes por alumno
-    const bulkDeleteStudentBtn = e.target.closest('.bulk-delete-student-aptitudes-btn');
-    if (bulkDeleteStudentBtn) {
-      e.stopPropagation();
-      const { moduleId, studentId, type } = bulkDeleteStudentBtn.dataset;
-      console.log(`[LOG][DELEGATION] Clic en borrado masivo por alumno. Módulo: ${moduleId}, Alumno: ${studentId}, Tipo: ${type}`);
-      handlers.handleBulkDeleteAptitudesByStudent(moduleId, studentId, type);
-    }
+      // Botones de borrado masivo de aptitudes por alumno
+      const bulkDeleteStudentBtn = e.target.closest('.bulk-delete-student-aptitudes-btn');
+      if (bulkDeleteStudentBtn) {
+        e.stopPropagation();
+        const { moduleId, studentId, type } = bulkDeleteStudentBtn.dataset;
+        console.log(`[LOG][DELEGATION] Clic en borrado masivo por alumno. Módulo: ${moduleId}, Alumno: ${studentId}, Tipo: ${type}`);
+        handlers.handleBulkDeleteAptitudesByStudent(moduleId, studentId, type);
+      }
 
-    // Botones de borrado masivo de aptitudes por módulo
-    const bulkDeleteModuleBtn = e.target.closest('.bulk-delete-module-aptitudes-btn');
-    if (bulkDeleteModuleBtn) {
-      e.stopPropagation();
-      const { moduleId, type } = bulkDeleteModuleBtn.dataset;
-      console.log(`[LOG][DELEGATION] Clic en borrado masivo por módulo. Módulo: ${moduleId}, Tipo: ${type}`);
-      handlers.handleBulkDeleteAptitudesByModule(moduleId, type);
-    }
+      // Botones de borrado masivo de aptitudes por módulo
+      const bulkDeleteModuleBtn = e.target.closest('.bulk-delete-module-aptitudes-btn');
+      if (bulkDeleteModuleBtn) {
+        e.stopPropagation();
+        const { moduleId, type } = bulkDeleteModuleBtn.dataset;
+        console.log(`[LOG][DELEGATION] Clic en borrado masivo por módulo. Módulo: ${moduleId}, Tipo: ${type}`);
+        handlers.handleBulkDeleteAptitudesByModule(moduleId, type);
+      }
     });
 
     // --- INICIO: LISTENER PARA BÚSQUEDA (CTRL+F) ---
@@ -509,44 +509,44 @@ function attachEventListeners() {
 
   document.getElementById('connect-btn')?.addEventListener('click', handlers.handleConnect);
   document.getElementById('disconnect-btn')?.addEventListener('click', handlers.handleDisconnect);
-  
+
   // EN main.js -> function attachEventListeners()
 
   if (ui.page === 'configuracion') {
-      document.getElementById('import-module-btn')?.addEventListener('click', () => handlers.handleImportModule(document.getElementById('module-textarea').value));
-      
-      document.getElementById('import-module-file-input')?.addEventListener('change', (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
+    document.getElementById('import-module-btn')?.addEventListener('click', () => handlers.handleImportModule(document.getElementById('module-textarea').value));
 
-          const reader = new FileReader();
-          reader.onload = (event) => {
-              const text = event.target.result;
-              handlers.handleImportModule(text);
-          };
-          reader.readAsText(file);
-          e.target.value = ''; // Reset
-      });
+    document.getElementById('import-module-file-input')?.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-      document.getElementById('download-module-template-btn')?.addEventListener('click', handlers.handleDownloadModuleTemplate);
-      document.getElementById('save-as-btn')?.addEventListener('click', handlers.handleSaveAs);
-      document.getElementById('export-data-btn')?.addEventListener('click', handlers.handleExportData);
-      document.getElementById('clear-data-btn')?.addEventListener('click', handlers.handleClearData);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target.result;
+        handlers.handleImportModule(text);
+      };
+      reader.readAsText(file);
+      e.target.value = ''; // Reset
+    });
 
-      // --- AQUÍ ESTÁ EL CÓDIGO CORREGIDO Y EN SU SITIO ---
-      const excelButton = document.getElementById('export-excel-btn');
-      
-      // Chivato 1: Comprobar que el botón existe al cargar la página
-      console.log("Buscando botón de Excel:", excelButton); 
+    document.getElementById('download-module-template-btn')?.addEventListener('click', handlers.handleDownloadModuleTemplate);
+    document.getElementById('save-as-btn')?.addEventListener('click', handlers.handleSaveAs);
+    document.getElementById('export-data-btn')?.addEventListener('click', handlers.handleExportData);
+    document.getElementById('clear-data-btn')?.addEventListener('click', handlers.handleClearData);
 
-      excelButton?.addEventListener('click', () => {
-          // Chivato 2: Comprobar que el clic funciona
-          console.log("¡Clic en botón Excel detectado!"); 
-          handlers.handleExportExcel();
-      });
-      // --- FIN DEL CÓDIGO CORREGIDO ---
+    // --- AQUÍ ESTÁ EL CÓDIGO CORREGIDO Y EN SU SITIO ---
+    const excelButton = document.getElementById('export-excel-btn');
+
+    // Chivato 1: Comprobar que el botón existe al cargar la página
+    console.log("Buscando botón de Excel:", excelButton);
+
+    excelButton?.addEventListener('click', () => {
+      // Chivato 2: Comprobar que el clic funciona
+      console.log("¡Clic en botón Excel detectado!");
+      handlers.handleExportExcel();
+    });
+    // --- FIN DEL CÓDIGO CORREGIDO ---
   }
-  
+
   if (ui.page === 'alumnos') {
     document.getElementById('sort-all-asc-btn')?.addEventListener('click', () => handlers.handleSortAllStudents('asc'));
     document.getElementById('sort-all-desc-btn')?.addEventListener('click', () => handlers.handleSortAllStudents('desc'));
@@ -596,59 +596,59 @@ function attachEventListeners() {
         const modalContainer = document.getElementById('modal-container'); // Usamos un contenedor genérico
         console.log('[LOG] Buscando #modal-container...', modalContainer ? '¡Encontrado!' : '¡NO ENCONTRADO!');
         if (modalContainer) {
-            console.log('[LOG] Renderizando modal de diversidad...');
-            modalContainer.innerHTML = pages.renderDiversityTagsModal(studentId, studentName, currentTags);
+          console.log('[LOG] Renderizando modal de diversidad...');
+          modalContainer.innerHTML = pages.renderDiversityTagsModal(studentId, studentName, currentTags);
 
-            // --- INICIO DE LA CORRECCIÓN ---
-            // Los listeners deben añadirse DESPUÉS de que el HTML del modal exista.
-            const modalElement = document.getElementById('diversity-tags-modal');
-            if (!modalElement) return;
+          // --- INICIO DE LA CORRECCIÓN ---
+          // Los listeners deben añadirse DESPUÉS de que el HTML del modal exista.
+          const modalElement = document.getElementById('diversity-tags-modal');
+          if (!modalElement) return;
 
-            const saveBtn = modalElement.querySelector('#save-diversity-tags-btn');
-            const cancelBtn = modalElement.querySelector('#cancel-diversity-tags-btn');
-            const addTagBtn = modalElement.querySelector('#add-diversity-tag-btn');
-            const addTagInput = modalElement.querySelector('#add-diversity-tag-input');
-            const tagsContainer = modalElement.querySelector('#diversity-tags-container');
+          const saveBtn = modalElement.querySelector('#save-diversity-tags-btn');
+          const cancelBtn = modalElement.querySelector('#cancel-diversity-tags-btn');
+          const addTagBtn = modalElement.querySelector('#add-diversity-tag-btn');
+          const addTagInput = modalElement.querySelector('#add-diversity-tag-input');
+          const tagsContainer = modalElement.querySelector('#diversity-tags-container');
 
-            const closeModal = () => modalContainer.innerHTML = '';
+          const closeModal = () => modalContainer.innerHTML = '';
 
-            const addTag = () => {
-                const tagText = addTagInput.value.trim();
-                if (tagText) {
-                    const newTagPill = document.createElement('span');
-                    newTagPill.className = 'diversity-tag-pill flex items-center gap-2 bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-100 text-sm font-medium px-2.5 py-0.5 rounded-full';
-                    newTagPill.innerHTML = `
+          const addTag = () => {
+            const tagText = addTagInput.value.trim();
+            if (tagText) {
+              const newTagPill = document.createElement('span');
+              newTagPill.className = 'diversity-tag-pill flex items-center gap-2 bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-100 text-sm font-medium px-2.5 py-0.5 rounded-full';
+              newTagPill.innerHTML = `
                         <span class="tag-text">${tagText}</span>
                         <button type="button" class="delete-tag-btn text-purple-600 dark:text-purple-200 hover:text-purple-800 dark:hover:text-purple-50" title="Eliminar etiqueta">&times;</button>
                     `;
-                    tagsContainer.appendChild(newTagPill);
-                    addTagInput.value = '';
-                }
-                addTagInput.focus();
-            };
+              tagsContainer.appendChild(newTagPill);
+              addTagInput.value = '';
+            }
+            addTagInput.focus();
+          };
 
-            addTagBtn.addEventListener('click', addTag);
-            addTagInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addTag();
-                }
-            });
+          addTagBtn.addEventListener('click', addTag);
+          addTagInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addTag();
+            }
+          });
 
-            tagsContainer.addEventListener('click', (e) => {
-                if (e.target.classList.contains('delete-tag-btn')) {
-                    e.target.closest('.diversity-tag-pill').remove();
-                }
-            });
+          tagsContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-tag-btn')) {
+              e.target.closest('.diversity-tag-pill').remove();
+            }
+          });
 
-            saveBtn.addEventListener('click', () => {
-                const finalTags = Array.from(tagsContainer.querySelectorAll('.tag-text')).map(span => span.textContent);
-                handlers.handleSaveDiversityTags(studentId, finalTags.join(', '));
-                closeModal();
-            });
+          saveBtn.addEventListener('click', () => {
+            const finalTags = Array.from(tagsContainer.querySelectorAll('.tag-text')).map(span => span.textContent);
+            handlers.handleSaveDiversityTags(studentId, finalTags.join(', '));
+            closeModal();
+          });
 
-            cancelBtn.addEventListener('click', closeModal);
-            // --- FIN DE LA CORRECCIÓN ---
+          cancelBtn.addEventListener('click', closeModal);
+          // --- FIN DE LA CORRECCIÓN ---
         }
       });
     });
@@ -699,7 +699,7 @@ function attachEventListeners() {
         const contentDiv = document.getElementById(contentId);
         const studentId = button.dataset.studentId;
         const moduleId = button.dataset.moduleId;
-        
+
         const isOpen = !contentDiv.classList.contains('hidden');
 
         if (isOpen) {
@@ -774,7 +774,7 @@ function attachEventListeners() {
       console.log("Forzando cambio a vista 'tabla' por seguridad.");
       handlers.handleSetModuleView('tabla');
     }
-    
+
     // Listeners para el selector de vistas del módulo
     document.getElementById('view-tabla-btn')?.addEventListener('click', () => {
       handlers.handleSetModuleView('tabla');
@@ -784,7 +784,7 @@ function attachEventListeners() {
     });
     // Listener para la nueva vista de Índice de Contenidos
     document.getElementById('view-progress-btn')?.addEventListener('click', () => {
-        handlers.handleSetModuleView('indice');
+      handlers.handleSetModuleView('indice');
     });
     document.getElementById('view-distribution-btn')?.addEventListener('click', () => {
       handlers.handleSetModuleView('distribucion');
@@ -848,6 +848,11 @@ function attachEventListeners() {
     document.getElementById('download-student-template-btn')?.addEventListener('click', handlers.handleDownloadStudentTemplate);
     document.getElementById('sort-asc-btn')?.addEventListener('click', (e) => handlers.handleSortStudents(e.currentTarget.dataset.moduleId, 'asc'));
     document.getElementById('sort-desc-btn')?.addEventListener('click', (e) => handlers.handleSortStudents(e.currentTarget.dataset.moduleId, 'desc'));
+
+    document.getElementById('copy-student-names-btn')?.addEventListener('click', (e) => {
+      handlers.handleCopyStudentNames(e.currentTarget.dataset.moduleId);
+    });
+
 
     // Formulario para crear actividad
     const actividadForm = document.getElementById('actividad-form');
@@ -928,9 +933,9 @@ function attachEventListeners() {
 
     // --- INICIO: CORRECCIÓN AUTOCOMPLETADO DE PESO (BOTONES) ---
     document.getElementById('act-type-btn-group')?.addEventListener('change', (e) => {
-        if (e.target.name === 'type' && e.target.value) {
-            document.getElementById('act-peso').value = e.target.value;
-        }
+      if (e.target.name === 'type' && e.target.value) {
+        document.getElementById('act-peso').value = e.target.value;
+      }
     });
 
     // --- INICIO: CORRECCIÓN AUTOCOMPLETADO DE PESO DE ACTIVIDAD ---
@@ -987,7 +992,7 @@ function attachEventListeners() {
       const selectedModule = state.getDB().modules.find(m => m.id === state.getUI().selectedModuleId);
       const moduleStudents = (selectedModule.studentIds || []).map(id => state.getDB().students.find(s => s.id === id)).filter(Boolean);
       modalContainer.innerHTML = `<div id="trimester-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-11/12 md:w-1/2 p-6">${pages.renderTrimesterModalContent(selectedModule, moduleStudents)}</div></div>`;
-      
+
       document.getElementById('close-trimester-modal-btn').addEventListener('click', () => {
         modalContainer.innerHTML = '';
       });
@@ -1113,7 +1118,7 @@ function attachEventListeners() {
           modalContainer.innerHTML = pages.renderCeListModal(module, raId);
 
           const closeModal = () => modalContainer.innerHTML = '';
-          
+
           modalContainer.querySelector('#close-ce-list-modal-btn').addEventListener('click', closeModal);
           modalContainer.querySelector('#close-ce-list-modal-btn-footer').addEventListener('click', closeModal);
 
@@ -1128,39 +1133,39 @@ function attachEventListeners() {
     });
 
     if (ui.moduleView === 'alumno') {
-        document.getElementById('prev-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('prev'));
-        document.getElementById('next-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('next'));
+      document.getElementById('prev-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('prev'));
+      document.getElementById('next-student-btn')?.addEventListener('click', () => handlers.handleNavigateStudent('next'));
 
-        // --- INICIO: Lógica del Selector de Alumno ---
-        const toggleBtn = document.getElementById('student-selector-toggle');
-        const dropdown = document.getElementById('student-selector-dropdown');
-        const searchInput = document.getElementById('student-search-input');
-        const studentList = document.getElementById('student-selector-list');
+      // --- INICIO: Lógica del Selector de Alumno ---
+      const toggleBtn = document.getElementById('student-selector-toggle');
+      const dropdown = document.getElementById('student-selector-dropdown');
+      const searchInput = document.getElementById('student-search-input');
+      const studentList = document.getElementById('student-selector-list');
 
-        toggleBtn?.addEventListener('click', () => {
-          dropdown.classList.toggle('hidden');
-          if (!dropdown.classList.contains('hidden')) {
-            searchInput.focus();
-          }
+      toggleBtn?.addEventListener('click', () => {
+        dropdown.classList.toggle('hidden');
+        if (!dropdown.classList.contains('hidden')) {
+          searchInput.focus();
+        }
+      });
+
+      searchInput?.addEventListener('input', (e) => {
+        const filter = e.target.value.toLowerCase();
+        studentList.querySelectorAll('li').forEach(li => {
+          const name = li.textContent.toLowerCase();
+          li.style.display = name.includes(filter) ? '' : 'none';
         });
+      });
 
-        searchInput?.addEventListener('input', (e) => {
-          const filter = e.target.value.toLowerCase();
-          studentList.querySelectorAll('li').forEach(li => {
-            const name = li.textContent.toLowerCase();
-            li.style.display = name.includes(filter) ? '' : 'none';
-          });
-        });
-
-        studentList?.addEventListener('click', (e) => {
-          if (e.target.tagName === 'LI') {
-            const studentId = e.target.dataset.studentId;
-            state.setSelectedStudentIdForView(studentId);
-            dropdown.classList.add('hidden');
-            renderApp();
-          }
-        });
-        // --- FIN: Lógica del Selector de Alumno ---
+      studentList?.addEventListener('click', (e) => {
+        if (e.target.tagName === 'LI') {
+          const studentId = e.target.dataset.studentId;
+          state.setSelectedStudentIdForView(studentId);
+          dropdown.classList.add('hidden');
+          renderApp();
+        }
+      });
+      // --- FIN: Lógica del Selector de Alumno ---
 
     }
 
@@ -1192,20 +1197,20 @@ function attachEventListeners() {
     }
 
     document.querySelectorAll('.ra-accordion-toggle').forEach(button => {
-        button.addEventListener('click', () => {
-            const content = document.getElementById(button.dataset.contentId);
-            content?.classList.toggle('hidden');
-            button.querySelector('.chevron-icon')?.classList.toggle('rotate-90');
-        });
+      button.addEventListener('click', () => {
+        const content = document.getElementById(button.dataset.contentId);
+        content?.classList.toggle('hidden');
+        button.querySelector('.chevron-icon')?.classList.toggle('rotate-90');
+      });
     });
-    
+
     // Listener para los checkboxes de Dual
     document.querySelectorAll('.toggle-dual-btn').forEach(button => { // Ahora es un botón
-        button.addEventListener('click', (e) => {
-            const moduleId = ui.selectedModuleId; // El módulo activo
-            const ceId = e.currentTarget.dataset.ceId;
-            handlers.handleToggleCeDual(moduleId, ceId);
-        });
+      button.addEventListener('click', (e) => {
+        const moduleId = ui.selectedModuleId; // El módulo activo
+        const ceId = e.currentTarget.dataset.ceId;
+        handlers.handleToggleCeDual(moduleId, ceId);
+      });
     });
 
     // Listener para el formulario de configuración de aptitud
@@ -1282,11 +1287,11 @@ function attachEventListeners() {
       copyBtn.addEventListener('click', (ev) => {
         const button = ev.currentTarget;
         const textToCopy = decodeURIComponent(button.dataset.copyText);
-        
+
         navigator.clipboard.writeText(textToCopy).then(() => {
           const originalText = button.querySelector('.btn-text').textContent;
           const originalIcon = button.querySelector('.btn-icon').innerHTML;
-          
+
           button.querySelector('.btn-text').textContent = '¡Copiado!';
           button.querySelector('.btn-icon').innerHTML = '✔️';
           button.classList.replace('bg-indigo-600', 'bg-green-600');
@@ -1352,7 +1357,7 @@ function attachSearchEventListeners() {
   nextBtn?.addEventListener('click', () => handlers.handleNavigateSearchResults('next'));
 
   searchInput?.addEventListener('input', (e) => handlers.handleSearch(e.target.value));
-  
+
   // Navegar con Enter y Shift+Enter sin perder el foco
   searchInput?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {

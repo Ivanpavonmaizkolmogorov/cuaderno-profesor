@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, nativeImage } = require('electron');
 const path = require('path');
 const http = require('http');
 const url = require('url');
@@ -18,6 +18,13 @@ const oAuth2Client = new OAuth2Client({ // <-- Se añade la llave de apertura
 let mainWindow; // Hacemos la ventana principal accesible globalmente
 
 function createWindow() {
+  // Configurar el icono en el Dock para macOS (especialmente en desarrollo)
+  if (process.platform === 'darwin') {
+    const iconPath = path.join(__dirname, 'build/icon.png');
+    const image = nativeImage.createFromPath(iconPath);
+    app.dock.setIcon(image);
+  }
+
   // Crea la ventana del navegador.
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -44,14 +51,14 @@ app.whenReady().then(() => {
         scope: 'https://www.googleapis.com/auth/drive.file',
         prompt: 'consent' // Pide consentimiento siempre para obtener un refresh_token
       });
-      
+
       // Crear un servidor local para escuchar el callback
       let authWindow;
       server = http.createServer(async (req, res) => {
         try {
           // Extraer el código de la URL de redirección
           const code = url.parse(req.url, true).query.code;
-          
+
           // Enviar una respuesta al navegador para que el usuario sepa que puede cerrarlo
           res.end('<h1>Autenticación exitosa. Puedes cerrar esta pestaña.</h1>');
 

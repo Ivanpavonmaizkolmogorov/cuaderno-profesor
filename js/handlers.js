@@ -6,38 +6,38 @@ import { calculateModuleGrades } from './services/calculations.js';
 import { generateStudentReport, generateCombinedReport, generateCombinedRecoveryReport } from './services/pdfGenerator.js';
 import { prepareModuleForProgressTracking, deleteTemarioPoint, deleteTemarioUnit } from './utils.js';
 import { renderImportTemarioModal } from './progressView.js';
-import { renderApp } from './main.js';import * as pages from './ui/pages.js';
+import { renderApp } from './main.js'; import * as pages from './ui/pages.js';
 import { mergeTemario } from './services/dataImporter.js'; // Import the new mergeTemario function
 import { renderRecoveryValidationModal } from './ui/pages.js';
 import { exportToExcel } from './services/excelGenerator.js'; // <-- AÑADE ESTA LÍNEA
 
 
 export async function handleConnect() {
-    const fileName = await state.connectToFile();
-    if (fileName) {
-        alert(`Conectado a ${fileName}. Los cambios se guardarán automáticamente.`);
-        renderApp();
-    }
+  const fileName = await state.connectToFile();
+  if (fileName) {
+    alert(`Conectado a ${fileName}. Los cambios se guardarán automáticamente.`);
+    renderApp();
+  }
 }
 
 export function handleDisconnect() {
-    state.disconnectFile();
-    alert("Desconectado del archivo. Los cambios ya no se guardarán.");
-    renderApp();
+  state.disconnectFile();
+  alert("Desconectado del archivo. Los cambios ya no se guardarán.");
+  renderApp();
 }
 
 export function handleDisconnectDrive() {
-    state.disconnectDrive();
-    alert("Desconectado de Google Drive.");
-    renderApp();
+  state.disconnectDrive();
+  alert("Desconectado de Google Drive.");
+  renderApp();
 }
 
 export async function handleSaveAs() {
-    const fileName = await state.saveAsAndConnect();
-    if (fileName) {
-        alert(`Archivo "${fileName}" creado y conectado. Los cambios se guardarán automáticamente aquí.`);
-        renderApp();
-    }
+  const fileName = await state.saveAsAndConnect();
+  if (fileName) {
+    alert(`Archivo "${fileName}" creado y conectado. Los cambios se guardarán automáticamente aquí.`);
+    renderApp();
+  }
 }
 
 export function handleDownloadModuleTemplate() {
@@ -49,16 +49,16 @@ export function handleDownloadModuleTemplate() {
         "ra_id": "RA1",
         "ra_descripcion": "Descripción del Resultado de Aprendizaje 1.",
         "criterios_de_evaluacion": [
-          { 
-            "ce_id": "RA1-a", 
-            "ce_descripcion": "Descripción del Criterio de Evaluación 'a' del RA1.", 
+          {
+            "ce_id": "RA1-a",
+            "ce_descripcion": "Descripción del Criterio de Evaluación 'a' del RA1.",
             "peso": 50,
             "ud_ref": "Referencia a la Unidad Didáctica (opcional)",
             "dual": false
           },
-          { 
-            "ce_id": "RA1-b", 
-            "ce_descripcion": "Descripción del Criterio de Evaluación 'b' del RA1.", 
+          {
+            "ce_id": "RA1-b",
+            "ce_descripcion": "Descripción del Criterio de Evaluación 'b' del RA1.",
             "peso": 50,
             "ud_ref": "UD2",
             "dual": true
@@ -69,9 +69,9 @@ export function handleDownloadModuleTemplate() {
         "ra_id": "RA2",
         "ra_descripcion": "Descripción del Resultado de Aprendizaje 2.",
         "criterios_de_evaluacion": [
-          { 
-            "ce_id": "RA2-a", 
-            "ce_descripcion": "Descripción del Criterio de Evaluación 'a' del RA2.", 
+          {
+            "ce_id": "RA2-a",
+            "ce_descripcion": "Descripción del Criterio de Evaluación 'a' del RA2.",
             "peso": 100,
             "ud_ref": "UD3",
             "dual": false
@@ -375,20 +375,20 @@ export function handleFilterStudentsByModule(moduleId) {
 }
 
 export function handleSetModuleView(newView) {
-    state.setModuleView(newView);
-    const db = state.getDB();
-    const selectedModule = db.modules.find(m => m.id === state.getUI().selectedModuleId);
-    const students = (selectedModule?.studentIds || [])
-        .map(id => db.students.find(s => s.id === id))
-        .filter(Boolean);
-    // Si cambiamos a la vista 'alumno' y no hay un alumno/a seleccionado, o el seleccionado ya no existe en la lista,
-    // seleccionamos el primero de la lista actual.
-    const currentSelectedId = state.getUI().selectedStudentIdForView;
-    const isCurrentStudentInList = students.some(s => s.id === currentSelectedId);
-    if (newView === 'alumno' && (!currentSelectedId || !isCurrentStudentInList) && students.length > 0) {
-        state.setSelectedStudentIdForView(students[0].id);
-    }
-    renderApp(); // <-- RESTAURADO: Es necesario para que la UI reaccione al cambio de estado.
+  state.setModuleView(newView);
+  const db = state.getDB();
+  const selectedModule = db.modules.find(m => m.id === state.getUI().selectedModuleId);
+  const students = (selectedModule?.studentIds || [])
+    .map(id => db.students.find(s => s.id === id))
+    .filter(Boolean);
+  // Si cambiamos a la vista 'alumno' y no hay un alumno/a seleccionado, o el seleccionado ya no existe en la lista,
+  // seleccionamos el primero de la lista actual.
+  const currentSelectedId = state.getUI().selectedStudentIdForView;
+  const isCurrentStudentInList = students.some(s => s.id === currentSelectedId);
+  if (newView === 'alumno' && (!currentSelectedId || !isCurrentStudentInList) && students.length > 0) {
+    state.setSelectedStudentIdForView(students[0].id);
+  }
+  renderApp(); // <-- RESTAURADO: Es necesario para que la UI reaccione al cambio de estado.
 }
 
 export function handleViewRaDetails(raId) {
@@ -400,26 +400,26 @@ export function handleViewRaDetails(raId) {
 
 
 export function handleNavigateStudent(direction) {
-    const db = state.getDB();
-    const selectedModule = db.modules.find(m => m.id === state.getUI().selectedModuleId);
-    const moduleStudents = (selectedModule?.studentIds || [])
-        .map(id => db.students.find(s => s.id === id))
-        .filter(Boolean);
-    if (!moduleStudents || moduleStudents.length === 0) return;
-    
-    const currentIndex = moduleStudents.findIndex(s => s.id === state.getUI().selectedStudentIdForView);
-    if (currentIndex === -1) {
-        state.setSelectedStudentIdForView(students[0].id);
-        renderApp();
-        return;
-    }
+  const db = state.getDB();
+  const selectedModule = db.modules.find(m => m.id === state.getUI().selectedModuleId);
+  const moduleStudents = (selectedModule?.studentIds || [])
+    .map(id => db.students.find(s => s.id === id))
+    .filter(Boolean);
+  if (!moduleStudents || moduleStudents.length === 0) return;
 
-    let nextIndex = direction === 'prev' ? currentIndex - 1 : currentIndex + 1;
-    
-    if (nextIndex >= 0 && nextIndex < moduleStudents.length) {
-        state.setSelectedStudentIdForView(moduleStudents[nextIndex].id);
-        renderApp();
-    }
+  const currentIndex = moduleStudents.findIndex(s => s.id === state.getUI().selectedStudentIdForView);
+  if (currentIndex === -1) {
+    state.setSelectedStudentIdForView(students[0].id);
+    renderApp();
+    return;
+  }
+
+  let nextIndex = direction === 'prev' ? currentIndex - 1 : currentIndex + 1;
+
+  if (nextIndex >= 0 && nextIndex < moduleStudents.length) {
+    state.setSelectedStudentIdForView(moduleStudents[nextIndex].id);
+    renderApp();
+  }
 }
 
 export function handleSortStudents(moduleId, direction = 'asc') {
@@ -433,7 +433,7 @@ export function handleSortStudents(moduleId, direction = 'asc') {
   const sortByName = (idA, idB) => {
     const nameA = studentNameMap.get(idA) || '';
     const nameB = studentNameMap.get(idB) || '';
-    
+
     const getNameParts = (fullName) => {
       if (fullName.includes(',')) {
         const parts = fullName.split(',');
@@ -615,17 +615,17 @@ export function handleImportStudentsToModule(text, moduleId) {
     const studentIdsToAssociate = db.students
       .filter(s => importedStudentNames.has(s.name.toLowerCase()))
       .map(s => s.id);
-    
+
     // Unir los alumnos existentes con los nuevos, eliminando duplicados
     const existingStudentIds = module.studentIds || [];
-    module.studentIds = Array.from(new Set([...existingStudentIds, ...studentIdsToAssociate])); 
+    module.studentIds = Array.from(new Set([...existingStudentIds, ...studentIdsToAssociate]));
 
     state.setDB(db);
 
     // Advertir al usuario si se importaron nombres sin coma
     const studentsWithoutComma = newStudents.filter(s => !s.name.includes(','));
     if (studentsWithoutComma.length > 0) {
-        alert(`¡Atención! Se han importado alumnos sin usar el formato "Apellidos, Nombre".\n\nPara un ordenamiento alfabético preciso por apellido, se recomienda usar el formato "Apellidos, Nombre" (ej: "Pérez Padillo, Marta").\n\nSi ya has usado este formato, ignora este mensaje.`);
+      alert(`¡Atención! Se han importado alumnos sin usar el formato "Apellidos, Nombre".\n\nPara un ordenamiento alfabético preciso por apellido, se recomienda usar el formato "Apellidos, Nombre" (ej: "Pérez Padillo, Marta").\n\nSi ya has usado este formato, ignora este mensaje.`);
     }
 
     state.saveDB();
@@ -1072,38 +1072,38 @@ export function handleExportData() {
 }
 
 export function handleGradeChange(studentId, ceId, value) {
-    let numericValue = parseFloat(value);
-    
-    if (value === '' || isNaN(numericValue)) {
-        numericValue = null;
-    } else {
-        numericValue = Math.max(0, Math.min(10, parseFloat(numericValue.toFixed(2))));
-    }
+  let numericValue = parseFloat(value);
 
-    const db = state.getDB();
-    if (!db.grades[studentId]) {
-        db.grades[studentId] = {};
+  if (value === '' || isNaN(numericValue)) {
+    numericValue = null;
+  } else {
+    numericValue = Math.max(0, Math.min(10, parseFloat(numericValue.toFixed(2))));
+  }
+
+  const db = state.getDB();
+  if (!db.grades[studentId]) {
+    db.grades[studentId] = {};
+  }
+
+  if (db.grades[studentId][ceId] !== numericValue) {
+    if (numericValue === null) {
+      delete db.grades[studentId][ceId];
+    } else {
+      db.grades[studentId][ceId] = numericValue;
     }
-    
-    if (db.grades[studentId][ceId] !== numericValue) {
-        if (numericValue === null) {
-            delete db.grades[studentId][ceId];
-        } else {
-            db.grades[studentId][ceId] = numericValue;
-        }
-        state.setDB(db);
-        state.saveDB();
-        
-        const selectedModule = db.modules.find(m => m.id === state.getUI().selectedModuleId);
-        if (selectedModule) {
-            const moduleStudents = (selectedModule.studentIds || [])
-                .map(studentId => db.students.find(s => s.id === studentId))
-                .filter(Boolean);
-            const newCalculatedGrades = calculateModuleGrades(selectedModule, moduleStudents, db.grades);
-            state.setCalculatedGrades(newCalculatedGrades);
-        }
-        renderApp();
+    state.setDB(db);
+    state.saveDB();
+
+    const selectedModule = db.modules.find(m => m.id === state.getUI().selectedModuleId);
+    if (selectedModule) {
+      const moduleStudents = (selectedModule.studentIds || [])
+        .map(studentId => db.students.find(s => s.id === studentId))
+        .filter(Boolean);
+      const newCalculatedGrades = calculateModuleGrades(selectedModule, moduleStudents, db.grades);
+      state.setCalculatedGrades(newCalculatedGrades);
     }
+    renderApp();
+  }
 }
 
 export function handleAddComment(moduleId, studentId, form) {
@@ -1123,7 +1123,7 @@ export function handleAddComment(moduleId, studentId, form) {
   if (!db.comments[moduleId][studentId]) {
     db.comments[moduleId][studentId] = [];
   }
-  
+
   const newComment = {
     id: crypto.randomUUID(),
     text,
@@ -1351,7 +1351,7 @@ export function handleDeleteActividadGradeAttempt(studentId, actividadId, attemp
 
 export function handleExportExcel() {
   console.log("--- handleExportExcel INICIADO ---"); // Chivato 3
-  
+
   try {
     const db = state.getDB();
     console.log("Base de datos obtenida:", db); // Chivato 4
@@ -1364,7 +1364,7 @@ export function handleExportExcel() {
 
     console.log("Datos suficientes. Llamando a exportToExcel..."); // Chivato 5
     exportToExcel(db); // Esta es la función del otro archivo
-  
+
   } catch (error) {
     console.error("Error CATASTRÓFICO al generar el Excel:", error); // Chivato 6
     alert(`Se produjo un error al generar el Excel: ${error.message}`);
@@ -1762,7 +1762,7 @@ export function handleSearch(query) {
     if (matches) {
       const parent = node.parentNode;
       const parts = node.textContent.split(regex);
-      
+
       for (let i = 0; i < parts.length - 1; i++) {
         parent.insertBefore(document.createTextNode(parts[i]), node);
         const mark = document.createElement('mark');
@@ -1778,7 +1778,7 @@ export function handleSearch(query) {
 
   state.setSearchProperty('results', results);
   state.setSearchProperty('currentIndex', results.length > 0 ? 0 : -1);
-  
+
   if (results.length > 0) {
     results[0].classList.add('active-highlight');
     results[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1816,3 +1816,36 @@ function clearSearchHighlights() {
   document.normalize(); // Fusiona nodos de texto adyacentes
 }
 // --- FIN: MANEJADORES PARA LA BÚSQUEDA EN PÁGINA ---
+
+export function handleCopyStudentNames(moduleId) {
+  const db = state.getDB();
+  const module = db.modules.find(m => m.id === moduleId);
+  if (!module || !module.studentIds || module.studentIds.length === 0) {
+    alert("No hay alumnos en este módulo para copiar.");
+    return;
+  }
+
+  const students = module.studentIds
+    .map(id => db.students.find(s => s.id === id))
+    .filter(Boolean);
+
+  const names = students.map(s => s.name).join('\n');
+
+  navigator.clipboard.writeText(names).then(() => {
+    const btn = document.getElementById('copy-student-names-btn');
+    if (btn) {
+      const copyText = btn.querySelector('.copy-text');
+      const copyIcon = btn.querySelector('.copy-icon');
+      if (copyText) copyText.classList.remove('hidden');
+      if (copyIcon) copyIcon.classList.add('hidden');
+
+      setTimeout(() => {
+        if (copyText) copyText.classList.add('hidden');
+        if (copyIcon) copyIcon.classList.remove('hidden');
+      }, 2000);
+    }
+  }).catch(err => {
+    console.error('Error al copiar al portapapeles: ', err);
+    alert('Error al copiar los nombres.');
+  });
+}

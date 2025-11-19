@@ -7,3 +7,4 @@ js/credentials.js
 *.env.local
 # Credenciales de Electron - ¡NO SUBIR!
 electron-credentials.js
+dist/

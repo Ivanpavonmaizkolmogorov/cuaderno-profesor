@@ -675,6 +675,10 @@ Marta Pérez Padillo`;
             <div class="flex gap-2">
               <button id="sort-asc-btn" data-module-id="${module.id}" class="p-1 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar A-Z">${ICONS.ArrowDownAZ}</button>
               <button id="sort-desc-btn" data-module-id="${module.id}" class="p-1 text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Ordenar Z-A">${ICONS.ArrowUpAZ}</button>
+              <button id="copy-student-names-btn" data-module-id="${module.id}" class="p-1 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center gap-1" title="Copiar nombres de alumnos al portapapeles">
+                <span class="copy-icon">${ICONS.ClipboardList}</span>
+                <span class="copy-text hidden text-xs text-green-500">Copiado!</span>
+              </button>
             </div>
           </div>
           <div class="max-h-60 overflow-y-auto pr-2">
@@ -831,7 +835,7 @@ function renderModuloDetalle(module, moduleStudents) {
   const { db } = { db: getDB() };
   const uiState = getUI();
   let moduleView = uiState.moduleView || 'tabla'; // Asegurarse de que siempre haya una vista
-  console.log(`[LOG][renderModuloDetalle] Renderizando detalle del módulo '${module.modulo}' con vista: ${moduleView}`);
+  console.log(`[DEBUG][renderModuloDetalle] Renderizando detalle del módulo '${module.modulo}' con vista: ${moduleView}`);
 
   // Lógica de seguridad: si estamos en vista 'alumno' pero no hay alumnos o ninguno está seleccionado,
   // forzamos el cambio a la vista 'tabla' para evitar errores.
@@ -1681,7 +1685,7 @@ export function renderActividadesManagement(module) {
                     <div class="pl-6 mt-1 space-y-1">
                       ${cesByUd[ud].map(ce => {
                         // LOG: Añadimos logs para depurar el estado de cada CE
-                        console.log(`[LOG][Color CE] Procesando CE: ${ce.ce_id}, es Dual: ${ce.dual}, está en usedCeIds: ${usedCeIds.has(ce.ce_id)}`);
+                        console.log(`[DEBUG][Color CE] Procesando CE: ${ce.ce_id}, es Dual: ${ce.dual}, está en usedCeIds: ${usedCeIds.has(ce.ce_id)}`);
 
                         const isEvaluated = usedCeIds.has(ce.ce_id);
                         const isDual = ce.dual === true; // CORRECCIÓN: Aseguramos que la comprobación sea estrictamente booleana.
