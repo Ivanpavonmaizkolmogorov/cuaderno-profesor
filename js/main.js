@@ -792,6 +792,9 @@ function attachEventListeners() {
     document.getElementById('view-config-ces-btn')?.addEventListener('click', () => {
       handlers.handleSetModuleView('config-ces');
     });
+    document.getElementById('view-aptitud-btn')?.addEventListener('click', () => {
+      handlers.handleSetModuleView('aptitud');
+    });
 
     // Listener para los botones de toggle de propiedades de CE (Dual/Consulta)
     document.querySelectorAll('.toggle-ce-property-btn').forEach(button => {

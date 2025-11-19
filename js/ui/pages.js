@@ -859,6 +859,7 @@ function renderModuloDetalle(module, moduleStudents) {
     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
   const classDistribucion = `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'distribucion' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
   const classConfigCes = `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'config-ces' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
+  const classAptitud = `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'aptitud' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
 
   let contentHtml = '';
   if (moduleView === 'indice') {
@@ -870,6 +871,9 @@ function renderModuloDetalle(module, moduleStudents) {
   } else if (moduleView === 'config-ces') {
     console.log('[LOG][renderModuloDetalle] La vista es "config-ces", llamando a renderCeConfigView.');
     contentHtml = renderCeConfigView(module);
+  } else if (moduleView === 'aptitud') {
+    console.log('[LOG][renderModuloDetalle] La vista es "aptitud", llamando a renderAptitudSummaryView.');
+    contentHtml = renderAptitudSummaryView(module, moduleStudents);
   } else if (moduleStudents.length > 0) {
     // La vista por defecto (y única para calificar) es ahora la de alumno.
     contentHtml = renderAlumnoView(module, moduleStudents);
@@ -898,6 +902,9 @@ function renderModuloDetalle(module, moduleStudents) {
         </button>
         <button id="view-config-ces-btn" class="${classConfigCes}" title="Configuración CEs">
           ${ICONS.Settings} Config. CEs
+        </button>
+        <button id="view-aptitud-btn" class="${classAptitud}" ${moduleStudents.length === 0 ? 'disabled' : ''} title="Resumen de Aptitud">
+          ${ICONS.TrendingUp} Aptitud
         </button>
       </div>
 
@@ -2423,6 +2430,146 @@ export function renderCeConfigView(module) {
             </div>
           `;
   }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Renderiza una vista de resumen de aptitud mostrando los ajustes por positivos/negativos
+ * @param {Object} module - El módulo actual
+ * @param {Array} moduleStudents - Lista de estudiantes del módulo
+ * @returns {string} HTML de la vista
+ */
+function renderAptitudSummaryView(module, moduleStudents) {
+  const { db } = { db: getDB() };
+  const aptitudes = db.aptitudes || {};
+  const moduleAptitudes = aptitudes[module.id] || {};
+
+  const defaultBasePositiva = module.aptitudBasePositiva ?? 1.1;
+  const defaultBaseNegativa = module.aptitudBaseNegativa ?? 1.1;
+
+  // Función auxiliar para calcular ajustes
+  const calculateAdjustments = (studentId, trimester) => {
+    const studentAptitudes = moduleAptitudes[studentId];
+    if (!studentAptitudes) {
+      return { positiveAdj: 0, negativeAdj: 0, positiveCount: 0, negativeCount: 0 };
+    }
+
+    const trimesterKey = `T${trimester}`;
+    const trimesterAptitudes = studentAptitudes[trimesterKey];
+    if (!trimesterAptitudes) {
+      return { positiveAdj: 0, negativeAdj: 0, positiveCount: 0, negativeCount: 0 };
+    }
+
+    const positiveAdj = (trimesterAptitudes.positives || []).reduce((sum, entry) => {
+      return sum + (Math.pow(entry.baseValue || defaultBasePositiva, 1) - 1);
+    }, 0);
+
+    const negativeAdj = (trimesterAptitudes.negatives || []).reduce((sum, entry) => {
+      return sum + (Math.pow(entry.baseValue || defaultBaseNegativa, 1) - 1);
+    }, 0);
+
+    return {
+      positiveAdj,
+      negativeAdj,
+      positiveCount: (trimesterAptitudes.positives || []).length,
+      negativeCount: (trimesterAptitudes.negatives || []).length
+    };
+  };
+
+  return `
+    <div class="p-4">
+      <h3 class="text-2xl font-bold mb-4">Resumen de Aptitud - ${module.modulo}</h3>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+        Esta tabla muestra el ajuste (cantidad que suma o resta) por positivos y negativos para cada alumno/a y trimestre.
+      </p>
+
+      <div class="overflow-x-auto shadow-md rounded-lg">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-800">
+            <tr>
+              <th scope="col" class="sticky left-0 z-10 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider bg-gray-50 dark:bg-gray-800">
+                Alumno/a
+              </th>
+              ${[1, 2, 3].map(t => `
+                <th scope="col" class="px-4 py-3 text-center text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider bg-gray-100 dark:bg-gray-700">
+                  T${t}
+                </th>
+              `).join('')}
+              <th scope="col" class="px-4 py-3 text-center text-xs font-bold text-green-700 dark:text-green-300 uppercase tracking-wider bg-green-50 dark:bg-green-900">
+                Total
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+            ${moduleStudents.map(student => {
+    const t1 = calculateAdjustments(student.id, 1);
+    const t2 = calculateAdjustments(student.id, 2);
+    const t3 = calculateAdjustments(student.id, 3);
+    const total = {
+      positiveAdj: t1.positiveAdj + t2.positiveAdj + t3.positiveAdj,
+      negativeAdj: t1.negativeAdj + t2.negativeAdj + t3.negativeAdj,
+      positiveCount: t1.positiveCount + t2.positiveCount + t3.positiveCount,
+      negativeCount: t1.negativeCount + t2.negativeCount + t3.negativeCount
+    };
+
+    const renderCell = (data, trimester) => {
+      const netAdj = data.positiveAdj - data.negativeAdj;
+      const bgColor = netAdj > 0
+        ? 'bg-green-100 dark:bg-green-900/50'
+        : netAdj < 0
+          ? 'bg-red-100 dark:bg-red-900/50'
+          : 'bg-gray-100 dark:bg-gray-700';
+
+      return `
+                  <td class="px-4 py-4 text-center text-sm ${bgColor}">
+                    <div class="flex flex-col gap-1">
+                      ${data.positiveCount > 0 ? `
+                        <div class="flex items-center justify-center gap-1 text-green-600 dark:text-green-400">
+                          <span class="font-bold">+${data.positiveAdj.toFixed(2)}</span>
+                          <span class="text-xs">(${data.positiveCount})</span>
+                        </div>
+                      ` : '<div class="text-gray-400">-</div>'}
+                      ${data.negativeCount > 0 ? `
+                        <div class="flex items-center justify-center gap-1 text-red-600 dark:text-red-400">
+                          <span class="font-bold">-${data.negativeAdj.toFixed(2)}</span>
+                          <span class="text-xs">(${data.negativeCount})</span>
+                        </div>
+                      ` : ''}
+                      ${data.positiveCount > 0 || data.negativeCount > 0 ? `
+                        <div class="text-xs font-semibold border-t pt-1 mt-1 ${netAdj >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}">
+                          ${netAdj >= 0 ? '+' : ''}${netAdj.toFixed(2)}
+                        </div>
+                      ` : ''}
+                    </div>
+                  </td>
+                `;
+    };
+
+    return `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td class="sticky left-0 z-10 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    ${student.name}
+                  </td>
+                  ${renderCell(t1, 1)}
+                  ${renderCell(t2, 2)}
+                  ${renderCell(t3, 3)}
+                  ${renderCell(total, 'total')}
+                </tr>
+              `;
+  }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+        <h4 class="font-semibold mb-2 text-blue-900 dark:text-blue-300">Leyenda:</h4>
+        <ul class="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+          <li><span class="font-bold text-green-600">+X.XX (N)</span> = Ajuste positivo de X.XX puntos (N positivos)</li>
+          <li><span class="font-bold text-red-600">-X.XX (N)</span> = Ajuste negativo de X.XX puntos (N negativos)</li>
+          <li><span class="font-bold">Línea inferior</span> = Ajuste neto (positivos - negativos)</li>
+        </ul>
       </div>
     </div>
   `;
