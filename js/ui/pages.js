@@ -846,19 +846,19 @@ function renderModuloDetalle(module, moduleStudents) {
     console.warn(`[WARN] Forzando cambio a vista 'tabla' porque no hay alumno seleccionado o no existe en el módulo.`);
   }
 
-  const classTabla = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'tabla'
+  const classTabla = `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'tabla'
     ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
     }`;
-  const classAlumno = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'alumno'
+  const classAlumno = `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'alumno'
     ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
     }`;
-  const classIndice = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'indice'
+  const classIndice = `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'indice'
     ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow'
     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
-  const classDistribucion = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'distribucion' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
-  const classConfigCes = `flex items-center gap-2 w-full justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'config-ces' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
+  const classDistribucion = `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'distribucion' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
+  const classConfigCes = `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${moduleView === 'config-ces' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'}`;
 
   let contentHtml = '';
   if (moduleView === 'indice') {
@@ -887,19 +887,20 @@ function renderModuloDetalle(module, moduleStudents) {
       <hr class="my-8 border-gray-300 dark:border-gray-700">
       <!-- Selector de Vista -->
       <div class="mb-6 flex flex-wrap justify-center gap-2 p-2 bg-gray-200 dark:bg-gray-800 rounded-lg">
-        <button id="view-alumno-btn" class="${classAlumno}" ${moduleStudents.length === 0 ? 'disabled' : ''}>
-          ${ICONS.User} Vista Alumnos/as
+        <button id="view-alumno-btn" class="${classAlumno}" ${moduleStudents.length === 0 ? 'disabled' : ''} title="Vista Alumnos/as">
+          ${ICONS.User} Alumnos
         </button>
-        <button id="view-progress-btn" class="${classIndice}">
-          ${ICONS.ClipboardList} Índice Contenidos
+        <button id="view-progress-btn" class="${classIndice}" title="Índice Contenidos">
+          ${ICONS.ClipboardList} Índice
         </button>
-        <button id="view-distribution-btn" class="${classDistribucion}">
-          ${ICONS.PieChart} Distribución de Pesos
+        <button id="view-distribution-btn" class="${classDistribucion}" title="Distribución de Pesos">
+          ${ICONS.PieChart} Pesos
         </button>
-        <button id="view-config-ces-btn" class="${classConfigCes}">
-          ${ICONS.Settings} Configuración CEs
+        <button id="view-config-ces-btn" class="${classConfigCes}" title="Configuración CEs">
+          ${ICONS.Settings} Config. CEs
         </button>
       </div>
+
 
       <!-- Contenido de la vista -->
       <div id="module-detail-content">
@@ -1235,11 +1236,13 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
               ${student.name}
             </td>
             <!-- INICIO: CORRECCIÓN - Celdas de notas trimestrales con colores según aptitud -->
+            <!-- INICIO: CORRECCIÓN - Celdas de notas trimestrales con colores según aptitud -->
             ${[
         { grade: t1Grade, breakdown: t1Breakdown },
         { grade: t2Grade, breakdown: t2Breakdown },
         { grade: t3Grade, breakdown: t3Breakdown }
-      ].map(data => {
+      ].map((data, index) => {
+        const trimester = index + 1;
         let bgColor = 'bg-gray-100 dark:bg-gray-700';
         let title = '';
         if (data.breakdown) {
@@ -1250,7 +1253,33 @@ function renderCuadernoCalificaciones(module, moduleStudents) {
             bgColor = 'bg-red-100 dark:bg-red-900/50';
           }
         }
-        return `<td class="px-3 py-4 text-center text-sm font-semibold ${bgColor}" title="${title}">${data.grade?.toFixed(2) || '-'}</td>`;
+        return `
+          <td class="px-2 py-4 text-center text-sm font-semibold ${bgColor} group relative min-w-[100px]" title="${title}">
+            <div class="flex items-center justify-between w-full h-full gap-1">
+              <button 
+                class="add-aptitud-btn transition-opacity text-green-600 hover:text-green-800 hover:bg-green-100 dark:hover:bg-green-900 font-bold px-1 py-0.5 rounded text-xs" 
+                data-module-id="${module.id}" 
+                data-student-id="${student.id}" 
+                data-trimester="${trimester}" 
+                data-type="positives"
+                title="Añadir Positivo"
+              >
+                +
+              </button>
+              <span class="flex-1">${data.grade?.toFixed(2) || '-'}</span>
+              <button 
+                class="add-aptitud-btn transition-opacity text-red-600 hover:text-red-800 hover:bg-red-100 dark:hover:bg-red-900 font-bold px-1 py-0.5 rounded text-xs" 
+                data-module-id="${module.id}" 
+                data-student-id="${student.id}" 
+                data-trimester="${trimester}" 
+                data-type="negatives"
+                title="Añadir Negativo"
+              >
+                -
+              </button>
+            </div>
+          </td>
+        `;
       }).join('')}
             
             <!-- Celda para la nota final -->

@@ -1249,12 +1249,13 @@ function attachEventListeners() {
     }
 
     // Listeners para añadir/eliminar positivos/negativos
-    document.querySelectorAll('.add-aptitud-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const { moduleId, studentId, trimester, type } = e.currentTarget.dataset;
-        handlers.showAptitudEntryModal(moduleId, studentId, trimester, type);
-      });
-    });
+    // MOVIDO A DELEGACIÓN GLOBAL EN init()
+    // document.querySelectorAll('.add-aptitud-btn').forEach(btn => {
+    //   btn.addEventListener('click', (e) => {
+    //     const { moduleId, studentId, trimester, type } = e.currentTarget.dataset;
+    //     handlers.showAptitudEntryModal(moduleId, studentId, trimester, type);
+    //   });
+    // });
 
     // Listeners para eliminar entradas de aptitud
     document.querySelectorAll('.delete-aptitud-btn').forEach(btn => {
@@ -1426,7 +1427,19 @@ function init() {
 
   // Activa el botón de Google Drive y le dice qué hacer cuando se carga un JSON.
   // Usaremos la función handleConnect existente para procesar los datos.
+  setupGlobalEventListeners();
   renderApp();
+}
+
+function setupGlobalEventListeners() {
+  document.body.addEventListener('click', (e) => {
+    const btn = e.target.closest('.add-aptitud-btn');
+    if (btn) {
+      console.log('[LOG] Click en botón aptitud (Delegado). Data:', btn.dataset);
+      const { moduleId, studentId, trimester, type } = btn.dataset;
+      handlers.showAptitudEntryModal(moduleId, studentId, trimester, type);
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
