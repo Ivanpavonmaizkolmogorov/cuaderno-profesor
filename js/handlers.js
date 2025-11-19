@@ -1715,6 +1715,7 @@ export function handleTogglePanel(panelId) {
  * @param {boolean} isActive - Si la búsqueda debe estar activa.
  */
 export function handleToggleSearch(isActive) {
+  console.log(`[LOG][handleToggleSearch] isActive: ${isActive}`);
   if (!isActive) {
     // Limpiar resaltados al cerrar
     clearSearchHighlights();
@@ -1727,8 +1728,33 @@ export function handleToggleSearch(isActive) {
 
   // Enfocar el input si se acaba de activar
   if (isActive) {
-    setTimeout(() => document.getElementById('search-input')?.focus(), 0);
+    setTimeout(() => {
+      const input = document.getElementById('search-input');
+      console.log(`[LOG][handleToggleSearch] Enfocando input:`, input);
+      input?.focus();
+    }, 0);
   }
+}
+
+/**
+ * Actualiza el texto del contador en la barra de búsqueda.
+ */
+function updateSearchCounter() {
+  const { results, currentIndex, query } = state.getUI().search;
+  const counterElement = document.querySelector('#search-bar span');
+  const prevBtn = document.getElementById('search-prev-btn');
+  const nextBtn = document.getElementById('search-next-btn');
+
+  console.log(`[LOG][updateSearchCounter] Resultados: ${results.length}, Index: ${currentIndex}, Query: "${query}"`);
+
+  if (counterElement) {
+    const total = results.length;
+    const current = currentIndex + 1;
+    counterElement.textContent = total > 0 ? `${current} de ${total}` : (query.length > 1 ? '0 de 0' : '');
+  }
+
+  if (prevBtn) prevBtn.disabled = results.length === 0;
+  if (nextBtn) nextBtn.disabled = results.length === 0;
 }
 
 /**
@@ -1736,55 +1762,75 @@ export function handleToggleSearch(isActive) {
  * @param {string} query - El texto a buscar.
  */
 export function handleSearch(query) {
+  console.log(`[LOG][handleSearch] Query: "${query}"`);
   state.setSearchProperty('query', query);
   clearSearchHighlights();
 
   if (!query || query.length < 2) {
+    console.log(`[LOG][handleSearch] Query demasiado corta o vacía.`);
     state.setSearchProperty('results', []);
     state.setSearchProperty('currentIndex', -1);
-    renderApp(); // Re-render para actualizar el contador
+    updateSearchCounter(); // Actualizar UI directamente
     return;
   }
 
   const content = document.getElementById('content-container');
+  if (!content) {
+    console.error(`[ERROR][handleSearch] No se encontró #content-container`);
+    return;
+  }
+
   const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, null, false);
   const results = [];
-  const regex = new RegExp(query, 'gi');
+  // Escapar caracteres especiales para la RegExp
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(escapedQuery, 'gi');
 
   let node;
+  const nodesToReplace = [];
+
   while (node = walker.nextNode()) {
     // Ignorar nodos dentro de scripts, styles, o de la propia barra de búsqueda
-    if (node.parentElement.closest('script, style, #search-bar-container')) {
+    if (node.parentElement.closest('script, style, #search-bar-container, .search-highlight')) {
       continue;
     }
 
-    const matches = node.textContent.match(regex);
-    if (matches) {
-      const parent = node.parentNode;
-      const parts = node.textContent.split(regex);
-
-      for (let i = 0; i < parts.length - 1; i++) {
-        parent.insertBefore(document.createTextNode(parts[i]), node);
-        const mark = document.createElement('mark');
-        mark.textContent = matches[i];
-        mark.className = 'search-highlight';
-        parent.insertBefore(mark, node);
-        results.push(mark);
-      }
-      parent.insertBefore(document.createTextNode(parts[parts.length - 1]), node);
-      parent.removeChild(node);
+    if (regex.test(node.textContent)) {
+      nodesToReplace.push(node);
     }
   }
+
+  console.log(`[LOG][handleSearch] Nodos encontrados para reemplazar: ${nodesToReplace.length}`);
+
+  // Reemplazar nodos (hacerlo fuera del loop del walker para no romperlo)
+  nodesToReplace.forEach(node => {
+    const fragment = document.createDocumentFragment();
+    const parts = node.textContent.split(regex);
+    const matches = node.textContent.match(regex);
+
+    for (let i = 0; i < parts.length - 1; i++) {
+      fragment.appendChild(document.createTextNode(parts[i]));
+      const mark = document.createElement('mark');
+      mark.textContent = matches[i];
+      mark.className = 'search-highlight bg-yellow-300 text-black'; // Tailwind classes
+      fragment.appendChild(mark);
+      results.push(mark);
+    }
+    fragment.appendChild(document.createTextNode(parts[parts.length - 1]));
+    node.parentNode.replaceChild(fragment, node);
+  });
+
+  console.log(`[LOG][handleSearch] Total resultados creados: ${results.length}`);
 
   state.setSearchProperty('results', results);
   state.setSearchProperty('currentIndex', results.length > 0 ? 0 : -1);
 
   if (results.length > 0) {
-    results[0].classList.add('active-highlight');
+    results[0].classList.add('active-highlight', 'bg-orange-400'); // Highlight activo
     results[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
-  renderApp(); // Re-render para actualizar el contador
+  updateSearchCounter(); // Actualizar UI directamente
 }
 
 /**
@@ -1792,28 +1838,46 @@ export function handleSearch(query) {
  * @param {'next' | 'prev'} direction - La dirección de la navegación.
  */
 export function handleNavigateSearchResults(direction) {
-  const searchState = getUI().search;
+  const searchState = state.getUI().search;
+  console.log(`[LOG][handleNavigateSearchResults] Direction: ${direction}, Total Results: ${searchState.results.length}`);
+
   if (!searchState.results.length) return;
 
   const { results, currentIndex } = searchState;
-  results[currentIndex]?.classList.remove('active-highlight');
+
+  // Limpiar estilo del actual
+  if (results[currentIndex]) {
+    results[currentIndex].classList.remove('active-highlight', 'bg-orange-400');
+    results[currentIndex].classList.add('bg-yellow-300');
+  }
 
   let nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
   if (nextIndex >= results.length) nextIndex = 0;
   if (nextIndex < 0) nextIndex = results.length - 1;
 
-  state.setSearchProperty('currentIndex', nextIndex);
-  results[nextIndex].classList.add('active-highlight');
-  results[nextIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+  console.log(`[LOG][handleNavigateSearchResults] Nuevo Index: ${nextIndex}`);
 
-  renderApp(); // Re-render para actualizar el contador
+  state.setSearchProperty('currentIndex', nextIndex);
+
+  // Resaltar el nuevo
+  const newCurrent = results[nextIndex];
+  if (newCurrent) {
+    newCurrent.classList.remove('bg-yellow-300');
+    newCurrent.classList.add('active-highlight', 'bg-orange-400');
+    newCurrent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  updateSearchCounter(); // Actualizar UI directamente
 }
 
 function clearSearchHighlights() {
-  document.querySelectorAll('mark.search-highlight').forEach(mark => {
-    mark.outerHTML = mark.innerHTML;
+  console.log(`[LOG][clearSearchHighlights] Limpiando resaltados...`);
+  const marks = document.querySelectorAll('mark.search-highlight');
+  marks.forEach(mark => {
+    const parent = mark.parentNode;
+    parent.replaceChild(document.createTextNode(mark.textContent), mark);
+    parent.normalize(); // Fusiona nodos de texto adyacentes
   });
-  document.normalize(); // Fusiona nodos de texto adyacentes
 }
 // --- FIN: MANEJADORES PARA LA BÚSQUEDA EN PÁGINA ---
 
