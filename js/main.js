@@ -8,6 +8,7 @@ import * as pages from './ui/pages.js';
 import { calculateModuleGrades, updateImpactPanel } from './services/calculations.js';
 import { prepareModuleForProgressTracking } from './utils.js';
 import { renderProgressView } from './progressView.js';
+import { renderCryptoPage, attachCryptoListeners } from './ui/crypto_page.js';
 
 // Función principal que dibuja la UI
 export function renderApp() {
@@ -84,6 +85,9 @@ export function renderApp() {
       case 'distribucion': // Nueva vista
         contentContainer.innerHTML = renderWeightDistributionView(selectedModule);
         state.setUIProperty('expandedRaId', null); // Clear after rendering
+        break;
+      case 'crypto':
+        contentContainer.innerHTML = renderCryptoPage();
         break;
       default:
         contentContainer.innerHTML = `<p class="text-center text-red-500 p-10">Error: Página no reconocida.</p>`;
@@ -545,6 +549,11 @@ function attachEventListeners() {
       handlers.handleExportExcel();
     });
     // --- FIN DEL CÓDIGO CORREGIDO ---
+    // --- FIN DEL CÓDIGO CORREGIDO ---
+  }
+
+  if (ui.page === 'crypto') {
+    attachCryptoListeners();
   }
 
   if (ui.page === 'alumnos') {

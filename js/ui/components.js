@@ -38,6 +38,10 @@ export function renderHeader(page, db) {
           ${ICONS.Settings}
           <span>Config.</span>
         </button>
+        <button data-page="crypto" class="${navClass('crypto')}">
+          ${ICONS.FileText}
+          <span>Generador Tareas</span>
+        </button>
       </nav>
     </div>
   `;

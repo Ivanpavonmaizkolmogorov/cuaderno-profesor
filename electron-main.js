@@ -32,7 +32,8 @@ function createWindow() {
     icon: path.join(__dirname, 'build/icon.png'),
     // IMPORTANTE: Necesitamos un preload script para comunicar el main y el renderer de forma segura
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://script.google.com https://www.googleapis.com;"
     }
   });
 
