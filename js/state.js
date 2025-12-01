@@ -15,6 +15,7 @@ let state = {
     recoveryValidations: {}, // { moduleId: { studentId: { ceId: { isApproved: boolean } } } }
     aptitudes: {}, // { moduleId: { studentId: { T1: { positives: [], negatives: [] } } } }
     trimesterGrades: {}, // { moduleId: { studentId: { T1: 7.5, T2: 8.0, ... } } }
+    cryptoTasks: [], // { id, name, seed, moduleId, config, googleUrl, antiCopy, createdAt, updatedAt }
   },
   // Estado de navegación y UI
   ui: {
@@ -163,6 +164,9 @@ export async function connectToFile() {
         if (!newDb.aptitudes) {
           newDb.aptitudes = {};
         }
+        if (!newDb.cryptoTasks) {
+          newDb.cryptoTasks = [];
+        }
       } else {
         throw new Error("El archivo JSON no tiene la estructura de base de datos esperada.");
       }
@@ -197,7 +201,7 @@ export async function saveAsAndConnect() {
     });
     connectedFileHandle = fileHandle;
     // Una vez conectado, forzamos un guardado inmediato del estado actual.
-    saveDB(); 
+    saveDB();
     return fileHandle.name;
   } catch (error) {
     if (error.name !== 'AbortError') {
@@ -217,7 +221,7 @@ export function isConnected() {
 }
 
 export function getConnectedFileName() {
-    return connectedFileHandle ? connectedFileHandle.name : null;
+  return connectedFileHandle ? connectedFileHandle.name : null;
 }
 
 export function saveDB() {
@@ -333,7 +337,7 @@ function showSavingIndicator(isSaving, hasError = false, customMessage = null) {
     `; // Si hay mensaje personalizado, no mostramos el spinner para no sobrecargar
     indicator.classList.add('bg-gray-800');
     // Forzar reflow para que la animación de entrada funcione
-    void indicator.offsetWidth; 
+    void indicator.offsetWidth;
     indicator.classList.remove('translate-y-20', 'opacity-0');
   } else {
     if (hasError) {

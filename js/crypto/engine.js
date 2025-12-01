@@ -51,6 +51,27 @@ export const CryptoEngine = {
         const raw = 'TASK-' + s + '-STUDENT-' + c + '-SCORE-' + scoreStr;
         const hash = await this.hash(raw);
         return hash.substring(0, 10).toUpperCase();
+    },
+    renderQuestion(params, index) {
+        // Returns the HTML for the question card (used in Reconstruction)
+        // Note: Styles should be compatible with Tailwind (Teacher App)
+        // For Student App (Vanilla CSS), we might need a different renderer or shared styles.
+        // Currently, this is designed for the Teacher's Reconstruction View.
+
+        // Format numbers with comma for Spanish display
+        const resultStr = String(params.result).replace('.', ',');
+        const varsStr = JSON.stringify(params.vars).replace(/\./g, ',');
+
+        return `
+            <div class="flex justify-between items-start mb-2">
+                <span class="font-bold text-gray-700 dark:text-gray-300">Pregunta ${index + 1}</span>
+                <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Correcta: ${resultStr}</span>
+            </div>
+            <div class="text-gray-800 dark:text-gray-200 mb-2">${params.question}</div>
+            <div class="text-xs text-gray-500 font-mono mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                Variables: ${varsStr}
+            </div>
+        `;
     }
 };
 
@@ -58,7 +79,7 @@ export function verifyProof(seed, studentCode, score) {
     return CryptoEngine.generateProof(seed, studentCode, score);
 }
 
-export function generateStudentHTML(taskName, seed, config, antiCopyMode = true, googleScriptUrl = '') {
+export function generateStudentHTML(taskName, seed, config, antiCopyMode = true, googleScriptUrl = '', students = [], moduleName = '') {
     let taskConfig = config;
     if (!taskConfig) {
         taskConfig = {
@@ -72,6 +93,9 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
     } else if (!taskConfig.questions) {
         taskConfig = { questions: [config] };
     }
+
+    // Add students array to taskConfig for name lookup
+    taskConfig.students = students;
 
     // Build the CryptoEngine code as a string array
     const cryptoEngineCode = [
@@ -148,6 +172,7 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${taskName}</title>
+    <title>${taskName}</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f8fafc; color: #1e293b; padding-bottom: 100px; }
         .header { text-align: center; margin-bottom: 2rem; }
@@ -170,6 +195,7 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
         .skip-btn:hover { background: #fef2f2; }
         .finish-btn { position: fixed; bottom: 30px; right: 30px; z-index: 1000; background: #1e293b; color: white; padding: 1rem 2rem; border-radius: 50px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 1.1rem; border: none; cursor: pointer; transition: transform 0.2s, background 0.2s; width: auto; }
         .finish-btn:hover { background: #0f172a; transform: scale(1.05); }
+        .finish-btn:hover { background: #0f172a; transform: scale(1.05); }
         .feedback { margin-top: 1rem; font-weight: bold; min-height: 1.5rem; }
         .hidden { display: none; }
         #final-section { text-align: center; margin-top: 3rem; padding: 2rem; background: #1e293b; color: white; border-radius: 12px; }
@@ -180,11 +206,11 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
 <body>
     <div class="header">
         <h1>${taskName}</h1>
-        <p>Introduce tu código para desbloquear los ejercicios.</p>
+        <p>Introduce tu código de lista (ej: 1, 2, 3...) para desbloquear los ejercicios.</p>
     </div>
     <div id="login-card" class="card">
         <label><strong>Código de Alumno:</strong></label>
-        <input type="number" id="student-code" placeholder="Ej: 105">
+        <input type="number" id="student-code" placeholder="Ej: 5" required>
         <button id="start-btn">Comenzar Tarea</button>
     </div>
     <div id="dashboard" class="hidden">
@@ -204,15 +230,29 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
         const TASK_SEED = ${seed};
         const TASK_CONFIG = ${JSON.stringify(taskConfig)};
         const GOOGLE_URL = "${googleScriptUrl || ''}";
+        const MODULE_NAME = "${(moduleName || '').replace(/"/g, '\\"')}";
+        const TASK_NAME = "${(taskName || '').replace(/"/g, '\\"')}";
         ${cryptoEngineCode}
         
         let studentCode = "";
+        let studentName = "";
         let questionStates = [];
+        let studentAnswers = []; // Store student's answers for PDF
         let isFinished = false;
         
         document.getElementById("start-btn").addEventListener("click", () => {
             studentCode = document.getElementById("student-code").value.trim();
             if(!studentCode) return alert("Introduce tu código");
+            
+            // Find student name from TASK_CONFIG.students array
+            const student = TASK_CONFIG.students?.find(s => String(s.id) === String(studentCode));
+            
+            if (!student) {
+                alert("❌ Código no válido.\\n\\nEste código no pertenece a la lista de alumnos de esta clase.\\nPor favor, verifica tu número de lista.");
+                return;
+            }
+
+            studentName = student.name;
             initDashboard();
         });
         
@@ -226,10 +266,19 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
                 const params = CryptoEngine.generateParams(TASK_SEED, studentCode, qConfig, index);
                 questionStates.push({ solved: false, skipped: false, attempts: 0, result: params.result });
                 
+                // Store question and correct answer for PDF
+                studentAnswers.push({
+                    question: params.question,
+                    studentAnswer: null,
+                    correctAnswer: params.result,
+                    isCorrect: false,
+                    wasSkipped: false
+                });
+                
                 const card = document.createElement("div");
                 card.className = "question-card";
                 card.id = "q-card-" + index;
-                card.innerHTML = \`<div class="q-header"><span><strong>Pregunta \${index + 1}</strong></span><span class="q-badge" id="badge-\${index}">Pendiente</span></div><div class="q-content">\${params.question}</div><div id="input-area-\${index}"><input type="number" id="input-\${index}" placeholder="Tu respuesta" step="any"><button onclick="checkAnswer(\${index})">Comprobar</button><button onclick="skipAnswer(\${index})" id="skip-btn-\${index}" class="skip-btn hidden">Saltar Pregunta (0 pts)</button></div><div class="feedback" id="feedback-\${index}"></div>\`;
+                card.innerHTML = \`<div class="q-header"><span><strong>Pregunta \${index + 1}</strong></span><span class="q-badge" id="badge-\${index}">Pendiente</span></div><div class="q-content">\${params.question}</div><div id="input-area-\${index}"><input type="text" inputmode="decimal" id="input-\${index}" placeholder="Tu respuesta (usa coma , para decimales)" class="w-full p-2 border rounded"><button onclick="checkAnswer(\${index})">Comprobar</button><button onclick="skipAnswer(\${index})" id="skip-btn-\${index}" class="skip-btn hidden">Saltar Pregunta (0 pts)</button></div><div class="feedback" id="feedback-\${index}"></div>\`;
                 container.appendChild(card);
             });
         }
@@ -237,17 +286,46 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
         window.checkAnswer = function(index) {
             if(isFinished) return;
             const input = document.getElementById("input-" + index);
-            const val = input.value;
+            let val = input.value;
             const feedback = document.getElementById("feedback-" + index);
-            if(val.includes(",")) { feedback.textContent = "⚠️ Usa PUNTO (.) para decimales"; feedback.style.color = "orange"; return; }
+            
             if(!val) return;
+            
+            // STRICT: Forbid dots
+            if(val.includes('.')) {
+                feedback.textContent = "⚠️ Usa COMA (,) para decimales. No uses punto."; 
+                feedback.style.color = "orange"; 
+                return; 
+            }
+            
+            // Support comma as decimal separator (convert to dot for calculation)
+            val = val.replace(',', '.');
+            
+            if(isNaN(val)) {
+                feedback.textContent = "⚠️ Por favor, introduce un número válido"; 
+                feedback.style.color = "orange"; 
+                return; 
+            }
+            
             const answer = parseFloat(val);
             const state = questionStates[index];
             const qConfig = TASK_CONFIG.questions[index];
             const tolerance = (qConfig.tolerance !== undefined) ? qConfig.tolerance : 0.01;
             state.attempts++;
-            if(Math.abs(answer - state.result) <= tolerance) { state.solved = true; markAsSolved(index); }
-            else { feedback.textContent = "❌ Incorrecto"; feedback.style.color = "red"; if(state.attempts >= 2) document.getElementById("skip-btn-" + index).classList.remove("hidden"); }
+            
+            // Store student's answer
+            studentAnswers[index].studentAnswer = answer;
+            
+            if(Math.abs(answer - state.result) <= tolerance) { 
+                state.solved = true; 
+                studentAnswers[index].isCorrect = true;
+                markAsSolved(index); 
+            }
+            else { 
+                feedback.textContent = "❌ Incorrecto"; 
+                feedback.style.color = "red"; 
+                if(state.attempts >= 2) document.getElementById("skip-btn-" + index).classList.remove("hidden"); 
+            }
             if(questionStates.every(q => q.solved || q.skipped)) finishTask(true);
         };
         
@@ -255,6 +333,7 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
             if(isFinished) return;
             if(confirm("¿Seguro que quieres saltar? Obtendrás 0 puntos en esta pregunta.")) {
                 questionStates[index].skipped = true;
+                studentAnswers[index].wasSkipped = true;
                 markAsSkipped(index);
                 if(questionStates.every(q => q.solved || q.skipped)) finishTask(true);
             }
@@ -262,10 +341,24 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
         
         window.finishTask = async function(auto = false) {
             if(isFinished) return;
+            
+            // Capture any pending inputs before finishing
+            questionStates.forEach((state, index) => {
+                if (!state.solved && !state.skipped) {
+                    const input = document.getElementById("input-" + index);
+                    if (input && input.value.trim() !== "") {
+                        let val = input.value.trim();
+                        // Support comma
+                        const valNum = val.replace(',', '.');
+                        studentAnswers[index].studentAnswer = isNaN(valNum) ? val : parseFloat(valNum);
+                    }
+                }
+            });
+
             const pending = questionStates.filter(q => !q.solved && !q.skipped).length;
             const correctCount = questionStates.filter(q => q.solved).length;
             if(!auto && pending > 0) {
-                if(!confirm(\`⚠️ ATENCIÓN ⚠️\\n\\nTienes \${pending} preguntas SIN RESPONDER O INCORRECTAS.\\n\\nSi finalizas ahora:\\n- Las preguntas que YA has acertado se guardan (Puntos: \${correctCount}).\\n- Las \${pending} preguntas restantes contarán como 0 puntos.\\n\\n¿Quieres entregar la tarea así?\`)) return;
+                if(!confirm("ATENCION: Tienes " + pending + " preguntas SIN RESPONDER O INCORRECTAS.\\n\\nSi finalizas ahora:\\n- Las preguntas que YA has acertado se guardan (Puntos: " + correctCount + ").\\n- Las " + pending + " preguntas restantes contarán como 0 puntos.\\n\\n¿Quieres entregar la tarea así?")) return;
             }
             isFinished = true;
             document.querySelectorAll("input, button").forEach(el => el.disabled = true);
@@ -279,10 +372,38 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
             document.getElementById("final-section").scrollIntoView({ behavior: "smooth" });
             if(GOOGLE_URL) {
                 const statusEl = document.getElementById("google-status");
-                statusEl.textContent = "Enviando nota al profesor...";
+                statusEl.textContent = "Enviando nota de '" + TASK_NAME + "' al profesor...";
                 try {
-                    await fetch(GOOGLE_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ studentCode, score: finalScore.toFixed(1), phrase, seed: TASK_SEED, timestamp: new Date().toISOString() }) });
-                    statusEl.textContent = "✅ Nota enviada al profesor correctamente."; statusEl.style.color = "green";
+                    // Prepare detailed answer data for evidence
+                    const answersData = studentAnswers.map((ans, idx) => ({
+                        questionNumber: idx + 1,
+                        question: ans.question.replace(/<[^>]*>/g, ''), // Remove HTML tags
+                        studentAnswer: ans.wasSkipped ? 'SALTADA' : (ans.studentAnswer !== null ? ans.studentAnswer : 'Sin respuesta'),
+                        correctAnswer: ans.correctAnswer,
+                        isCorrect: ans.isCorrect,
+                        wasSkipped: ans.wasSkipped
+                    }));
+                    
+                    await fetch(GOOGLE_URL, { 
+                        method: "POST", 
+                        mode: "no-cors", 
+                        headers: { "Content-Type": "text/plain" }, 
+                        body: JSON.stringify({ 
+                            studentName,
+                            studentCode, 
+                            moduleName: MODULE_NAME,
+                            taskName: TASK_NAME,
+                            score: Number(finalScore.toFixed(1)), 
+                            phrase, 
+                            seed: TASK_SEED, 
+                            timestamp: new Date().toISOString(),
+                            answers: answersData,
+                            totalQuestions: totalQuestions,
+                            correctCount: correctCount,
+                            taskConfig: TASK_CONFIG // Send full config for reconstruction
+                        }) 
+                    });
+                    statusEl.textContent = "✅ Nota y evidencias enviadas al profesor correctamente."; statusEl.style.color = "green";
                 } catch(e) { console.error(e); statusEl.textContent = "⚠️ No se pudo enviar automáticamente. Por favor envía la clave manualmente."; statusEl.style.color = "orange"; }
             }
         };
@@ -302,6 +423,7 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
             document.getElementById("input-area-" + index).innerHTML = '<p style="color:red; font-weight:bold;">⏭️ Pregunta Saltada (0 puntos)</p>';
             document.getElementById("feedback-" + index).textContent = "";
         }
+        
     </script>
 </body>
 </html>`;
