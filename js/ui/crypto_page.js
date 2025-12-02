@@ -66,8 +66,59 @@ export function renderCryptoPage() {
                             </label>
                             <label class="inline-flex items-center cursor-pointer">
                                 <input type="radio" name="crypto-task-mode" value="cooperative" class="form-radio text-purple-600">
-                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300 font-bold text-purple-600">Cooperativo (Nuevo)</span>
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300 font-bold text-purple-600">Cooperativo</span>
                             </label>
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="radio" name="crypto-task-mode" value="exam" class="form-radio text-red-600">
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300 font-bold text-red-600">Examen (Blind)</span>
+                            </label>
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="radio" name="crypto-task-mode" value="simulation" class="form-radio text-orange-600">
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300 font-bold text-orange-600">Simulacro</span>
+                            </label>
+                        </div>
+
+                        <!-- Exam Settings Panel -->
+                        <div id="exam-settings-panel" class="hidden mb-4 p-4 border border-red-200 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                            <h4 class="font-bold text-red-800 dark:text-red-300 mb-2 text-sm">🎓 Configuración de Examen</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">⏱️ Tiempo Límite (min)</label>
+                                    <input type="number" id="exam-time-limit" class="w-full p-2 border rounded text-sm" placeholder="0 = Sin límite" style="color:#1e293b; background-color:white;">
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center mt-3">
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="exam-show-result" class="form-checkbox text-red-600" checked>
+                                    <span class="ml-2 text-xs text-gray-700 dark:text-gray-300">Mostrar Nota al Final</span>
+                                </label>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="exam-allow-nav" class="form-checkbox text-red-600" checked>
+                                    <span class="ml-2 text-xs text-gray-700 dark:text-gray-300">Permitir Navegación Libre</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Feedback Lock Configuration (ALL MODES) -->
+                        <div class="mb-4 p-4 border border-blue-200 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <h4 class="font-bold text-blue-800 dark:text-blue-300 mb-2 text-sm">🔒 Control de Resultados</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">🔑 Código Feedback (alfanumérico)</label>
+                                    <input type="text" id="exam-feedback-code" class="w-full p-2 border rounded text-sm font-mono uppercase" placeholder="Ej: ABC123" maxlength="10" style="color:#1e293b; background-color:white;">
+                                    <p class="text-xs text-gray-500 mt-1">Código para desbloquear</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">🎯 Qué bloquear</label>
+                                    <select id="exam-lock-type" class="w-full p-2 border rounded text-xs" style="color:#1e293b; background-color:white;">
+                                        <option value="both">🔒 Bloquear Nota + Feedback</option>
+                                        <option value="score">🔒 Solo Nota bloqueada</option>
+                                        <option value="feedback">🔒 Solo Feedback bloqueado</option>
+                                        <option value="none">✅ Mostrar todo (sin código)</option>
+                                    </select>
+                                    <p class="text-xs text-gray-500 mt-1">Aplica a todos los modos</p>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="mb-4">
@@ -116,10 +167,20 @@ export function renderCryptoPage() {
                             <!-- Hidden input to store final config -->
                             <input type="hidden" id="groups-config-json">
                         </div>
+                        
+                        <script>
+                            // Inline script to handle mode toggles immediately (or move to attachCryptoListeners)
+                            // We will handle this in attachCryptoListeners
+                        </script>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Configuración JSON</label>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Configuración JSON</label>
+                            <button type="button" id="crypto-open-catalog-btn" class="px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded text-xs font-bold border border-blue-300 transition-colors flex items-center gap-1">
+                                📂 Ver Catálogo de Plantillas
+                            </button>
+                        </div>
                         <textarea id="crypto-task-json" rows="6" class="w-full p-2 border rounded dark:bg-gray-900 dark:border-gray-700 font-mono text-xs" placeholder='{"questions": [...]}'></textarea>
                         <button type="button" id="crypto-load-example-btn" class="text-xs text-blue-500 hover:underline mt-1">Cargar Ejemplo</button>
                     </div>
@@ -752,6 +813,8 @@ function doGet(e) {
         }
     }
 
+
+
     // Generate Seed
     const seedBtn = document.getElementById('crypto-generate-seed-btn');
     if (seedBtn) {
@@ -780,79 +843,87 @@ function doGet(e) {
                 // Set mode if exists
                 if (task.config && task.config.mode) {
                     const modeRadio = document.querySelector(`input[name="crypto-task-mode"][value="${task.config.mode}"]`);
-                    if (modeRadio && !modeRadio.disabled) {
+                    if (modeRadio) {
                         modeRadio.checked = true;
-                        // Trigger change event to show/hide panel
                         modeRadio.dispatchEvent(new Event('change'));
                     }
 
-                    // RESTORE GROUPS
-                    if (task.config.mode === 'cooperative' && task.config.groups) {
-                        console.log("DEBUG: Attempting to restore groups", task.config.groups);
+                    // Restore Exam Settings
+                    if (task.config.mode === 'exam') {
+                        document.getElementById('exam-time-limit').value = task.config.timeLimit || "";
+                        document.getElementById('exam-show-result').checked = task.config.showResult !== false;
+                        document.getElementById('exam-allow-nav').checked = task.config.allowNavigation !== false;
+                    }
+                }
 
-                        // Determine Module ID: Use saved ID or current selection fallback
-                        let targetModuleId = task.moduleId;
-                        const moduleSelect = document.getElementById('crypto-module-select');
+                // ... rest of history loading ...
 
-                        if (!targetModuleId) {
-                            if (moduleSelect) {
-                                targetModuleId = moduleSelect.value;
-                                console.log("DEBUG: Fallback to selected module:", targetModuleId);
-                                console.log("DEBUG: Module Select Options:", moduleSelect.options.length);
-                            }
+                // RESTORE GROUPS
+                if (task.config.mode === 'cooperative' && task.config.groups) {
+                    console.log("DEBUG: Attempting to restore groups", task.config.groups);
+
+                    // Determine Module ID: Use saved ID or current selection fallback
+                    let targetModuleId = task.moduleId;
+                    const moduleSelect = document.getElementById('crypto-module-select');
+
+                    if (!targetModuleId) {
+                        if (moduleSelect) {
+                            targetModuleId = moduleSelect.value;
+                            console.log("DEBUG: Fallback to selected module:", targetModuleId);
+                            console.log("DEBUG: Module Select Options:", moduleSelect.options.length);
+                        }
+                    }
+
+                    if (targetModuleId) {
+                        const module = db.modules.find(m => m.id === targetModuleId);
+                        console.log("DEBUG: Module found:", module);
+
+                        // Auto-select the module in the dropdown if it wasn't selected
+                        if (moduleSelect && moduleSelect.value !== targetModuleId) {
+                            moduleSelect.value = targetModuleId;
                         }
 
-                        if (targetModuleId) {
-                            const module = db.modules.find(m => m.id === targetModuleId);
-                            console.log("DEBUG: Module found:", module);
+                        if (module && module.studentIds) {
+                            const allStudents = module.studentIds.map(id => db.students.find(s => s.id === id)).filter(Boolean);
+                            console.log("DEBUG: All Students:", allStudents);
 
-                            // Auto-select the module in the dropdown if it wasn't selected
-                            if (moduleSelect && moduleSelect.value !== targetModuleId) {
-                                moduleSelect.value = targetModuleId;
-                            }
+                            // Reconstruct groups state
+                            groups = [];
+                            const assignedIds = new Set();
 
-                            if (module && module.studentIds) {
-                                const allStudents = module.studentIds.map(id => db.students.find(s => s.id === id)).filter(Boolean);
-                                console.log("DEBUG: All Students:", allStudents);
-
-                                // Reconstruct groups state
-                                groups = [];
-                                const assignedIds = new Set();
-
-                                task.config.groups.forEach(g => {
-                                    const groupMembers = [];
-                                    g.members.forEach(memberCode => {
-                                        // MemberCode is the List Index (1-based)
-                                        const index = parseInt(memberCode) - 1;
-                                        if (index >= 0 && index < allStudents.length) {
-                                            const student = allStudents[index];
-                                            groupMembers.push(student);
-                                            assignedIds.add(student.id);
-                                        } else {
-                                            console.warn("DEBUG: Student not found for code", memberCode, "Index:", index);
-                                        }
-                                    });
-                                    if (groupMembers.length > 0) groups.push(groupMembers);
+                            task.config.groups.forEach(g => {
+                                const groupMembers = [];
+                                g.members.forEach(memberCode => {
+                                    // MemberCode is the List Index (1-based)
+                                    const index = parseInt(memberCode) - 1;
+                                    if (index >= 0 && index < allStudents.length) {
+                                        const student = allStudents[index];
+                                        groupMembers.push(student);
+                                        assignedIds.add(student.id);
+                                    } else {
+                                        console.warn("DEBUG: Student not found for code", memberCode, "Index:", index);
+                                    }
                                 });
+                                if (groupMembers.length > 0) groups.push(groupMembers);
+                            });
 
-                                console.log("DEBUG: Reconstructed Groups:", groups);
+                            console.log("DEBUG: Reconstructed Groups:", groups);
 
-                                // Update unassigned
-                                unassignedStudents = allStudents.filter(s => !assignedIds.has(s.id));
+                            // Update unassigned
+                            unassignedStudents = allStudents.filter(s => !assignedIds.has(s.id));
 
-                                // Render
-                                renderUI();
-                                updateGroupsConfig();
-                            }
-                        } else {
-                            console.warn("DEBUG: No moduleId found (saved or selected)");
-                            // Save pending groups to restore later when module is selected
-                            pendingGroupsConfig = task.config.groups;
-                            alert("⚠️ ¡Atención!\n\nEsta tarea antigua no tiene guardada la clase a la que pertenece.\n\nPara recuperar los grupos:\n1. Cierra este mensaje.\n2. Selecciona la CLASE correcta en el desplegable 'Clase / Módulo'.\n\nLos grupos aparecerán automáticamente al seleccionar la clase.");
+                            // Render
+                            renderUI();
+                            updateGroupsConfig();
                         }
                     } else {
-                        console.log("DEBUG: No groups to restore or not cooperative");
+                        console.warn("DEBUG: No moduleId found (saved or selected)");
+                        // Save pending groups to restore later when module is selected
+                        pendingGroupsConfig = task.config.groups;
+                        alert("⚠️ ¡Atención!\n\nEsta tarea antigua no tiene guardada la clase a la que pertenece.\n\nPara recuperar los grupos:\n1. Cierra este mensaje.\n2. Selecciona la CLASE correcta en el desplegable 'Clase / Módulo'.\n\nLos grupos aparecerán automáticamente al seleccionar la clase.");
                     }
+                } else {
+                    console.log("DEBUG: No groups to restore or not cooperative");
                 }
             }
         });
@@ -966,13 +1037,20 @@ function doGet(e) {
     let pendingGroupsConfig = null; // Store groups here if module is missing during load
 
     // Toggle Panel
+    const examPanel = document.getElementById('exam-settings-panel');
+
     modeRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
             if (e.target.value === 'cooperative') {
                 groupPanel.classList.remove('hidden');
+                examPanel.classList.add('hidden');
                 loadStudentsFromModule(); // Initial load
+            } else if (e.target.value === 'exam' || e.target.value === 'simulation') {
+                groupPanel.classList.add('hidden');
+                examPanel.classList.remove('hidden');
             } else {
                 groupPanel.classList.add('hidden');
+                examPanel.classList.add('hidden');
             }
         });
     });
@@ -1267,118 +1345,237 @@ function doGet(e) {
         });
     }
 
-    // Load Example
-    const exampleBtn = document.getElementById('crypto-load-example-btn');
-    if (exampleBtn) {
-        exampleBtn.addEventListener('click', () => {
-            const mode = document.querySelector('input[name="crypto-task-mode"]:checked').value;
-            let example;
-
-            if (mode === 'cooperative') {
-                example = {
-                    "scenario": "<h3>Misión: Protocolo Fantasma</h3><p>Agentes, para activar el sistema debéis obtener vuestros códigos de acceso individuales y luego combinarlos.</p>",
-                    "questions": [
-                        // BLOQUE 1: INICIACIÓN
-                        {
-                            "type": "parallel",
-                            "items": [
-                                { "variables": { "a": { "min": 2, "max": 9 } }, "formula": "a * 10", "question": "Fase 1 (Individual): Calcula {a} x 10." },
-                                { "variables": { "b": { "min": 2, "max": 9 } }, "formula": "b * 10 + 5", "question": "Fase 1 (Individual): Calcula {b} x 10 + 5." }
-                            ]
-                        },
-                        {
-                            "type": "parallel",
-                            "items": [
-                                { "variables": { "c": { "min": 1, "max": 5 } }, "formula": "c + 100", "question": "Fase 2 (Individual): Suma 100 a {c}." },
-                                { "variables": { "d": { "min": 1, "max": 5 } }, "formula": "d + 200", "question": "Fase 2 (Individual): Suma 200 a {d}." }
-                            ]
-                        },
-                        {
-                            "shards": ["El resultado de la Fase 1 fue {r1}", "El resultado de la Fase 2 fue {r2}"],
-                            "variables": { "r1": { "min": 20, "max": 95 }, "r2": { "min": 101, "max": 205 } },
-                            "formula": "r1 + r2",
-                            "question": "CHECKPOINT 1 (Grupal): Sumad vuestros resultados de la Fase 1 y Fase 2."
-                        },
-
-                        // BLOQUE 2: OPERACIONES INTERMEDIAS
-                        {
-                            "type": "parallel",
-                            "items": [
-                                { "variables": { "e": { "min": 50, "max": 60 } }, "formula": "e - 10", "question": "Fase 4 (Individual): Resta 10 a {e}." },
-                                { "variables": { "f": { "min": 50, "max": 60 } }, "formula": "f - 20", "question": "Fase 4 (Individual): Resta 20 a {f}." }
-                            ]
-                        },
-                        {
-                            "type": "parallel",
-                            "items": [
-                                { "variables": { "g": { "min": 2, "max": 8 } }, "formula": "g * 2", "question": "Fase 5 (Individual): Dobla el valor de {g}." },
-                                { "variables": { "h": { "min": 2, "max": 8 } }, "formula": "h * 3", "question": "Fase 5 (Individual): Triplica el valor de {h}." }
-                            ]
-                        },
-                        {
-                            "type": "parallel",
-                            "items": [
-                                { "variables": { "i": { "min": 20, "max": 40 } }, "formula": "i / 2", "question": "Fase 6 (Individual): Divide {i} entre 2." },
-                                { "variables": { "j": { "min": 20, "max": 40 } }, "formula": "j / 2", "question": "Fase 6 (Individual): Divide {j} entre 2." }
-                            ]
-                        },
-                        {
-                            "shards": ["Clave Fase 4: {k1}", "Clave Fase 5: {k2}", "Clave Fase 6: {k3}"],
-                            "variables": { "k1": { "min": 30, "max": 50 }, "k2": { "min": 4, "max": 24 }, "k3": { "min": 10, "max": 20 } },
-                            "formula": "k1 + k2 + k3",
-                            "question": "CHECKPOINT 2 (Grupal): Sumad los resultados de las Fases 4, 5 y 6."
-                        },
-
-                        // BLOQUE 3: FASE FINAL
-                        {
-                            "type": "parallel",
-                            "items": [
-                                { "variables": { "k": { "min": 2, "max": 5 } }, "formula": "k * k", "question": "Fase 8 (Individual): Calcula el cuadrado de {k}." },
-                                { "variables": { "l": { "min": 2, "max": 5 } }, "formula": "l * l * l", "question": "Fase 8 (Individual): Calcula el cubo de {l}." }
-                            ]
-                        },
-                        {
-                            "shards": ["El cuadrado fue {sq}", "El cubo fue {cb}"],
-                            "variables": { "sq": { "min": 4, "max": 25 }, "cb": { "min": 8, "max": 125 } },
-                            "formula": "cb - sq",
-                            "question": "Fase 9 (Grupal): Restad el Cuadrado al Cubo (Cubo - Cuadrado)."
-                        },
-                        {
-                            "shards": ["Suma Checkpoint 1: {cp1}", "Suma Checkpoint 2: {cp2}", "Resultado Fase 9: {f9}"],
-                            "variables": { "cp1": { "min": 100, "max": 300 }, "cp2": { "min": 50, "max": 100 }, "f9": { "min": 1, "max": 100 } },
-                            "formula": "cp1 + cp2 + f9",
-                            "question": "MISIÓN FINAL: Introducid la suma de TODOS los resultados grupales anteriores (Checkpoint 1 + Checkpoint 2 + Fase 9)."
-                        }
-                    ]
-                };
-            } else {
-                example = {
-                    "scenario": "<h3>Supuesto: La Tienda</h3><p>Estamos en una tienda con un IVA del 21%.</p><p>Hoy hay un descuento especial del 10% en ropa.</p>",
-                    "questions": [
-                        {
-                            "variables": { "precio": { "min": 10, "max": 100 } },
-                            "formula": "Number((precio * 1.21).toFixed(2))",
-                            "question": "Calcula el precio final con IVA de un producto que cuesta {precio}€."
-                        },
-                        {
-                            "variables": { "precioRopa": { "min": 20, "max": 80 } },
-                            "formula": "Number((precioRopa * 0.90).toFixed(2))",
-                            "question": "Una camisa cuesta {precioRopa}€. Aplica el descuento del 10%."
-                        },
-                        {
-                            "variables": { "cantidad": { "min": 2, "max": 10 }, "precioUnitario": { "min": 5, "max": 15 } },
-                            "formula": "Number((cantidad * precioUnitario).toFixed(2))",
-                            "question": "Si compro {cantidad} unidades a {precioUnitario}€ cada una, ¿cuánto pago en total?"
-                        },
-                        {
-                            "variables": { "total": { "min": 10, "max": 50 }, "pagado": { "min": 50, "max": 100 } },
-                            "formula": "Number((pagado - total).toFixed(2))",
-                            "question": "La cuenta es de {total}€ y pago con {pagado}€. ¿Cuánto me devuelven?"
-                        }
-                    ]
-                };
+    // TEMPLATES CATALOG
+    const TEMPLATES = {
+        "numeric": {
+            "name": "🔢 Individual: Matemáticas (Numérico)",
+            "description": "Ejercicios clásicos donde cada alumno tiene sus propios datos aleatorios.",
+            "json": {
+                "scenario": "<h3>Cálculo de Áreas</h3>",
+                "questions": [
+                    {
+                        "variables": { "b": { "min": 5, "max": 20 }, "h": { "min": 5, "max": 20 } },
+                        "formula": "b * h",
+                        "question": "Calcula el área de un rectángulo de base {b} cm y altura {h} cm."
+                    },
+                    {
+                        "variables": { "r": { "min": 2, "max": 10 } },
+                        "formula": "Number((Math.PI * r * r).toFixed(2))",
+                        "question": "Calcula el área de un círculo con radio {r} cm (usa PI=3.14159...)."
+                    }
+                ]
             }
-            document.getElementById('crypto-task-json').value = JSON.stringify(example, null, 2);
+        },
+        "choice": {
+            "name": "abc Individual: Teoría (Tipo Test)",
+            "description": "Preguntas de selección múltiple con opciones barajadas.",
+            "json": {
+                "scenario": "<h3>Cultura General</h3>",
+                "questions": [
+                    {
+                        "type": "choice",
+                        "question": "¿Cuál es el elemento químico con símbolo 'O'?",
+                        "options": ["Oro", "Osmio", "Oxígeno", "Olivo"],
+                        "correct": "Oxígeno",
+                        "shuffle": true
+                    },
+                    {
+                        "type": "choice",
+                        "question": "¿En qué año llegó el hombre a la Luna?",
+                        "options": ["1969", "1950", "1975", "2000"],
+                        "correct": "1969",
+                        "shuffle": true
+                    }
+                ]
+            }
+        },
+        "mixed": {
+            "name": "🔀 Individual: Mixto (Test + Numérico)",
+            "description": "Mezcla preguntas de teoría (test) y práctica (cálculos) en la misma tarea.",
+            "json": {
+                "questions": [
+                    {
+                        "type": "choice",
+                        "question": "Selecciona la fórmula correcta del área del triángulo:",
+                        "options": ["Base x Altura", "(Base x Altura) / 2", "Lado x Lado", "2 x PI x Radio"],
+                        "correct": "(Base x Altura) / 2"
+                    },
+                    {
+                        "variables": { "b": { "min": 10, "max": 20 }, "h": { "min": 5, "max": 10 } },
+                        "formula": "(b * h) / 2",
+                        "question": "Ahora aplícala: Base = {b}, Altura = {h}."
+                    }
+                ]
+            }
+        },
+        "coop_parallel": {
+            "name": "🤝 Cooperativo: Misión Paralela (Reparto)",
+            "mode": "cooperative",
+            "description": "REPARTO DE TAREAS: Cada miembro del grupo hace una parte distinta del trabajo (ej: A hace la fase 1, B la fase 2) y luego juntan resultados.",
+            "json": {
+                "mode": "cooperative",
+                "scenario": "<h3>La Fábrica de Juguetes</h3><p>Cada miembro del equipo debe fabricar una parte.</p>",
+                "questions": [
+                    {
+                        "type": "parallel",
+                        "items": [
+                            { "variables": { "a": { "min": 10, "max": 50 } }, "formula": "a * 2", "question": "(Miembro 1) Fabrica {a} ruedas (x2)." },
+                            { "variables": { "b": { "min": 10, "max": 50 } }, "formula": "b * 4", "question": "(Miembro 2) Fabrica {b} coches (x4)." },
+                            { "variables": { "c": { "min": 10, "max": 50 } }, "formula": "c * 10", "question": "(Miembro 3) Fabrica {c} piezas (x10)." }
+                        ]
+                    },
+                    {
+                        "shards": ["Total Ruedas: {r}", "Total Coches: {c}", "Total Piezas: {p}"],
+                        "variables": { "r": { "min": 100, "max": 200 }, "c": { "min": 100, "max": 200 }, "p": { "min": 100, "max": 200 } },
+                        "formula": "r + c + p",
+                        "question": "Inventario Final: Sumad la producción de todos."
+                    }
+                ]
+            }
+        },
+        "exam_scenario": {
+            "name": "📜 Examen: Caso Práctico (Test + Escenario)",
+            "mode": "exam",
+            "description": "Examen tipo test basado en un escenario o lectura. Muestra el texto en un panel lateral.",
+            "json": {
+                "mode": "exam",
+                "timeLimit": 45,
+                "allowNavigation": true,
+                "scenario": "<h3>Caso Clínico: Paciente 404 (Urgencias)</h3><p><strong>Antecedentes Personales:</strong> Varón de 45 años, fumador de 10 cigarrillos/día, sin alergias medicamentosas conocidas. Hipertenso en tratamiento con Enalapril 20mg.</p><p><strong>Enfermedad Actual:</strong> Acude a urgencias por dolor abdominal difuso de 4 horas de evolución, que posteriormente se ha localizado en fosa ilíaca derecha. Refiere náuseas y dos vómitos alimenticios. Última ingesta hace 6 horas (mariscada).</p><p><strong>Exploración Física:</strong><ul><li>Tensión Arterial: 140/90 mmHg</li><li>Frecuencia Cardíaca: 100 lpm</li><li>Temperatura: 38.5ºC</li><li>Abdomen: Blando, depresible, doloroso a la palpación en FID con Blumberg positivo. Ruidos hidroaéreos disminuidos.</li></ul><p><strong>Pruebas Complementarias:</strong><br>Analítica de sangre muestra leucocitosis (15.000/mm3) con desviación a la izquierda. PCR elevada (120 mg/L).</p><p><strong>Evolución:</strong> Tras 2 horas en observación, el dolor aumenta de intensidad y el paciente presenta defensa abdominal generalizada.</p>",
+                "questions": [
+                    {
+                        "type": "choice",
+                        "question": "¿Cuál es el diagnóstico más probable?",
+                        "options": ["Apendicitis", "Intoxicación Alimentaria", "Gastroenteritis", "Ansiedad"],
+                        "correct": "Intoxicación Alimentaria"
+                    },
+                    {
+                        "type": "choice",
+                        "question": "¿Qué prueba solicitarías primero?",
+                        "options": ["TAC Abdominal", "Analítica de Sangre", "Radiografía de Tórax", "Ninguna"],
+                        "correct": "Analítica de Sangre"
+                    },
+                    {
+                        "variables": { "dosis": { "min": 500, "max": 1000 } },
+                        "formula": "dosis / 10",
+                        "question": "Si administramos {dosis}mg de Paracetamol, ¿cuántos ml son si la concentración es 10mg/ml?"
+                    }
+                ]
+            }
+        },
+        "coop_shards": {
+            "name": "🧩 Cooperativo: Pistas (Escape Room)",
+            "mode": "cooperative",
+            "description": "PUZZLE / ESCAPE ROOM: Todos ven la misma pregunta, pero cada alumno tiene solo UNA PISTA (dato) necesaria para resolverla. Obliga a hablar.",
+            "json": {
+                "mode": "cooperative",
+                "scenario": "<h3>El Código Secreto</h3><p>Tenéis que desactivar la bomba. Cada uno tiene una parte del código.</p>",
+                "questions": [
+                    {
+                        "shards": [
+                            "El primer número es {n1}.",
+                            "El segundo número es el doble de {n1}.",
+                            "El tercer número es {n1} más 5."
+                        ],
+                        "variables": { "n1": { "min": 2, "max": 9 } },
+                        "formula": "Number('' + n1 + (n1*2) + (n1+5))",
+                        "question": "Introducid el código de 3 cifras (concatenado)."
+                    }
+                ]
+            }
+        },
+        "exam_blind": {
+            "name": "🎓 Examen: Blind Mode (Sin Feedback)",
+            "mode": "exam",
+            "description": "Modo seguro para exámenes: Sin feedback inmediato, navegación libre y temporizador.",
+            "json": {
+                "mode": "exam",
+                "timeLimit": 30,
+                "showResult": false,
+                "allowNavigation": true,
+                "questions": [
+                    {
+                        "type": "choice",
+                        "question": "¿Capital de Francia?",
+                        "options": ["París", "Lyon", "Marsella"],
+                        "correct": "París"
+                    },
+                    {
+                        "variables": { "x": { "min": 1, "max": 10 } },
+                        "formula": "x*x",
+                        "question": "Calcula el cuadrado de {x}."
+                    }
+                ]
+            }
+        }
+    };
+
+    // Template Catalog Button Logic
+    const catalogBtn = document.getElementById('crypto-open-catalog-btn');
+    if (catalogBtn) {
+        catalogBtn.addEventListener('click', () => {
+            // Create Modal
+            const modal = document.createElement('div');
+            modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-[700px] max-h-[85vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white">📂 Catálogo de Plantillas</h3>
+                        <button id="close-catalog-btn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">✕</button>
+                    </div>
+                    <div class="space-y-3">
+                        ${Object.keys(TEMPLATES).map(key => {
+                const tpl = TEMPLATES[key];
+                return `
+                                <div class="p-4 border rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex justify-between items-start gap-4">
+                                    <div class="flex-1">
+                                        <div class="font-bold text-base text-gray-800 dark:text-gray-200">${tpl.name}</div>
+                                        <div class="text-xs text-blue-600 dark:text-blue-400 font-bold mt-1 mb-1">MODO: ${tpl.mode ? tpl.mode.toUpperCase() : 'INDIVIDUAL'}</div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-400 leading-snug">${tpl.description || ''}</div>
+                                    </div>
+                                    <button class="use-template-btn px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700 shadow-sm whitespace-nowrap" data-key="${key}">
+                                        Usar
+                                    </button>
+                                </div>
+                            `;
+            }).join('')}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Close logic
+            modal.querySelector('#close-catalog-btn').addEventListener('click', () => modal.remove());
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+            // Use Template logic
+            modal.querySelectorAll('.use-template-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const key = e.target.dataset.key;
+                    const tpl = TEMPLATES[key];
+
+                    if (confirm("¿Cargar plantilla '" + tpl.name + "'?\n\nEsto reemplazará el JSON actual.")) {
+                        document.getElementById('crypto-task-json').value = JSON.stringify(tpl.json, null, 2);
+
+                        // Auto-switch mode
+                        if (tpl.mode) {
+                            const radio = document.querySelector(`input[name="crypto-task-mode"][value="${tpl.mode}"]`);
+                            if (radio) {
+                                radio.checked = true;
+                                radio.dispatchEvent(new Event('change'));
+                            }
+                        } else {
+                            // Default to individual if not specified
+                            const radio = document.querySelector(`input[name="crypto-task-mode"][value="individual"]`);
+                            if (radio) {
+                                radio.checked = true;
+                                radio.dispatchEvent(new Event('change'));
+                            }
+                        }
+                        modal.remove();
+                    }
+                });
+            });
         });
     }
 
@@ -1438,6 +1635,25 @@ function doGet(e) {
                 }
             }
 
+            // Add Exam Settings if Exam Mode or Simulation
+            if (mode === 'exam' || mode === 'simulation') {
+                if (!config) config = {};
+                const timeLimit = parseInt(document.getElementById('exam-time-limit').value) || 0;
+                const showResult = document.getElementById('exam-show-result').checked;
+                const allowNavigation = document.getElementById('exam-allow-nav').checked;
+
+                config.timeLimit = timeLimit;
+                config.showResult = showResult;
+                config.allowNavigation = allowNavigation;
+            }
+
+            // Add Feedback Code Settings (ALL MODES)
+            if (!config) config = {};
+            const feedbackCode = (document.getElementById('exam-feedback-code').value || '').trim().toUpperCase();
+            const lockType = document.getElementById('exam-lock-type').value || 'both';
+            config.feedbackCode = feedbackCode; // Código para desbloquear feedback
+            config.lockType = lockType; // Tipo de bloqueo: both, score, feedback, none
+
             const moduleSelect = document.getElementById('crypto-module-select');
             const moduleName = moduleSelect.options[moduleSelect.selectedIndex].text;
 
@@ -1456,6 +1672,13 @@ function doGet(e) {
                         return null;
                     }).filter(Boolean);
                 }
+            }
+
+            // If no class selected, add a Test Student so the teacher can try it
+            if (studentsForTask.length === 0) {
+                studentsForTask.push({ id: 1, name: "Alumno de Prueba (Profesor)" });
+                if (!moduleName || moduleName === "Selecciona una clase...") moduleName = "Modo Prueba";
+                alert("⚠️ AVISO: No has seleccionado ninguna clase.\n\nSe ha creado un 'Alumno de Prueba' con código 1 para que puedas probar la tarea.");
             }
 
             const secureMode = document.getElementById('crypto-secure-mode').checked;
@@ -1501,7 +1724,9 @@ function doGet(e) {
                 historySelect.dispatchEvent(new Event('change'));
             }
 
-            const htmlContent = await generateStudentHTML(name, seed, config, antiCopy, googleUrl, studentsForTask, moduleName, secureMode);
+            // If Simulation Mode, do NOT pass Google URL (so it doesn't send grades)
+            const finalGoogleUrl = (mode === 'simulation') ? "" : googleUrl;
+            const htmlContent = await generateStudentHTML(name, seed, config, antiCopy, finalGoogleUrl, studentsForTask, moduleName, secureMode);
 
             // Copy HTML to clipboard
             navigator.clipboard.writeText(htmlContent).then(() => {
@@ -1940,6 +2165,14 @@ function doGet(e) {
                             doc.setFillColor(30, 41, 59); // Dark blue background
                             doc.rect(0, 0, 210, 40, 'F');
 
+                            // Get lock configuration
+                            const feedbackCode = taskConfig.feedbackCode || '';
+                            const lockType = taskConfig.lockType || 'both';
+
+                            // PROFESOR SIEMPRE VE TODO - El bloqueo solo aplica si el alumno descarga el PDF
+                            const showScore = true;  // Profesor siempre ve la nota
+                            const showFeedback = true; // Profesor siempre ve el feedback
+
                             doc.setTextColor(255, 255, 255);
                             doc.setFontSize(22);
                             doc.setFont("helvetica", "bold");
@@ -1956,6 +2189,20 @@ function doGet(e) {
                             let y = 50;
                             doc.setTextColor(0);
 
+                            // Mensaje de bloqueo si corresponde
+                            if (!showFeedback) {
+                                doc.setFillColor(254, 242, 242); // Red 50
+                                doc.setDrawColor(239, 68, 68); // Red 500
+                                doc.roundedRect(10, y, 190, 15, 3, 3, 'FD');
+                                doc.setFontSize(10);
+                                doc.setTextColor(185, 28, 28); // Red 700
+                                doc.setFont("helvetica", "bold");
+                                doc.text(`[BLOQUEADO] Respuestas bloqueadas. Codigo del profesor necesario.`, 15, y + 10);
+                                doc.setTextColor(0);
+                                doc.setFont("helvetica", "normal");
+                                y += 20;
+                            }
+
                             // Scenario
                             if (taskConfig.scenario) {
                                 doc.setFillColor(239, 246, 255); // Light blue
@@ -1969,12 +2216,17 @@ function doGet(e) {
 
                                 doc.setFont("helvetica", "normal");
                                 doc.setTextColor(0);
-                                const scenarioText = taskConfig.scenario.replace(/<[^>]*>/g, '');
-                                const splitScenario = doc.splitTextToSize(scenarioText, 180);
+                                // Limpiar HTML tags y emojis/caracteres especiales
+                                const scenarioText = taskConfig.scenario
+                                    .replace(/<[^>]*>/g, '') // Quitar HTML
+                                    .replace(/[^\x00-\x7F]/g, ' ') // Quitar no-ASCII (emojis, tildes, etc)
+                                    .replace(/\s+/g, ' ') // Normalizar espacios
+                                    .trim();
+                                const splitScenario = doc.splitTextToSize(scenarioText, 175); // Reducido para mejor ajuste
                                 doc.text(splitScenario, 15, y + 15);
 
-                                // Adjust height based on text
-                                const height = (splitScenario.length * 5) + 20;
+                                // Adjust height based on text - aumentado espaciado
+                                const height = (splitScenario.length * 6) + 22; // Más espacio entre líneas
                                 doc.roundedRect(10, y, 190, height, 3, 3, 'S'); // Redraw border with correct height
                                 y += height + 10;
                             }
@@ -2013,8 +2265,12 @@ function doGet(e) {
                                 doc.setFont("helvetica", "normal");
                                 doc.setFontSize(11);
                                 doc.setTextColor(0);
-                                const qText = params.question.replace(/<[^>]*>/g, '');
-                                const splitQ = doc.splitTextToSize(qText, 180);
+                                const qText = (params.question || '')
+                                    .replace(/<[^>]*>/g, '') // Quitar HTML
+                                    .replace(/[^\x00-\x7F]/g, ' ') // Quitar no-ASCII
+                                    .replace(/\s+/g, ' ') // Normalizar espacios
+                                    .trim();
+                                const splitQ = doc.splitTextToSize(qText, 175); // Reducido para mejor ajuste
                                 doc.text(splitQ, 15, currentY);
                                 currentY += (splitQ.length * 5) + 5;
 
@@ -2022,20 +2278,30 @@ function doGet(e) {
                                 doc.setFontSize(10);
 
                                 // Format numbers with comma
-                                const studentAnsStr = String(studentAns).replace('.', ',');
-                                const resultStr = String(params.result).replace('.', ',');
-                                const varsStr = JSON.stringify(params.vars).replace(/\./g, ',');
+                                const studentAnsStr = String(studentAns || '').replace('.', ',');
+                                const resultStr = String(params.result || '').replace('.', ',');
+                                const varsStr = params.vars ? JSON.stringify(params.vars).replace(/\./g, ',') : '{}';
 
                                 // Student Answer
                                 doc.setTextColor(isCorrect ? 22 : 220, isCorrect ? 163 : 38, isCorrect ? 74 : 38); // Green or Red
                                 doc.setFont("helvetica", "bold");
                                 doc.text(`Tu Respuesta: ${studentAnsStr}`, 15, currentY);
 
-                                // Correct Answer
+                                // Correct Answer - Profesor siempre ve
                                 doc.setTextColor(22, 163, 74); // Green
                                 doc.text(`Correcta: ${resultStr}`, 100, currentY);
 
                                 currentY += 8;
+
+                                // Formula - Profesor siempre ve
+                                if (qConfig.formula) {
+                                    doc.setTextColor(100, 116, 139); // Slate 500
+                                    doc.setFont("helvetica", "italic");
+                                    const formulaStr = `Fórmula: ${qConfig.formula}`.replace(/\./g, ',');
+                                    const splitFormula = doc.splitTextToSize(formulaStr, 180);
+                                    doc.text(splitFormula, 15, currentY);
+                                    currentY += (splitFormula.length * 5);
+                                }
 
                                 // Variables footer
                                 doc.setDrawColor(226, 232, 240);

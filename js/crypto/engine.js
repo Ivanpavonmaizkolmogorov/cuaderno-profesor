@@ -17,8 +17,30 @@ export const CryptoEngine = {
         const combinedSeed = parseInt(seed) + parseInt(studentCode) + (questionIndex * 1337);
         const rng = this.pseudoRandom(combinedSeed);
 
+        // Handle Choice Questions
+        if (questionConfig.type === 'choice') {
+            const options = [...questionConfig.options];
+            const correct = questionConfig.correct;
+
+            // Shuffle if requested (default true)
+            if (questionConfig.shuffle !== false) {
+                for (let i = options.length - 1; i > 0; i--) {
+                    const j = Math.floor(rng() * (i + 1));
+                    [options[i], options[j]] = [options[j], options[i]];
+                }
+            }
+
+            return {
+                type: 'choice',
+                question: questionConfig.question,
+                options: options,
+                result: correct, // The correct string
+                vars: {} // No vars for choice
+            };
+        }
+
         const vars = {};
-        for (const [key, rule] of Object.entries(questionConfig.variables)) {
+        for (const [key, rule] of Object.entries(questionConfig.variables || {})) {
             if (Array.isArray(rule)) {
                 const index = Math.floor(rng() * rule.length);
                 vars[key] = rule[index];
@@ -31,15 +53,29 @@ export const CryptoEngine = {
 
         const keys = Object.keys(vars);
         const values = Object.values(vars);
-        const formulaFunc = new Function(...keys, 'const { max, min, round, floor, ceil, abs, random, sqrt, pow, sin, cos, tan, PI } = Math; return ' + questionConfig.formula);
-        const result = formulaFunc(...values);
+        let result = 0;
+
+        if (questionConfig.formula) {
+            const formulaFunc = new Function(...keys, 'const { max, min, round, floor, ceil, abs, random, sqrt, pow, sin, cos, tan, PI } = Math; return ' + questionConfig.formula);
+            result = formulaFunc(...values);
+        }
 
         let question = questionConfig.question;
         for (const [key, val] of Object.entries(vars)) {
             question = question.split('{' + key + '}').join(val);
         }
 
-        return { vars, result, question, formula: questionConfig.formula };
+        // Handle Shards Variable Substitution
+        let shards = questionConfig.shards ? [...questionConfig.shards] : [];
+        if (shards.length > 0) {
+            for (let i = 0; i < shards.length; i++) {
+                for (const [key, val] of Object.entries(vars)) {
+                    shards[i] = shards[i].split('{' + key + '}').join(val);
+                }
+            }
+        }
+
+        return { vars, result, question, formula: questionConfig.formula, shards };
     },
     async generateProof(seed, studentCode, score) {
         const s = String(seed).trim();
@@ -130,8 +166,28 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
         const combinedSeed = parseInt(seed) + parseInt(studentCode) + (questionIndex * 1337);
         const rng = this.pseudoRandom(combinedSeed);
 
+        if (questionConfig.type === 'choice') {
+            const options = [...questionConfig.options];
+            const correct = questionConfig.correct;
+            
+            if (questionConfig.shuffle !== false) {
+                for (let i = options.length - 1; i > 0; i--) {
+                    const j = Math.floor(rng() * (i + 1));
+                    [options[i], options[j]] = [options[j], options[i]];
+                }
+            }
+            
+            return { 
+                type: 'choice',
+                question: questionConfig.question, 
+                options: options, 
+                result: correct,
+                vars: {}
+            };
+        }
+
         const vars = {};
-        for (const [key, rule] of Object.entries(questionConfig.variables)) {
+        for (const [key, rule] of Object.entries(questionConfig.variables || {})) {
             if (Array.isArray(rule)) {
                 const index = Math.floor(rng() * rule.length);
                 vars[key] = rule[index];
@@ -144,8 +200,12 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
 
         const keys = Object.keys(vars);
         const values = Object.values(vars);
-        const formulaFunc = new Function(...keys, 'const { max, min, round, floor, ceil, abs, random, sqrt, pow, sin, cos, tan, PI } = Math; return ' + questionConfig.formula);
-        const result = formulaFunc(...values);
+        let result = 0;
+        
+        if (questionConfig.formula) {
+            const formulaFunc = new Function(...keys, 'const { max, min, round, floor, ceil, abs, random, sqrt, pow, sin, cos, tan, PI } = Math; return ' + questionConfig.formula);
+            result = formulaFunc(...values);
+        }
 
         let question = questionConfig.question;
         for (const [key, val] of Object.entries(vars)) {
@@ -218,10 +278,126 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
         .hidden { display: none; }
         #final-section { text-align: center; margin-top: 3rem; padding: 2rem; background: #1e293b; color: white; border-radius: 12px; }
         #phrase-display { font-family: monospace; font-size: 2rem; letter-spacing: 2px; color: #4ade80; margin: 1rem 0; word-break: break-all; }
+        /* Side Panel for Scenario */
+        #scenario-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 400px;
+            max-width: 90%;
+            height: 100%;
+            background: white;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+            z-index: 5000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+            overflow-y: auto;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+        #scenario-panel.open {
+            transform: translateX(0);
+        }
+        #scenario-toggle-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 4000;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            letter-spacing: 0.3px;
+        }
+        #scenario-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        .scenario-hint {
+            position: fixed;
+            top: 26px;
+            right: 160px;
+            background: #ef4444;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            z-index: 4001;
+            animation: pulse 2s infinite;
+            pointer-events: none;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+        }
+        .scenario-hint::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-width: 6px 0 6px 6px;
+            border-color: transparent transparent transparent #ef4444;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        @media print { body { display: none !important; } }
+
+        .close-panel-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: transparent;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+        }
+        /* Spy Mode Overlay */
+        #spy-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 99999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        #spy-overlay h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        #spy-overlay p {
+            font-size: 1.5rem;
+            color: #ef4444;
+            font-weight: bold;
+        }
         ${antiCopyCSS}
     </style>
 </head>
 <body>
+    <div id="spy-overlay">
+        <h1>🙈</h1>
+        <p>¡OJO! No cambies de pestaña.</p>
+        <p style="font-size:1rem; color:#64748b; margin-top:10px;">El examen se ha ocultado por seguridad.</p>
+    </div>
     <div class="header">
         <h1>${taskName}</h1>
         <p>${secureMode ? '⚠️ <strong>PASO OBLIGATORIO:</strong> Pide a tu profesor tu <strong>CÓDIGO DE ACCESO</strong> personal (4 letras/números) para poder empezar.' : 'Introduce tu código de lista (ej: 1, 2, 3...) para desbloquear los ejercicios.'}</p>
@@ -232,7 +408,22 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
         <button id="start-btn">Comenzar Tarea</button>
     </div>
     <div id="dashboard" class="hidden">
-        ${taskConfig.scenario ? `<div class="scenario-box">${taskConfig.scenario}</div>` : ''}
+        <div id="exam-timer" class="hidden fixed top-4 right-4 bg-red-600 text-white font-mono text-xl px-4 py-2 rounded shadow-lg z-50">00:00</div>
+        <div id="exam-nav" class="hidden mb-6 flex flex-wrap gap-2 p-4 bg-white rounded shadow border border-gray-200">
+            <!-- Nav buttons generated here -->
+        </div>
+        ${taskConfig.scenario ? `
+            <button id="scenario-toggle-btn" onclick="toggleScenario(); document.getElementById('scenario-hint')?.remove();">📜 Ver Texto</button>
+            <div id="scenario-hint" class="scenario-hint">👈 ¡Pulsa aquí para leer!</div>
+            <div id="scenario-panel">
+                <button class="close-panel-btn" onclick="toggleScenario()">×</button>
+                <div class="scenario-content">
+                    <h3>📜 Escenario / Documentación</h3>
+                    ${taskConfig.scenario}
+                </div>
+            </div>
+            ${taskConfig.mode !== 'exam' && taskConfig.mode !== 'simulation' ? `<div class="scenario-box">${taskConfig.scenario}</div>` : ''}
+        ` : ''}
         <div id="questions-list"></div>
         <button id="manual-finish-btn" class="finish-btn" onclick="finishTask()">🏁 Finalizar y Entregar</button>
         <div id="final-section" class="hidden">
@@ -246,12 +437,29 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
     <script>
         ${antiCopyScript}
         const TASK_SEED = ${seed};
-        const TASK_CONFIG = ${JSON.stringify(taskConfig)};
-        const GOOGLE_URL = "${googleScriptUrl || ''}";
-        const MODULE_NAME = "${(moduleName || '').replace(/"/g, '\\"')}";
-        const TASK_NAME = "${(taskName || '').replace(/"/g, '\\"')}";
         const SECURE_MODE = ${secureMode};
-        const ACCESS_CODES = ${JSON.stringify(accessCodesMap)};
+        // Sanitize JSON to prevent script injection
+        const TASK_CONFIG = ${JSON.stringify(taskConfig).replace(/<\/script>/g, '<\\/script>')};
+        const GOOGLE_URL = "${(googleScriptUrl || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}";
+        const MODULE_NAME = "${(moduleName || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}";
+        const TASK_NAME = "${(taskName || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}";
+        const ACCESS_CODES = ${JSON.stringify(accessCodesMap).replace(/<\/script>/g, '<\\/script>')};
+        const EXAM_CONFIG = ${JSON.stringify({
+        isExam: taskConfig.mode === 'exam' || taskConfig.mode === 'simulation',
+        timeLimit: taskConfig.timeLimit || 0,
+        showResult: taskConfig.showResult !== false,
+        allowNavigation: taskConfig.allowNavigation !== false
+    }).replace(/<\/script>/g, '<\\/script>')};
+        
+        // BARAJAR PREGUNTAS si es examen/simulacro (NO en cooperativo)
+        if (EXAM_CONFIG.isExam && TASK_CONFIG.questions && TASK_CONFIG.mode !== 'team') {
+            // Fisher-Yates shuffle
+            for (let i = TASK_CONFIG.questions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [TASK_CONFIG.questions[i], TASK_CONFIG.questions[j]] = [TASK_CONFIG.questions[j], TASK_CONFIG.questions[i]];
+            }
+        }
+        
         ${cryptoEngineCode}
         
         // --- GLOBAL ERROR HANDLER (Nivel 1) ---
@@ -330,6 +538,13 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
             input.value = '';
             input.onkeydown = (e) => { if(e.key === 'Enter') checkPin(); };
         }
+
+        window.toggleScenario = function() {
+            const panel = document.getElementById('scenario-panel');
+            if (panel) {
+                panel.classList.toggle('open');
+            }
+        };
 
         window.closeGodModal = function() {
             const modal = document.getElementById('god-modal');
@@ -485,6 +700,9 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
         let questionStates = [];
         let studentAnswers = []; // Store student's answers for PDF
         let isFinished = false;
+        let examTimerInterval = null;
+        let timeRemaining = 0;
+        let currentQuestionIndex = 0;
         
         document.getElementById("start-btn").addEventListener("click", () => {
             let inputCode = document.getElementById("student-code").value.trim();
@@ -549,6 +767,61 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
             const container = document.getElementById("questions-list");
             container.innerHTML = "";
             
+            // EXAM MODE SETUP
+            if (EXAM_CONFIG.isExam) {
+                // Mode Badge
+                const isSim = TASK_CONFIG.mode === 'simulation';
+                const badgeText = isSim ? "🟠 SIMULACRO" : "🔴 EXAMEN";
+                const badgeColor = isSim ? "bg-orange-100 text-orange-800 border-orange-300" : "bg-red-100 text-red-800 border-red-300";
+                
+                const header = document.querySelector('.header');
+                if(header) {
+                    const badge = document.createElement('div');
+                    badge.className = \`inline-block px-3 py-1 rounded-full border \${badgeColor} font-bold text-sm mb-2\`;
+                    badge.textContent = badgeText;
+                    header.insertBefore(badge, header.firstChild);
+                }
+
+                // Timer
+                if (EXAM_CONFIG.timeLimit > 0) {
+                    const timerEl = document.getElementById("exam-timer");
+                    timerEl.classList.remove("hidden");
+                    timeRemaining = EXAM_CONFIG.timeLimit * 60; // Seconds
+                    updateTimerDisplay();
+                    examTimerInterval = setInterval(() => {
+                        timeRemaining--;
+                        updateTimerDisplay();
+                        if (timeRemaining <= 0) {
+                            clearInterval(examTimerInterval);
+                            alert("⏰ ¡TIEMPO TERMINADO! El examen se entregará automáticamente.");
+                            finishTask(true);
+                        }
+                    }, 1000);
+                }
+                
+                // Navigation Bar with dots, arrows and progress
+                const navEl = document.getElementById("exam-nav");
+                navEl.classList.remove("hidden");
+                navEl.className = "mb-4 px-4 py-3 bg-white rounded-lg shadow-md border border-gray-200 sticky top-4 z-40 mx-auto max-w-4xl";
+                
+                let navHtml = '<div class="mb-3">';
+                navHtml += "<div style='width:100%; height:6px; background:#e5e7eb; border-radius:10px; overflow:hidden; margin-bottom:10px;'><div id='progress-bar' style='width:0%; height:100%; background:linear-gradient(90deg, #3b82f6, #8b5cf6); transition:width 0.3s ease; border-radius:10px;'></div></div>";
+                navHtml += "<div style='display:flex; align-items:center; gap:12px;'>";
+                navHtml += "<button onclick='prevQuestion()' style='width:32px; height:32px; border-radius:8px; background:#1e293b; color:white; border:1px solid #1e293b; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0; font-weight:bold; font-size:1.2rem;'>←</button>";
+                navHtml += "<div style='display:flex; justify-content:space-between; align-items:center; flex:1; gap:4px; min-width:0;'>";
+                TASK_CONFIG.questions.forEach((_, i) => {
+                    navHtml += "<button onclick='jumpToQuestion(" + i + ")' id='nav-btn-" + i + "' style='width:12px; height:12px; min-width:12px; min-height:12px; border-radius:50%; background:#d1d5db; border:none; cursor:pointer; transition:all 0.3s ease; padding:0; flex-shrink:0;' title='Pregunta " + (i+1) + "'></button>";
+                });
+                navHtml += '</div>';
+                navHtml += "<div style='font-size:0.875rem; font-weight:700; color:#4b5563; font-family:monospace; white-space:nowrap; flex-shrink:0; min-width:50px; text-align:center;'><span id='nav-current'>1</span>/" + TASK_CONFIG.questions.length + "</div>";
+                navHtml += "<button onclick='nextQuestion()' style='width:32px; height:32px; border-radius:8px; background:#1e293b; color:white; border:1px solid #1e293b; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0; font-weight:bold; font-size:1.2rem;'>→</button>";
+                navHtml += '</div></div>';
+                
+                navEl.innerHTML = navHtml;
+            }
+            
+            // let currentQuestionIndex = 0; // Moved to global scope
+            
             TASK_CONFIG.questions.forEach((qConfig, index) => {
                 // Determine Seed: Individual (StudentCode) or Cooperative (GroupId)
                 let seedForParams = studentCode;
@@ -579,6 +852,8 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
                             const myShards = qConfig.shards.filter((_, i) => (i % groupSize) === memberIndex);
                             
                             if (myShards.length > 0) {
+                                // We embed the shards into the question, but we must ensure variables are substituted later.
+                                // generateParams will handle substitution in 'question' string.
                                 const shardsHtml = myShards.map(s => "<div class='mt-2 p-2 bg-purple-50 border border-purple-200 rounded text-purple-800 text-sm'><strong>🧩 Pista:</strong><br>" + s + "</div>").join('');
                                 configToUse.question = qConfig.question + "<div class='mt-4'>" + shardsHtml + "</div>";
                             }
@@ -594,81 +869,258 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
                     params = { vars: {}, result: 0, question: "Error: " + e.message };
                 }
                 
-                questionStates.push({ solved: false, skipped: false, attempts: 0, result: params.result });
+                questionStates.push({ solved: false, skipped: false, attempts: 0, result: params.result, viewed: false });
                 
                 // Store question and correct answer for PDF
                 studentAnswers.push({
                     question: params.question,
                     studentAnswer: null,
                     correctAnswer: params.result,
+                    formula: params.formula, // Store formula
                     isCorrect: false,
                     wasSkipped: false
                 });
                 
                 const card = document.createElement("div");
                 card.className = "question-card";
-                if (index > 0) card.classList.add("hidden"); // Hide future questions
+                // In Exam Mode with Navigation, show first question only initially, or all? 
+                // Let's show first only, and use nav to switch.
+                if (index > 0) card.classList.add("hidden"); 
                 card.id = "q-card-" + index;
-                card.innerHTML = "<div class='q-header'><span><strong>Pregunta " + (index + 1) + "</strong></span><span class='q-badge' id='badge-" + index + "'>Pendiente</span></div><div class='q-content'>" + params.question + "</div><div id='input-area-" + index + "'><input type='text' inputmode='decimal' id='input-" + index + "' placeholder='Tu respuesta (usa coma , para decimales)' class='w-full p-2 border rounded'><button onclick='checkAnswer(" + index + ")'>Comprobar</button><button onclick='skipAnswer(" + index + ")' id='skip-btn-" + index + "' class='skip-btn hidden'>Saltar Pregunta (0 pts)</button></div><div class='feedback' id='feedback-" + index + "'></div>";
+                
+                let inputHtml = "";
+                // Button Text: "Guardar Respuesta" for Exam, "Comprobar" for Practice
+                const btnText = EXAM_CONFIG.isExam ? "💾 Guardar Respuesta" : "Comprobar";
+                
+                if (params.type === 'choice') {
+                    inputHtml = "<div class='mt-4 space-y-2'>";
+                    params.options.forEach((opt, optIdx) => {
+                        // Escape quotes for safety
+                        const safeOpt = opt.replace(/"/g, '&quot;');
+                        inputHtml += \`
+                            <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 transition-colors">
+                                <input type="radio" name="q-\${index}" value="\${safeOpt}" class="mr-3 h-5 w-5 text-blue-600">
+                                <span class="text-gray-800">\${opt}</span>
+                            </label>
+                        \`;
+                    });
+                    inputHtml += "</div><button onclick='checkAnswer(" + index + ")' class='mt-4'>" + btnText + "</button>";
+                } else {
+                    inputHtml = "<div id='input-area-" + index + "'><input type='text' inputmode='decimal' id='input-" + index + "' placeholder='Tu respuesta (usa coma , para decimales)' class='w-full p-2 border rounded'><button onclick='checkAnswer(" + index + ")'>" + btnText + "</button></div>";
+                }
+                
+                // Navigation Buttons in Card (Exam Mode)
+                let navBtnsHtml = "";
+                if (EXAM_CONFIG.isExam && EXAM_CONFIG.allowNavigation) {
+                    navBtnsHtml = \`
+                        <div class="flex justify-between mt-4 border-t pt-4">
+                            <button onclick="prevQuestion()" class="bg-gray-200 text-gray-700 hover:bg-gray-300" style="width:auto; padding:0.5rem 1rem;">⬅️ Anterior</button>
+                            <button onclick="nextQuestion()" class="bg-gray-200 text-gray-700 hover:bg-gray-300" style="width:auto; padding:0.5rem 1rem;">Siguiente ➡️</button>
+                        </div>
+                    \`;
+                }
+
+                // Skip button logic: In Exam mode, maybe just "Next"? Or rely on Nav bar.
+                // Let's keep Skip button hidden in Exam mode as they can just use nav.
+                const skipBtnHtml = EXAM_CONFIG.isExam ? "" : "<button onclick='skipAnswer(" + index + ")' id='skip-btn-" + index + "' class='skip-btn hidden'>Saltar Pregunta (0 pts)</button>";
+                
+                card.innerHTML = "<div class='q-header'><span><strong>Pregunta " + (index + 1) + "</strong></span><span class='q-badge' id='badge-" + index + "'>Pendiente</span></div><div class='q-content'>" + params.question + "</div>" + inputHtml + navBtnsHtml + skipBtnHtml + "<div class='feedback' id='feedback-" + index + "'></div>";
                 container.appendChild(card);
             });
+            
+            if (EXAM_CONFIG.isExam) {
+                // Highlight first nav button
+                updateNav(0);
+            }
+        }
+        
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            document.getElementById("exam-timer").textContent = 
+                (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+            
+            if (timeRemaining < 60) {
+                document.getElementById("exam-timer").classList.add("animate-pulse");
+            }
+        }
+        
+        function jumpToQuestion(index) {
+            // Validate index
+            if (index < 0 || index >= questionStates.length) return;
+            
+            currentQuestionIndex = index;
+            
+            // Mark as viewed
+            if (questionStates[index]) questionStates[index].viewed = true;
+
+            // Hide all
+            document.querySelectorAll('.question-card').forEach(c => c.classList.add('hidden'));
+            // Show target
+            const card = document.getElementById("q-card-" + index);
+            if(card) card.classList.remove('hidden');
+            updateNav(index);
+        }
+        
+        function prevQuestion() {
+            jumpToQuestion(currentQuestionIndex - 1);
+        }
+
+        function nextQuestion() {
+            jumpToQuestion(currentQuestionIndex + 1);
+        }
+        
+        function updateNav(currentIndex) {
+            // Update Counter
+            const counterEl = document.getElementById("nav-current");
+            if(counterEl) counterEl.textContent = currentIndex + 1;
+
+            // Update Progress Bar
+            const progressBar = document.getElementById("progress-bar");
+            if(progressBar) {
+                const solvedCount = questionStates.filter(s => s.solved).length;
+                const progressPercent = (solvedCount / questionStates.length) * 100;
+                progressBar.style.width = progressPercent + '%';
+            }
+
+            // Reset styles for dots
+            document.querySelectorAll('#exam-nav button[id^="nav-btn-"]').forEach((btn, idx) => {
+                const state = questionStates[idx];
+                
+                // Base styles
+                let baseStyle = "width:12px; height:12px; min-width:12px; min-height:12px; border-radius:50%; border:none; cursor:pointer; transition:all 0.3s ease; padding:0; flex-shrink:0; outline:none;";
+                
+                if (state.solved) {
+                    btn.style.cssText = baseStyle + " background:#3b82f6; box-shadow:0 2px 4px rgba(59,130,246,0.5);";
+                } else if (state.viewed) {
+                    btn.style.cssText = baseStyle + " background:#facc15; box-shadow:0 2px 4px rgba(250,204,21,0.5);";
+                } else {
+                    btn.style.cssText = baseStyle + " background:#d1d5db;";
+                }
+                
+                // Current question - make it bigger and add ring
+                if (idx === currentIndex) {
+                    btn.style.cssText += " transform:scale(1.5); box-shadow:0 0 0 2px white, 0 0 0 4px #3b82f6, 0 4px 8px rgba(59,130,246,0.6);";
+                }
+            });
+            
+            // Scroll current dot into view if needed
+            const currentBtn = document.getElementById("nav-btn-" + currentIndex);
+            if(currentBtn) {
+                currentBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+            }
         }
         
         function revealNext(index) {
-            const nextCard = document.getElementById("q-card-" + (index + 1));
-            if (nextCard) {
-                nextCard.classList.remove("hidden");
-                nextCard.scrollIntoView({ behavior: "smooth" });
+            if (EXAM_CONFIG.isExam && EXAM_CONFIG.allowNavigation) {
+                // Do nothing, user navigates manually or we could auto-advance
+                // Let's auto-advance for convenience
+                if (index < questionStates.length - 1) {
+                    jumpToQuestion(index + 1);
+                }
+            } else {
+                const nextCard = document.getElementById("q-card-" + (index + 1));
+                if (nextCard) {
+                    nextCard.classList.remove("hidden");
+                    nextCard.scrollIntoView({ behavior: "smooth" });
+                }
             }
         }
         
         window.checkAnswer = function(index) {
             if(isFinished) return;
-            const input = document.getElementById("input-" + index);
-            let val = input.value;
-            const feedback = document.getElementById("feedback-" + index);
             
-            if(!val) return;
-            
-            // STRICT: Forbid dots
-            if(val.includes('.')) {
-                feedback.textContent = "⚠️ Usa COMA (,) para decimales. No uses punto."; 
-                feedback.style.color = "orange"; 
-                return; 
-            }
-            
-            // Support comma as decimal separator (convert to dot for calculation)
-            val = val.replace(',', '.');
-            
-            if(isNaN(val)) {
-                feedback.textContent = "⚠️ Por favor, introduce un número válido"; 
-                feedback.style.color = "orange"; 
-                return; 
-            }
-            
-            const answer = parseFloat(val);
             const state = questionStates[index];
             const qConfig = TASK_CONFIG.questions[index];
-            const tolerance = (qConfig.tolerance !== undefined) ? qConfig.tolerance : 0.01;
+            const feedback = document.getElementById("feedback-" + index);
+            let answer;
+            let isCorrect = false;
+
+            if (state.result && typeof state.result === 'string' && isNaN(parseFloat(state.result))) {
+                // CHOICE TYPE (String comparison)
+                const selected = document.querySelector('input[name="q-' + index + '"]:checked');
+                if (!selected) {
+                    if(!confirm("⚠️ Respuesta en blanco. ¿Quieres guardarla así? (Contará como incorrecta)")) return;
+                    answer = "Sin respuesta";
+                    isCorrect = false;
+                } else {
+                    answer = selected.value;
+                    // Exact match for strings
+                    if (answer === state.result) isCorrect = true;
+                }
+            } else {
+                // NUMERIC TYPE
+                const input = document.getElementById("input-" + index);
+                let val = input.value;
+                
+                if(!val) {
+                    if(!confirm("⚠️ Respuesta en blanco. ¿Quieres guardarla así? (Contará como incorrecta)")) return;
+                    answer = "Sin respuesta";
+                    isCorrect = false;
+                } else {
+                    // STRICT: Forbid dots
+                    if(val.includes('.')) {
+                        feedback.textContent = "⚠️ Usa COMA (,) para decimales. No uses punto."; 
+                        feedback.style.color = "orange"; 
+                        return; 
+                    }
+                    
+                    // Support comma as decimal separator (convert to dot for calculation)
+                    let numVal = val.replace(',', '.');
+                    
+                    if(isNaN(numVal)) {
+                        feedback.textContent = "⚠️ Por favor, introduce un número válido"; 
+                        feedback.style.color = "orange"; 
+                        return; 
+                    }
+                    
+                    answer = parseFloat(numVal);
+                    const tolerance = (qConfig.tolerance !== undefined) ? qConfig.tolerance : 0.01;
+                    if(Math.abs(answer - state.result) <= tolerance) isCorrect = true;
+                }
+            }
+            
             state.attempts++;
             
             // Store student's answer
             studentAnswers[index].studentAnswer = answer;
+            studentAnswers[index].isCorrect = isCorrect; // Store correctness even in Exam mode (for final score)
             
-            console.log("DEBUG Check Q" + (index+1) + ": Input=" + answer + ", Expected=" + state.result + ", Diff=" + Math.abs(answer - state.result) + ", Tolerance=" + tolerance);
+            console.log("DEBUG Check Q" + (index+1) + ": Input=" + answer + ", Expected=" + state.result + ", Correct=" + isCorrect);
 
-            if(Math.abs(answer - state.result) <= tolerance) { 
-                state.solved = true; 
-                studentAnswers[index].isCorrect = true;
-                markAsSolved(index); 
-                revealNext(index);
+            if (EXAM_CONFIG.isExam) {
+                // BLIND MODE: Just mark as solved (answered) visually, but don't show result
+                state.solved = true; // We mark as solved so it counts as "answered"
+                
+                // Visual Feedback for Exam
+                feedback.textContent = "✅ Respuesta Guardada";
+                feedback.style.color = "green";
+                
+                // Update Badge
+                document.getElementById("badge-" + index).textContent = "Guardado";
+                document.getElementById("badge-" + index).className = "q-badge bg-blue-100 text-blue-800";
+                
+                // Update Nav
+                updateNav(index);
+                
+                // Auto-advance after short delay
+                setTimeout(() => revealNext(index), 500);
+                
+            } else {
+                // PRACTICE MODE (Immediate Feedback)
+                if(isCorrect) { 
+                    state.solved = true; 
+                    markAsSolved(index, answer); 
+                    revealNext(index);
+                }
+                else { 
+                    feedback.textContent = "❌ Incorrecto"; 
+                    feedback.style.color = "red"; 
+                    if(state.attempts >= 2) document.getElementById("skip-btn-" + index).classList.remove("hidden"); 
+                }
             }
-            else { 
-                feedback.textContent = "❌ Incorrecto"; 
-                feedback.style.color = "red"; 
-                if(state.attempts >= 2) document.getElementById("skip-btn-" + index).classList.remove("hidden"); 
-            }
-            if(questionStates.every(q => q.solved || q.skipped)) finishTask(true);
+            
+            if(!EXAM_CONFIG.isExam && questionStates.every(q => q.solved || q.skipped)) finishTask(true);
         };
         
         window.skipAnswer = function(index) {
@@ -685,33 +1137,169 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
         window.finishTask = async function(auto = false) {
             if(isFinished) return;
             
+            // Stop Timer
+            if(examTimerInterval) clearInterval(examTimerInterval);
+            
             // Capture any pending inputs before finishing
             questionStates.forEach((state, index) => {
+                // In Exam mode, we might want to capture current input even if not clicked "Save"
+                // But for now, let's rely on explicit save or what's in the input
                 if (!state.solved && !state.skipped) {
                     const input = document.getElementById("input-" + index);
-                    if (input && input.value.trim() !== "") {
+                    // For choice, check radio
+                    if (TASK_CONFIG.questions[index].type === 'choice') {
+                         const selected = document.querySelector('input[name="q-' + index + '"]:checked');
+                         if (selected) {
+                             studentAnswers[index].studentAnswer = selected.value;
+                             // Check correctness silently
+                             if (selected.value === questionStates[index].result) studentAnswers[index].isCorrect = true;
+                         }
+                    } else if (input && input.value.trim() !== "") {
                         let val = input.value.trim();
                         // Support comma
                         const valNum = val.replace(',', '.');
-                        studentAnswers[index].studentAnswer = isNaN(valNum) ? val : parseFloat(valNum);
+                        const num = isNaN(valNum) ? val : parseFloat(valNum);
+                        studentAnswers[index].studentAnswer = num;
+                        
+                        // Check correctness silently
+                        const qConfig = TASK_CONFIG.questions[index];
+                        const tolerance = (qConfig.tolerance !== undefined) ? qConfig.tolerance : 0.01;
+                        if (typeof num === 'number' && Math.abs(num - questionStates[index].result) <= tolerance) {
+                            studentAnswers[index].isCorrect = true;
+                        }
                     }
                 }
             });
 
             const pending = questionStates.filter(q => !q.solved && !q.skipped).length;
-            const correctCount = questionStates.filter(q => q.solved).length;
-            if(!auto && pending > 0) {
-                if(!confirm("ATENCION: Tienes " + pending + " preguntas SIN RESPONDER O INCORRECTAS.\\n\\nSi finalizas ahora:\\n- Las preguntas que YA has acertado se guardan (Puntos: " + correctCount + ").\\n- Las " + pending + " preguntas restantes contarán como 0 puntos.\\n\\n¿Quieres entregar la tarea así?")) return;
+            // In Exam Mode, "solved" means "answered/saved".
+            
+            // Count CORRECT answers for score
+            const correctCount = studentAnswers.filter(a => a.isCorrect).length;
+            
+            if(!auto && pending > 0 && !EXAM_CONFIG.isExam) {
+                if(!confirm("ATENCION: Tienes " + pending + " preguntas SIN RESPONDER O INCORRECTAS. Si finalizas ahora: - Las preguntas que YA has acertado se guardan (Puntos: " + correctCount + "). - Las " + pending + " preguntas restantes contarán como 0 puntos. ¿Quieres entregar la tarea así?")) return;
             }
+            
+            if (!auto && EXAM_CONFIG.isExam) {
+                 if(!confirm("¿Seguro que quieres ENTREGAR el examen? No podrás cambiar tus respuestas.")) return;
+            }
+            
             isFinished = true;
             document.querySelectorAll("input, button").forEach(el => el.disabled = true);
             document.getElementById("manual-finish-btn").classList.add("hidden");
+            if(document.getElementById("exam-nav")) document.getElementById("exam-nav").classList.add("hidden");
+            
             const totalQuestions = questionStates.length;
             const finalScore = (correctCount / totalQuestions) * 10;
             const phrase = await CryptoEngine.generateProof(TASK_SEED, studentCode, finalScore);
+            
             document.getElementById("final-section").classList.remove("hidden");
             document.getElementById("phrase-display").textContent = phrase;
-            document.getElementById("final-score-display").textContent = finalScore.toFixed(1);
+            
+            if (EXAM_CONFIG.isExam && !EXAM_CONFIG.showResult) {
+                document.getElementById("final-score-display").textContent = "🙈 Oculta (Examen)";
+                document.querySelector("#final-section h2").textContent = "📤 Examen Entregado";
+            } else {
+                // SISTEMA CONFIGURABLE DE BLOQUEO
+                const feedbackCode = TASK_CONFIG.feedbackCode || '';
+                const lockType = TASK_CONFIG.lockType || 'both'; // both, score, feedback, none
+                
+                // Determinar qué mostrar según configuración
+                const needsCode = feedbackCode && lockType !== 'none';
+                const lockScore = lockType === 'both' || lockType === 'score';
+                const lockFeedback = lockType === 'both' || lockType === 'feedback';
+                
+                if (needsCode) {
+                    // Bloquear según configuración
+                    if (lockScore) {
+                        document.getElementById("final-score-display").textContent = "🔒 Bloqueada";
+                    } else {
+                        document.getElementById("final-score-display").textContent = finalScore.toFixed(1);
+                    }
+                    
+                    // Crear sección de desbloqueo
+                    const feedbackSection = document.createElement('div');
+                    feedbackSection.id = 'feedback-unlock-section';
+                    feedbackSection.style.cssText = 'margin-top:2rem; padding:2rem; background:#f3f4f6; border-radius:12px; text-align:center;';
+                    
+                    let message = '';
+                    if (lockType === 'both') {
+                        message = 'Para ver tu <strong>nota</strong> y revisar las <strong>respuestas correctas</strong>, pide el código al profesor.';
+                    } else if (lockType === 'score') {
+                        message = 'Para ver tu <strong>nota</strong>, pide el código al profesor.';
+                    } else if (lockType === 'feedback') {
+                        message = 'Para revisar las <strong>respuestas correctas</strong>, pide el código al profesor.';
+                    }
+                    
+                    feedbackSection.innerHTML = '<h3 style="color:#1e293b; margin-bottom:1rem; font-size:1.2rem;">🔒 Resultados Bloqueados</h3><p style="color:#64748b; margin-bottom:1.5rem;">' + message + '</p><input type="text" id="feedback-code-input" placeholder="Introduce el código" style="padding:0.75rem; border:2px solid #cbd5e1; border-radius:8px; font-size:1rem; text-align:center; font-family:monospace; text-transform:uppercase; width:200px; margin-right:10px;" maxlength="10"><button onclick="unlockResults()" style="padding:0.75rem 2rem; background:#3b82f6; color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer; font-size:1rem;">Desbloquear</button><div id="feedback-error" style="color:#dc2626; margin-top:1rem; font-weight:600; display:none;">❌ Código incorrecto</div>';
+                    document.getElementById("final-section").appendChild(feedbackSection);
+                    
+                    // Función global para desbloquear según lockType
+                    window.unlockResults = function() {
+                        const inputCode = document.getElementById('feedback-code-input').value.trim().toUpperCase();
+                        if (inputCode === feedbackCode) {
+                            // Mostrar nota si estaba bloqueada
+                            if (lockScore) {
+                                document.getElementById("final-score-display").textContent = finalScore.toFixed(1);
+                            }
+                            // Ocultar sección de bloqueo
+                            document.getElementById('feedback-unlock-section').style.display = 'none';
+                            // Mostrar feedback si estaba bloqueado
+                            if (lockFeedback) {
+                                showFeedback();
+                            }
+                        } else {
+                            const errorEl = document.getElementById('feedback-error');
+                            errorEl.style.display = 'block';
+                            setTimeout(() => errorEl.style.display = 'none', 3000);
+                        }
+                    };
+                    
+                    // Si el feedback NO está bloqueado, mostrarlo ya
+                    if (!lockFeedback) {
+                        showFeedback();
+                    }
+                } else {
+                    // Sin código o lockType=none: mostrar todo directamente
+                    document.getElementById("final-score-display").textContent = finalScore.toFixed(1);
+                    showFeedback();
+                }
+                
+                function showFeedback() {
+                    // Show all questions
+                    document.querySelectorAll('.question-card').forEach(c => c.classList.remove('hidden'));
+                    
+                    // Hide Nav Bar
+                    const navEl = document.getElementById("exam-nav");
+                    if(navEl) navEl.classList.add('hidden');
+
+                    // Inject feedback into each card
+                    studentAnswers.forEach((ans, i) => {
+                        const feedbackEl = document.getElementById("feedback-" + i);
+                        if(feedbackEl) {
+                            const status = ans.isCorrect ? "✅ Correcta" : (ans.wasSkipped ? "⏭️ Saltada" : "❌ Incorrecta");
+                            const color = ans.isCorrect ? "green" : (ans.wasSkipped ? "gray" : "red");
+                            
+                            let html = '<div style="margin-top:10px; padding:10px; background:#f9fafb; border-radius:6px; border-left:4px solid ' + color + '">';
+                            html += '<p style="font-weight:bold; color:' + color + '">' + status + '</p>';
+                            
+                            if (!ans.isCorrect) {
+                                html += '<p style="margin-top:5px;"><strong>Solución:</strong> <span style="font-family:monospace; color:green;">' + ans.correctAnswer + '</span></p>';
+                                if (ans.formula) {
+                                    html += '<p style="font-size:0.9em; color:#666;"><strong>Fórmula:</strong> ' + ans.formula + '</p>';
+                                }
+                            }
+                            html += '</div>';
+                            feedbackEl.innerHTML = html;
+                        }
+                    });
+                    
+                    // Scroll to top
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+            
             document.getElementById("final-section").scrollIntoView({ behavior: "smooth" });
             if(GOOGLE_URL) {
                 const statusEl = document.getElementById("google-status");
@@ -720,7 +1308,7 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
                     // Prepare detailed answer data for evidence
                     const answersData = studentAnswers.map((ans, idx) => ({
                         questionNumber: idx + 1,
-                        question: ans.question.replace(/<[^>]*>/g, ''), // Remove HTML tags
+                        question: (ans.question || '').replace(/<[^>]*>/g, ''), // Remove HTML tags
                         studentAnswer: ans.wasSkipped ? 'SALTADA' : (ans.studentAnswer !== null ? ans.studentAnswer : 'Sin respuesta'),
                         correctAnswer: ans.correctAnswer,
                         isCorrect: ans.isCorrect,
@@ -743,7 +1331,8 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
                             answers: answersData,
                             totalQuestions: totalQuestions,
                             correctCount: correctCount,
-                            taskConfig: TASK_CONFIG // Send full config for reconstruction
+                            taskConfig: TASK_CONFIG, // Send full config for reconstruction
+                            focusLossCount: typeof focusLossCount !== 'undefined' ? focusLossCount : 0
                         }) 
                     });
                     statusEl.textContent = "✅ Nota y evidencias enviadas al profesor correctamente."; statusEl.style.color = "green";
@@ -751,12 +1340,28 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
             }
         };
         
-        function markAsSolved(index) {
-            const answer = studentAnswers[index].studentAnswer;
+        function markAsSolved(index, answer) {
             document.getElementById("q-card-" + index).classList.add("solved");
             document.getElementById("badge-" + index).textContent = "Completado";
             document.getElementById("badge-" + index).classList.add("correct");
-            document.getElementById("input-area-" + index).innerHTML = '<div style="padding:10px; background:#dcfce7; color:#166534; border-radius:6px; border:1px solid #bbf7d0;"><strong>✅ Respuesta Guardada:</strong> ' + answer + '</div>';
+            
+            const inputArea = document.getElementById("input-area-" + index);
+            if (inputArea) {
+                // Numeric
+                inputArea.innerHTML = '<div style="padding:10px; background:#f3f4f6; color:#374151; border-radius:6px; border:1px solid #d1d5db;"><strong>💾 Respuesta Guardada:</strong> ' + answer + '</div>';
+            } else {
+                // Choice (Find the container)
+                const card = document.getElementById("q-card-" + index);
+                // Remove inputs and button
+                const inputs = card.querySelectorAll('label, button, .space-y-2');
+                inputs.forEach(el => el.remove());
+                
+                const successMsg = document.createElement('div');
+                successMsg.style.cssText = 'padding:10px; background:#f3f4f6; color:#374151; border-radius:6px; border:1px solid #d1d5db; margin-top:10px;';
+                successMsg.innerHTML = '<strong>💾 Respuesta Guardada:</strong> ' + answer;
+                card.appendChild(successMsg);
+            }
+            
             document.getElementById("feedback-" + index).textContent = "";
         }
         
@@ -764,8 +1369,60 @@ export async function generateStudentHTML(taskName, seed, config, antiCopyMode =
             document.getElementById("q-card-" + index).classList.add("skipped");
             document.getElementById("badge-" + index).textContent = "Saltado";
             document.getElementById("badge-" + index).classList.add("skipped");
-            document.getElementById("input-area-" + index).innerHTML = '<p style="color:red; font-weight:bold;">⏭️ Pregunta Saltada (0 puntos)</p>';
+            
+            const inputArea = document.getElementById("input-area-" + index);
+            if (inputArea) {
+                inputArea.innerHTML = '<p style="color:red; font-weight:bold;">⏭️ Pregunta Saltada (0 puntos)</p>';
+            } else {
+                 // Choice
+                const card = document.getElementById("q-card-" + index);
+                const inputs = card.querySelectorAll('label, button, .space-y-2');
+                inputs.forEach(el => el.remove());
+                
+                const skipMsg = document.createElement('div');
+                skipMsg.style.cssText = 'color:red; font-weight:bold; margin-top:10px;';
+                skipMsg.innerHTML = '⏭️ Pregunta Saltada (0 puntos)';
+                card.appendChild(skipMsg);
+            }
             document.getElementById("feedback-" + index).textContent = "";
+        }
+
+        // SPY MODE LOGIC
+        let focusLossCount = 0;
+        if (EXAM_CONFIG.isExam) {
+            console.log("DEBUG: Spy Mode Active");
+            
+            // Create Focus Counter UI
+            const counterEl = document.createElement('div');
+            counterEl.id = 'focus-loss-counter';
+            counterEl.style.cssText = 'position:fixed; bottom:10px; left:10px; background:rgba(220,38,38,0.95); color:white; padding:8px 16px; border-radius:8px; font-size:0.9rem; z-index:5000; display:none; font-weight:600; border:2px solid rgba(248,113,113,0.5);';
+            counterEl.innerHTML = '🚨 Cambios de ventana detectados: <span id="focus-count-val">0</span><div style="font-size:0.7rem; margin-top:2px; opacity:0.9;">Registrado y reportado al profesor</div>';
+            document.body.appendChild(counterEl);
+
+            window.addEventListener('blur', () => {
+                console.log("DEBUG: Window Blur Detected");
+                if (!isFinished) {
+                    focusLossCount++;
+                    document.getElementById('focus-count-val').textContent = focusLossCount;
+                    counterEl.style.display = 'block';
+                    
+                    const overlay = document.getElementById('spy-overlay');
+                    if(overlay) {
+                        overlay.style.display = 'flex';
+                        // Update overlay text to show count
+                        const p = overlay.querySelector('p:last-child');
+                        if(p) p.innerHTML = 'El examen se ha pausado por seguridad.<br><br><span style="color:#dc2626; font-size:1.3rem; font-weight:700;">⚠️ Cambios de ventana: ' + focusLossCount + '</span><br><span style="font-size:0.9rem; margin-top:8px; display:block;">Este registro se enviará al profesor</span>';
+                    }
+                    document.title = "⚠️ ¡EXAMEN PAUSADO - VUELVE! ⚠️";
+                }
+            });
+            
+            window.addEventListener('focus', () => {
+                console.log("DEBUG: Window Focus Detected");
+                const overlay = document.getElementById('spy-overlay');
+                if(overlay) overlay.style.display = 'none';
+                document.title = TASK_NAME;
+            });
         }
         
     </script>
