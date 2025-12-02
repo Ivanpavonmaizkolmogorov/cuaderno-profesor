@@ -28,6 +28,9 @@ export function renderCryptoPage() {
                         <button type="button" id="crypto-import-history-btn" class="px-3 py-2 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded hover:bg-green-200 dark:hover:bg-green-800 transition-colors" title="Importar Tareas desde Excel">
                             🔄
                         </button>
+                        <button type="button" id="crypto-delete-task-btn" class="px-3 py-2 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors" title="Borrar Tarea Seleccionada">
+                            🗑️
+                        </button>
                     </div>
                 </div>
                 
@@ -65,6 +68,14 @@ export function renderCryptoPage() {
                                 <input type="radio" name="crypto-task-mode" value="cooperative" class="form-radio text-purple-600">
                                 <span class="ml-2 text-sm text-gray-700 dark:text-gray-300 font-bold text-purple-600">Cooperativo (Nuevo)</span>
                             </label>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="crypto-secure-mode" class="form-checkbox text-green-600 h-5 w-5" checked>
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300 font-bold">🔒 Modo Seguro (Anti-Suplantación)</span>
+                            </label>
+                            <p class="text-xs text-gray-500 ml-7 mt-1">Genera códigos de acceso únicos (ej: A1B2) en lugar de usar el número de lista. Evita que un alumno entre como otro.</p>
                         </div>
 
                         <!-- Group Management Panel (Hidden by default) -->
@@ -169,10 +180,13 @@ export function renderCryptoPage() {
 
                 <hr class="my-6 border-gray-200 dark:border-gray-700">
 
-                <h4 class="font-semibold mb-2">Reconstrucción de Examen</h4>
-                <p class="text-sm text-gray-500 mb-4">Visualiza el examen exacto que tuvo este alumno (requiere el JSON cargado a la izquierda).</p>
+                <h4 class="font-semibold mb-2">Simular Examen del Alumno (Solucionario)</h4>
+                <p class="text-sm text-gray-500 mb-4">Genera el examen exacto que está viendo el alumno ahora mismo para ver sus datos y soluciones.</p>
                 <button id="reconstruct-btn" class="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition-colors mb-4">
-                    👁️ Ver Examen del Alumno
+                    👁️ Simular Examen y Ver Soluciones
+                </button>
+                <button id="view-access-codes-btn" class="w-full py-2 px-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg transition-colors mb-4 hidden">
+                    🔑 Ver Códigos de Acceso (Modo Seguro)
                 </button>
                 <textarea id="verify-json" class="hidden"></textarea> <!-- Hidden input for reconstruction logic -->
                 <div id="reconstruction-container" class="space-y-4 hidden max-h-96 overflow-y-auto p-2 border rounded dark:border-gray-700"></div>
@@ -316,13 +330,56 @@ function doPost(e) {
 export function attachCryptoListeners() {
     // Load saved Google Script URL
     const db = getDB();
+
+    // --- SAFETY NET: Recover History from LocalStorage if session is empty ---
+    try {
+        const localData = localStorage.getItem('cuaderno-profesor-db');
+        if (localData) {
+            const localDB = JSON.parse(localData);
+
+            // 1. Recover Google URL
+            if (!db.googleScriptUrl && localDB.googleScriptUrl) {
+                db.googleScriptUrl = localDB.googleScriptUrl;
+            }
+
+            // 2. Recover Tasks if session is empty but local has data
+            if ((!db.cryptoTasks || db.cryptoTasks.length === 0) && localDB.cryptoTasks && localDB.cryptoTasks.length > 0) {
+                console.log("DEBUG: Recovering crypto tasks from LocalStorage safety net.");
+                db.cryptoTasks = localDB.cryptoTasks;
+            }
+        }
+    } catch (e) {
+        console.error("Error reading from localStorage:", e);
+    }
+
     const googleUrlInput = document.getElementById('crypto-google-url');
-    if (db.googleScriptUrl && googleUrlInput) {
+
+    // Default URL if none saved
+    const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFme8d4_NvfwCPvjKRxNi7w6gJgHl2_h3pi8mAZCSjbIZKnnc0ZNm1hQWuQaKqJat2jA/exec';
+
+    if (!db.googleScriptUrl) {
+        console.log("DEBUG: No saved Google URL, using default.");
+        db.googleScriptUrl = DEFAULT_SCRIPT_URL;
+        // Save to DB immediately
+        localStorage.setItem('cuaderno-profesor-db', JSON.stringify(db));
+    }
+
+    if (googleUrlInput) {
         googleUrlInput.value = db.googleScriptUrl;
     }
 
     // History Loader
     const historySelect = document.getElementById('crypto-history-select');
+
+    // Refresh Dropdown if we recovered data
+    if (historySelect && db.cryptoTasks && db.cryptoTasks.length > 0) {
+        // Check if dropdown is empty (has only default option)
+        if (historySelect.options.length <= 1) {
+            historySelect.innerHTML = `<option value="">-- Nueva Tarea --</option>` +
+                db.cryptoTasks.slice().reverse().map(t => `<option value="${t.id}">${t.name} (${new Date(t.createdAt).toLocaleDateString()})</option>`).join('');
+        }
+    }
+
     if (historySelect) {
         historySelect.addEventListener('change', () => {
             const taskId = historySelect.value;
@@ -341,6 +398,128 @@ export function attachCryptoListeners() {
                 document.getElementById('crypto-task-seed').value = task.seed;
                 document.getElementById('crypto-task-json').value = JSON.stringify(task.config, null, 2);
                 if (task.moduleId) document.getElementById('crypto-module-select').value = task.moduleId;
+
+                // Toggle Secure Mode Button
+                const viewCodesBtn = document.getElementById('view-access-codes-btn');
+                if (viewCodesBtn) {
+                    if (task.secureMode) {
+                        viewCodesBtn.classList.remove('hidden');
+                    } else {
+                        viewCodesBtn.classList.add('hidden');
+                    }
+                }
+            }
+        });
+    }
+
+    // View Access Codes Logic
+    const viewCodesBtn = document.getElementById('view-access-codes-btn');
+    if (viewCodesBtn) {
+        viewCodesBtn.addEventListener('click', async () => {
+            const historySelect = document.getElementById('crypto-history-select');
+            const taskId = historySelect.value;
+            if (!taskId) return;
+
+            const db = getDB();
+            const task = db.cryptoTasks.find(t => t.id === taskId);
+            if (!task || !task.moduleId) {
+                alert("No se puede recuperar la lista de alumnos de esta tarea.");
+                return;
+            }
+
+            const module = db.modules.find(m => m.id === task.moduleId);
+            if (!module || !module.studentIds) return;
+
+            const students = module.studentIds.map((id, index) => {
+                const s = db.students.find(s => s.id === id);
+                return s ? { ...s, originalIndex: index } : null;
+            }).filter(Boolean);
+
+            // Sort alphabetically (Robust)
+            students.sort((a, b) => {
+                const nameA = (a.apellidos || '') + ' ' + (a.nombre || '') || a.name || '';
+                const nameB = (b.apellidos || '') + ' ' + (b.nombre || '') || b.name || '';
+                return nameA.localeCompare(nameB);
+            });
+
+            let rows = '';
+            for (const s of students) {
+                // Use originalIndex + 1 (List Number) to match the HTML generator logic
+                const listNumber = s.originalIndex + 1;
+                const raw = `ACCESS-${task.seed}-${listNumber}`;
+                const hash = await CryptoEngine.hash(raw);
+                const code = hash.substring(0, 4).toUpperCase();
+                const displayName = s.apellidos ? `${s.apellidos}, ${s.nombre}` : s.name;
+
+                rows += `<tr class="border-b dark:border-gray-700">
+                    <td class="p-2">${displayName}</td>
+                    <td class="p-2 font-mono font-bold text-center text-blue-600 dark:text-blue-400 text-lg select-all">${code}</td>
+                </tr>`;
+            }
+
+            // Create Modal
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:10000;display:flex;align-items:center;justify-content:center;';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-11/12 md:w-1/2 max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold">🔑 Códigos de Acceso - ${task.name}</h3>
+                        <button class="text-gray-500 hover:text-gray-700 text-2xl" onclick="this.closest('div').parentElement.parentElement.remove()">&times;</button>
+                    </div>
+                    <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">Proyecta esta lista o diles su código a cada alumno. Deben introducirlo tal cual para entrar.</p>
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 dark:bg-gray-700">
+                                <th class="p-2">Alumno</th>
+                                <th class="p-2 text-center">Código</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <div class="mt-6 text-right">
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onclick="this.closest('div').parentElement.parentElement.remove()">Cerrar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        });
+    }
+
+    // Delete Task Logic
+    const deleteBtn = document.getElementById('crypto-delete-task-btn');
+    if (deleteBtn && historySelect) {
+        deleteBtn.addEventListener('click', () => {
+            const taskId = historySelect.value;
+            if (!taskId) {
+                alert("Selecciona una tarea del historial para borrarla.");
+                return;
+            }
+
+            const db = getDB();
+            const taskIndex = db.cryptoTasks.findIndex(t => t.id === taskId);
+
+            if (taskIndex !== -1) {
+                const taskName = db.cryptoTasks[taskIndex].name;
+                if (confirm(`¿Estás seguro de que quieres borrar la tarea "${taskName}"?\n\nEsta acción no se puede deshacer.`)) {
+                    // Remove
+                    db.cryptoTasks.splice(taskIndex, 1);
+
+                    // Save
+                    localStorage.setItem('cuaderno-profesor-db', JSON.stringify(db));
+                    if (window.saveDB) window.saveDB();
+
+                    // Update UI
+                    historySelect.innerHTML = `<option value="">-- Nueva Tarea --</option>` +
+                        db.cryptoTasks.slice().reverse().map(t => `<option value="${t.id}">${t.name} (${new Date(t.createdAt).toLocaleDateString()})</option>`).join('');
+
+                    // Clear form
+                    document.getElementById('crypto-task-name').value = '';
+                    document.getElementById('crypto-task-seed').value = '';
+                    document.getElementById('crypto-task-json').value = '';
+                    historySelect.value = "";
+
+                    alert("Tarea borrada correctamente.");
+                }
             }
         });
     }
@@ -601,7 +780,79 @@ function doGet(e) {
                 // Set mode if exists
                 if (task.config && task.config.mode) {
                     const modeRadio = document.querySelector(`input[name="crypto-task-mode"][value="${task.config.mode}"]`);
-                    if (modeRadio && !modeRadio.disabled) modeRadio.checked = true;
+                    if (modeRadio && !modeRadio.disabled) {
+                        modeRadio.checked = true;
+                        // Trigger change event to show/hide panel
+                        modeRadio.dispatchEvent(new Event('change'));
+                    }
+
+                    // RESTORE GROUPS
+                    if (task.config.mode === 'cooperative' && task.config.groups) {
+                        console.log("DEBUG: Attempting to restore groups", task.config.groups);
+
+                        // Determine Module ID: Use saved ID or current selection fallback
+                        let targetModuleId = task.moduleId;
+                        const moduleSelect = document.getElementById('crypto-module-select');
+
+                        if (!targetModuleId) {
+                            if (moduleSelect) {
+                                targetModuleId = moduleSelect.value;
+                                console.log("DEBUG: Fallback to selected module:", targetModuleId);
+                                console.log("DEBUG: Module Select Options:", moduleSelect.options.length);
+                            }
+                        }
+
+                        if (targetModuleId) {
+                            const module = db.modules.find(m => m.id === targetModuleId);
+                            console.log("DEBUG: Module found:", module);
+
+                            // Auto-select the module in the dropdown if it wasn't selected
+                            if (moduleSelect && moduleSelect.value !== targetModuleId) {
+                                moduleSelect.value = targetModuleId;
+                            }
+
+                            if (module && module.studentIds) {
+                                const allStudents = module.studentIds.map(id => db.students.find(s => s.id === id)).filter(Boolean);
+                                console.log("DEBUG: All Students:", allStudents);
+
+                                // Reconstruct groups state
+                                groups = [];
+                                const assignedIds = new Set();
+
+                                task.config.groups.forEach(g => {
+                                    const groupMembers = [];
+                                    g.members.forEach(memberCode => {
+                                        // MemberCode is the List Index (1-based)
+                                        const index = parseInt(memberCode) - 1;
+                                        if (index >= 0 && index < allStudents.length) {
+                                            const student = allStudents[index];
+                                            groupMembers.push(student);
+                                            assignedIds.add(student.id);
+                                        } else {
+                                            console.warn("DEBUG: Student not found for code", memberCode, "Index:", index);
+                                        }
+                                    });
+                                    if (groupMembers.length > 0) groups.push(groupMembers);
+                                });
+
+                                console.log("DEBUG: Reconstructed Groups:", groups);
+
+                                // Update unassigned
+                                unassignedStudents = allStudents.filter(s => !assignedIds.has(s.id));
+
+                                // Render
+                                renderUI();
+                                updateGroupsConfig();
+                            }
+                        } else {
+                            console.warn("DEBUG: No moduleId found (saved or selected)");
+                            // Save pending groups to restore later when module is selected
+                            pendingGroupsConfig = task.config.groups;
+                            alert("⚠️ ¡Atención!\n\nEsta tarea antigua no tiene guardada la clase a la que pertenece.\n\nPara recuperar los grupos:\n1. Cierra este mensaje.\n2. Selecciona la CLASE correcta en el desplegable 'Clase / Módulo'.\n\nLos grupos aparecerán automáticamente al seleccionar la clase.");
+                        }
+                    } else {
+                        console.log("DEBUG: No groups to restore or not cooperative");
+                    }
                 }
             }
         });
@@ -639,6 +890,7 @@ function doGet(e) {
                         const taskName = getVal("Tarea");
                         const seed = getVal("Semilla");
                         const configRaw = getVal("Config") || getVal("JSON");
+                        const className = getVal("Clase");
 
                         if (taskName && seed && configRaw) {
                             // Check if exists
@@ -651,11 +903,19 @@ function doGet(e) {
                                     // CLEANUP: Remove students list from config to keep it generic
                                     if (config.students) delete config.students;
 
+                                    // Resolve Module ID
+                                    let moduleId = null;
+                                    if (className) {
+                                        const module = db.modules.find(m => m.name === className);
+                                        if (module) moduleId = module.id;
+                                    }
+
                                     db.cryptoTasks.push({
                                         id: Date.now().toString() + Math.random(),
                                         name: taskName,
                                         seed: seed,
                                         config: config,
+                                        moduleId: moduleId,
                                         googleUrl: googleUrl,
                                         createdAt: new Date().toISOString()
                                     });
@@ -703,6 +963,7 @@ function doGet(e) {
     // State
     let unassignedStudents = [];
     let groups = []; // Array of arrays of student objects
+    let pendingGroupsConfig = null; // Store groups here if module is missing during load
 
     // Toggle Panel
     modeRadios.forEach(radio => {
@@ -734,9 +995,97 @@ function doGet(e) {
 
     // Listen for Module Change to reload pool
     const moduleSelect = document.getElementById('crypto-module-select');
+
+    function updateReconstructionSelector() {
+        const moduleId = moduleSelect.value;
+        const select = document.getElementById('reconstruct-student-select');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">-- Seleccionar Alumno --</option>';
+
+        if (!moduleId) return;
+
+        const db = getDB();
+        const module = db.modules.find(m => m.id === moduleId);
+        if (module && module.studentIds) {
+            // Map students with their original index (which acts as the Code)
+            const students = module.studentIds.map((id, index) => {
+                const s = db.students.find(s => s.id === id);
+                return s ? { ...s, originalIndex: index } : null;
+            }).filter(Boolean);
+
+            // Sort for display (Robust)
+            students.sort((a, b) => {
+                const nameA = (a.apellidos || '') + ' ' + (a.nombre || '') || a.name || '';
+                const nameB = (b.apellidos || '') + ' ' + (b.nombre || '') || b.name || '';
+                return nameA.localeCompare(nameB);
+            });
+
+            students.forEach(s => {
+                const code = s.originalIndex + 1;
+                const displayName = s.apellidos ? `${s.apellidos}, ${s.nombre}` : s.name;
+                const option = document.createElement('option');
+                option.value = code;
+                option.textContent = `${displayName} (ID: ${code})`;
+                select.appendChild(option);
+            });
+        }
+    }
+
+    // Add listener to reconstruction selector
+    const reconstructSelect = document.getElementById('reconstruct-student-select');
+    if (reconstructSelect) {
+        reconstructSelect.addEventListener('change', (e) => {
+            const codeInput = document.getElementById('verify-student-code');
+            if (codeInput) codeInput.value = e.target.value;
+        });
+    }
+
     if (moduleSelect) {
         moduleSelect.addEventListener('change', () => {
-            if (!groupPanel.classList.contains('hidden')) loadStudentsFromModule();
+            updateReconstructionSelector(); // Update selector on change
+            if (!groupPanel.classList.contains('hidden')) {
+                loadStudentsFromModule();
+
+                // Check if we have pending groups to restore
+                if (pendingGroupsConfig) {
+                    console.log("DEBUG: Restoring pending groups for new module...");
+                    const db = getDB();
+                    const moduleId = moduleSelect.value;
+                    const module = db.modules.find(m => m.id === moduleId);
+
+                    if (module && module.studentIds) {
+                        const allStudents = module.studentIds.map(id => db.students.find(s => s.id === id)).filter(Boolean);
+
+                        groups = [];
+                        const assignedIds = new Set();
+
+                        pendingGroupsConfig.forEach(g => {
+                            const groupMembers = [];
+                            g.members.forEach(memberCode => {
+                                const index = parseInt(memberCode) - 1;
+                                if (index >= 0 && index < allStudents.length) {
+                                    const student = allStudents[index];
+                                    groupMembers.push(student);
+                                    assignedIds.add(student.id);
+                                }
+                            });
+                            if (groupMembers.length > 0) groups.push(groupMembers);
+                        });
+
+                        // Update unassigned
+                        unassignedStudents = allStudents.filter(s => !assignedIds.has(s.id));
+
+                        // Render
+                        renderUI();
+                        updateGroupsConfig();
+
+                        // Clear pending
+                        pendingGroupsConfig = null;
+                        console.log("DEBUG: Pending groups restored!");
+                    }
+                }
+            }
         });
     }
 
@@ -856,14 +1205,24 @@ function doGet(e) {
     }
 
     function updateGroupsConfig() {
+        // We need to map Student DB IDs to List Indices (1, 2, 3...) because that's what students use to login
+        const moduleId = document.getElementById('crypto-module-select').value;
+        let moduleStudentIds = [];
+        if (moduleId) {
+            const db = getDB();
+            const module = db.modules.find(m => m.id === moduleId);
+            if (module) moduleStudentIds = module.studentIds;
+        }
+
         const configGroups = groups.map((g, i) => ({
             id: i + 1,
-            members: g.map(s => s.id)
+            members: g.map(s => {
+                const index = moduleStudentIds.indexOf(s.id);
+                // Return 1-based index if found, otherwise keep original ID (fallback)
+                return index !== -1 ? index + 1 : s.id;
+            })
         }));
-        // We store it in the DOM so the submit handler can read it easily
-        // Or we can just read 'groups' variable if scope allows. 
-        // Since 'groups' is in this block scope, we need to expose it.
-        // Let's use the hidden input I added.
+
         const input = document.getElementById('groups-config-json');
         if (input) input.value = JSON.stringify(configGroups);
     }
@@ -912,31 +1271,113 @@ function doGet(e) {
     const exampleBtn = document.getElementById('crypto-load-example-btn');
     if (exampleBtn) {
         exampleBtn.addEventListener('click', () => {
-            const example = {
-                "scenario": "<h3>Supuesto: La Tienda</h3><p>Estamos en una tienda con un IVA del 21%.</p><p>Hoy hay un descuento especial del 10% en ropa.</p>",
-                "questions": [
-                    {
-                        "variables": { "precio": { "min": 10, "max": 100 } },
-                        "formula": "Number((precio * 1.21).toFixed(2))",
-                        "question": "Calcula el precio final con IVA de un producto que cuesta {precio}€."
-                    },
-                    {
-                        "variables": { "precioRopa": { "min": 20, "max": 80 } },
-                        "formula": "Number((precioRopa * 0.90).toFixed(2))",
-                        "question": "Una camisa cuesta {precioRopa}€. Aplica el descuento del 10%."
-                    },
-                    {
-                        "variables": { "cantidad": { "min": 2, "max": 10 }, "precioUnitario": { "min": 5, "max": 15 } },
-                        "formula": "Number((cantidad * precioUnitario).toFixed(2))",
-                        "question": "Si compro {cantidad} unidades a {precioUnitario}€ cada una, ¿cuánto pago en total?"
-                    },
-                    {
-                        "variables": { "total": { "min": 10, "max": 50 }, "pagado": { "min": 50, "max": 100 } },
-                        "formula": "Number((pagado - total).toFixed(2))",
-                        "question": "La cuenta es de {total}€ y pago con {pagado}€. ¿Cuánto me devuelven?"
-                    }
-                ]
-            };
+            const mode = document.querySelector('input[name="crypto-task-mode"]:checked').value;
+            let example;
+
+            if (mode === 'cooperative') {
+                example = {
+                    "scenario": "<h3>Misión: Protocolo Fantasma</h3><p>Agentes, para activar el sistema debéis obtener vuestros códigos de acceso individuales y luego combinarlos.</p>",
+                    "questions": [
+                        // BLOQUE 1: INICIACIÓN
+                        {
+                            "type": "parallel",
+                            "items": [
+                                { "variables": { "a": { "min": 2, "max": 9 } }, "formula": "a * 10", "question": "Fase 1 (Individual): Calcula {a} x 10." },
+                                { "variables": { "b": { "min": 2, "max": 9 } }, "formula": "b * 10 + 5", "question": "Fase 1 (Individual): Calcula {b} x 10 + 5." }
+                            ]
+                        },
+                        {
+                            "type": "parallel",
+                            "items": [
+                                { "variables": { "c": { "min": 1, "max": 5 } }, "formula": "c + 100", "question": "Fase 2 (Individual): Suma 100 a {c}." },
+                                { "variables": { "d": { "min": 1, "max": 5 } }, "formula": "d + 200", "question": "Fase 2 (Individual): Suma 200 a {d}." }
+                            ]
+                        },
+                        {
+                            "shards": ["El resultado de la Fase 1 fue {r1}", "El resultado de la Fase 2 fue {r2}"],
+                            "variables": { "r1": { "min": 20, "max": 95 }, "r2": { "min": 101, "max": 205 } },
+                            "formula": "r1 + r2",
+                            "question": "CHECKPOINT 1 (Grupal): Sumad vuestros resultados de la Fase 1 y Fase 2."
+                        },
+
+                        // BLOQUE 2: OPERACIONES INTERMEDIAS
+                        {
+                            "type": "parallel",
+                            "items": [
+                                { "variables": { "e": { "min": 50, "max": 60 } }, "formula": "e - 10", "question": "Fase 4 (Individual): Resta 10 a {e}." },
+                                { "variables": { "f": { "min": 50, "max": 60 } }, "formula": "f - 20", "question": "Fase 4 (Individual): Resta 20 a {f}." }
+                            ]
+                        },
+                        {
+                            "type": "parallel",
+                            "items": [
+                                { "variables": { "g": { "min": 2, "max": 8 } }, "formula": "g * 2", "question": "Fase 5 (Individual): Dobla el valor de {g}." },
+                                { "variables": { "h": { "min": 2, "max": 8 } }, "formula": "h * 3", "question": "Fase 5 (Individual): Triplica el valor de {h}." }
+                            ]
+                        },
+                        {
+                            "type": "parallel",
+                            "items": [
+                                { "variables": { "i": { "min": 20, "max": 40 } }, "formula": "i / 2", "question": "Fase 6 (Individual): Divide {i} entre 2." },
+                                { "variables": { "j": { "min": 20, "max": 40 } }, "formula": "j / 2", "question": "Fase 6 (Individual): Divide {j} entre 2." }
+                            ]
+                        },
+                        {
+                            "shards": ["Clave Fase 4: {k1}", "Clave Fase 5: {k2}", "Clave Fase 6: {k3}"],
+                            "variables": { "k1": { "min": 30, "max": 50 }, "k2": { "min": 4, "max": 24 }, "k3": { "min": 10, "max": 20 } },
+                            "formula": "k1 + k2 + k3",
+                            "question": "CHECKPOINT 2 (Grupal): Sumad los resultados de las Fases 4, 5 y 6."
+                        },
+
+                        // BLOQUE 3: FASE FINAL
+                        {
+                            "type": "parallel",
+                            "items": [
+                                { "variables": { "k": { "min": 2, "max": 5 } }, "formula": "k * k", "question": "Fase 8 (Individual): Calcula el cuadrado de {k}." },
+                                { "variables": { "l": { "min": 2, "max": 5 } }, "formula": "l * l * l", "question": "Fase 8 (Individual): Calcula el cubo de {l}." }
+                            ]
+                        },
+                        {
+                            "shards": ["El cuadrado fue {sq}", "El cubo fue {cb}"],
+                            "variables": { "sq": { "min": 4, "max": 25 }, "cb": { "min": 8, "max": 125 } },
+                            "formula": "cb - sq",
+                            "question": "Fase 9 (Grupal): Restad el Cuadrado al Cubo (Cubo - Cuadrado)."
+                        },
+                        {
+                            "shards": ["Suma Checkpoint 1: {cp1}", "Suma Checkpoint 2: {cp2}", "Resultado Fase 9: {f9}"],
+                            "variables": { "cp1": { "min": 100, "max": 300 }, "cp2": { "min": 50, "max": 100 }, "f9": { "min": 1, "max": 100 } },
+                            "formula": "cp1 + cp2 + f9",
+                            "question": "MISIÓN FINAL: Introducid la suma de TODOS los resultados grupales anteriores (Checkpoint 1 + Checkpoint 2 + Fase 9)."
+                        }
+                    ]
+                };
+            } else {
+                example = {
+                    "scenario": "<h3>Supuesto: La Tienda</h3><p>Estamos en una tienda con un IVA del 21%.</p><p>Hoy hay un descuento especial del 10% en ropa.</p>",
+                    "questions": [
+                        {
+                            "variables": { "precio": { "min": 10, "max": 100 } },
+                            "formula": "Number((precio * 1.21).toFixed(2))",
+                            "question": "Calcula el precio final con IVA de un producto que cuesta {precio}€."
+                        },
+                        {
+                            "variables": { "precioRopa": { "min": 20, "max": 80 } },
+                            "formula": "Number((precioRopa * 0.90).toFixed(2))",
+                            "question": "Una camisa cuesta {precioRopa}€. Aplica el descuento del 10%."
+                        },
+                        {
+                            "variables": { "cantidad": { "min": 2, "max": 10 }, "precioUnitario": { "min": 5, "max": 15 } },
+                            "formula": "Number((cantidad * precioUnitario).toFixed(2))",
+                            "question": "Si compro {cantidad} unidades a {precioUnitario}€ cada una, ¿cuánto pago en total?"
+                        },
+                        {
+                            "variables": { "total": { "min": 10, "max": 50 }, "pagado": { "min": 50, "max": 100 } },
+                            "formula": "Number((pagado - total).toFixed(2))",
+                            "question": "La cuenta es de {total}€ y pago con {pagado}€. ¿Cuánto me devuelven?"
+                        }
+                    ]
+                };
+            }
             document.getElementById('crypto-task-json').value = JSON.stringify(example, null, 2);
         });
     }
@@ -967,6 +1408,14 @@ function doGet(e) {
             const mode = document.querySelector('input[name="crypto-task-mode"]:checked').value;
             if (config) {
                 config.mode = mode;
+            } else {
+                alert("⚠️ Debes introducir una configuración JSON válida (o cargar un ejemplo).");
+                return;
+            }
+
+            if (!config.questions || !Array.isArray(config.questions) || config.questions.length === 0) {
+                alert("⚠️ El JSON debe contener una lista de preguntas ('questions').");
+                return;
             }
 
             // Add Groups if Cooperative
@@ -1009,6 +1458,8 @@ function doGet(e) {
                 }
             }
 
+            const secureMode = document.getElementById('crypto-secure-mode').checked;
+
             // SAVE TASK TO HISTORY
             const db = getDB();
             if (!db.cryptoTasks) db.cryptoTasks = [];
@@ -1024,6 +1475,7 @@ function doGet(e) {
                 config,
                 googleUrl,
                 antiCopy,
+                secureMode,
                 createdAt: new Date().toISOString()
             };
 
@@ -1045,9 +1497,11 @@ function doGet(e) {
                 historySelect.innerHTML = `<option value="">-- Nueva Tarea --</option>` +
                     db.cryptoTasks.slice().reverse().map(t => `<option value="${t.id}">${t.name} (${new Date(t.createdAt).toLocaleDateString()})</option>`).join('');
                 historySelect.value = taskData.id;
+                // Trigger change event to update UI (show simulation buttons, etc.)
+                historySelect.dispatchEvent(new Event('change'));
             }
 
-            const htmlContent = generateStudentHTML(name, seed, config, antiCopy, googleUrl, studentsForTask, moduleName);
+            const htmlContent = await generateStudentHTML(name, seed, config, antiCopy, googleUrl, studentsForTask, moduleName, secureMode);
 
             // Copy HTML to clipboard
             navigator.clipboard.writeText(htmlContent).then(() => {
@@ -1179,7 +1633,47 @@ function doGet(e) {
 
             questions.forEach((qConfig, index) => {
                 try {
-                    const params = CryptoEngine.generateParams(seed, code, qConfig, index);
+                    let seedForParams = code;
+                    let configToUse = { ...qConfig };
+
+                    // Cooperative Logic for Reconstruction
+                    if (config.mode === 'cooperative' && config.groups) {
+                        const group = config.groups.find(g => g.members.includes(parseInt(code)) || g.members.includes(String(code)));
+                        if (group) {
+                            const memberIndex = group.members.findIndex(m => m == code);
+
+                            // PARALLEL MODE
+                            if (qConfig.type === 'parallel' && qConfig.items && qConfig.items.length > 0) {
+                                if (memberIndex !== -1) {
+                                    const itemIndex = memberIndex % qConfig.items.length;
+                                    configToUse = { ...qConfig.items[itemIndex] };
+                                    seedForParams = code; // Individual seed
+                                    configToUse.question = "<div class='mb-2 text-xs font-bold text-blue-600 uppercase tracking-wider'>Misión Individual</div>" + configToUse.question;
+                                }
+                            }
+                            else {
+                                // STANDARD COOPERATIVE
+                                const groupId = parseInt(group.id) || 0;
+                                seedForParams = groupId * 9999;
+
+                                // Show ALL Shards for the Group (Teacher View)
+                                if (qConfig.shards && qConfig.shards.length > 0) {
+                                    const groupSize = group.members.length;
+                                    let allShardsHtml = "";
+
+                                    qConfig.shards.forEach((shard, i) => {
+                                        const assignedMemberIndex = i % groupSize;
+                                        const assignedMemberName = "Miembro " + (assignedMemberIndex + 1);
+                                        allShardsHtml += "<div class='mt-2 p-2 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 text-xs rounded'><strong>🧩 Pista (" + assignedMemberName + "):</strong><br>" + shard + "</div>";
+                                    });
+
+                                    configToUse.question = qConfig.question + "<div class='mt-4'>" + allShardsHtml + "</div>";
+                                }
+                            }
+                        }
+                    }
+
+                    const params = CryptoEngine.generateParams(seed, seedForParams, configToUse, index);
 
                     const card = document.createElement('div');
                     card.className = "p-4 border rounded dark:border-gray-700 bg-gray-50 dark:bg-gray-900";

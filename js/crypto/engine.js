@@ -31,7 +31,7 @@ export const CryptoEngine = {
 
         const keys = Object.keys(vars);
         const values = Object.values(vars);
-        const formulaFunc = new Function(...keys, 'return ' + questionConfig.formula);
+        const formulaFunc = new Function(...keys, 'const { max, min, round, floor, ceil, abs, random, sqrt, pow, sin, cos, tan, PI } = Math; return ' + questionConfig.formula);
         const result = formulaFunc(...values);
 
         let question = questionConfig.question;
@@ -39,7 +39,7 @@ export const CryptoEngine = {
             question = question.split('{' + key + '}').join(val);
         }
 
-        return { vars, result, question };
+        return { vars, result, question, formula: questionConfig.formula };
     },
     async generateProof(seed, studentCode, score) {
         const s = String(seed).trim();
@@ -69,7 +69,8 @@ export const CryptoEngine = {
             </div>
             <div class="text-gray-800 dark:text-gray-200 mb-2">${params.question}</div>
             <div class="text-xs text-gray-500 font-mono mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                Variables: ${varsStr}
+                <div>Variables: ${varsStr}</div>
+                <div class="mt-1 text-blue-600 dark:text-blue-400">𝑓(x) = ${params.formula || 'N/A'}</div>
             </div>
         `;
     }
@@ -79,7 +80,7 @@ export function verifyProof(seed, studentCode, score) {
     return CryptoEngine.generateProof(seed, studentCode, score);
 }
 
-export function generateStudentHTML(taskName, seed, config, antiCopyMode = true, googleScriptUrl = '', students = [], moduleName = '') {
+export async function generateStudentHTML(taskName, seed, config, antiCopyMode = true, googleScriptUrl = '', students = [], moduleName = '', secureMode = false) {
     let taskConfig = config;
     if (!taskConfig) {
         taskConfig = {
@@ -97,65 +98,83 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
     // Add students array to taskConfig for name lookup
     taskConfig.students = students;
 
+    // Generate Access Codes Map if Secure Mode is on
+    let accessCodesMap = {};
+    if (secureMode && students.length > 0) {
+        for (const student of students) {
+            // Generate 4-char code: Hash(Seed + ID)
+            const raw = `ACCESS-${seed}-${student.id}`;
+            const hash = await CryptoEngine.hash(raw);
+            const code = hash.substring(0, 4).toUpperCase();
+            accessCodesMap[code] = student.id;
+        }
+    }
+
     // Build the CryptoEngine code as a string array
     const cryptoEngineCode = [
         'const CryptoEngine = {',
-        '    async hash(text) {',
-        '        const msgBuffer = new TextEncoder().encode(text);',
-        '        const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);',
-        '        const hashArray = Array.from(new Uint8Array(hashBuffer));',
-        '        return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");',
-        '    },',
-        '    pseudoRandom(seed) {',
-        '        let s = seed;',
-        '        return function() {',
-        '            s = Math.sin(s) * 10000;',
-        '            return s - Math.floor(s);',
-        '        };',
-        '    },',
-        '    generateParams(seed, studentCode, questionConfig, questionIndex) {',
-        '        const combinedSeed = parseInt(seed) + parseInt(studentCode) + (questionIndex * 1337);',
-        '        const rng = this.pseudoRandom(combinedSeed);',
-        '        const vars = {};',
-        '        for (const [key, rule] of Object.entries(questionConfig.variables)) {',
-        '            if (Array.isArray(rule)) {',
-        '                const index = Math.floor(rng() * rule.length);',
-        '                vars[key] = rule[index];',
-        '            } else if (typeof rule === "object" && rule.min !== undefined) {',
-        '                vars[key] = Math.floor(rng() * (rule.max - rule.min + 1)) + rule.min;',
-        '            }',
-        '        }',
-        '        const keys = Object.keys(vars);',
-        '        const values = Object.values(vars);',
-        '        const formulaFunc = new Function(...keys, "return " + questionConfig.formula);',
-        '        const result = formulaFunc(...values);',
-        '        let question = questionConfig.question;',
-        '        for (const [key, val] of Object.entries(vars)) {',
-        '            question = question.split("{" + key + "}").join(val);',
-        '        }',
-        '        return { vars, result, question };',
-        '    },',
-        '    async generateProof(seed, studentCode, score) {',
-        '        const s = String(seed).trim();',
-        '        const c = String(studentCode).trim();',
-        '        let scoreStr = score;',
-        '        if (typeof score === "number") {',
-        '            scoreStr = (score % 1 === 0) ? score.toString() : score.toFixed(1);',
-        '        }',
-        '        const raw = "TASK-" + s + "-STUDENT-" + c + "-SCORE-" + scoreStr;',
-        '        const hash = await this.hash(raw);',
-        '        return hash.substring(0, 10).toUpperCase();',
-        '    }',
+        `    async hash(text) {
+        const msgBuffer = new TextEncoder().encode(text);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    },`,
+        `    pseudoRandom(seed) {
+        let s = seed;
+        return function () {
+            s = Math.sin(s) * 10000;
+            return s - Math.floor(s);
+        };
+    },`,
+        `    generateParams(seed, studentCode, questionConfig, questionIndex) {
+        const combinedSeed = parseInt(seed) + parseInt(studentCode) + (questionIndex * 1337);
+        const rng = this.pseudoRandom(combinedSeed);
+
+        const vars = {};
+        for (const [key, rule] of Object.entries(questionConfig.variables)) {
+            if (Array.isArray(rule)) {
+                const index = Math.floor(rng() * rule.length);
+                vars[key] = rule[index];
+            } else if (typeof rule === 'object' && rule.min !== undefined) {
+                const min = rule.min;
+                const max = rule.max;
+                vars[key] = Math.floor(rng() * (max - min + 1)) + min;
+            }
+        }
+
+        const keys = Object.keys(vars);
+        const values = Object.values(vars);
+        const formulaFunc = new Function(...keys, 'const { max, min, round, floor, ceil, abs, random, sqrt, pow, sin, cos, tan, PI } = Math; return ' + questionConfig.formula);
+        const result = formulaFunc(...values);
+
+        let question = questionConfig.question;
+        for (const [key, val] of Object.entries(vars)) {
+            question = question.split('{' + key + '}').join(val);
+        }
+
+        return { vars, result, question, formula: questionConfig.formula };
+    },`,
+        `    async generateProof(seed, studentCode, score) {
+        const s = String(seed).trim();
+        const c = String(studentCode).trim();
+        let scoreStr = score;
+        if (typeof score === 'number') {
+            scoreStr = (score % 1 === 0) ? score.toString() : score.toFixed(1);
+        }
+        const raw = 'TASK-' + s + '-STUDENT-' + c + '-SCORE-' + scoreStr;
+        const hash = await this.hash(raw);
+        return hash.substring(0, 10).toUpperCase();
+    }`,
         '};'
     ].join('\n');
 
     // Anti-copy protection scripts (concatenated as single line strings)
     const antiCopyScript = antiCopyMode ?
-        'document.addEventListener("contextmenu", e => e.preventDefault());' +
-        'document.addEventListener("copy", e => e.preventDefault());' +
-        'document.addEventListener("cut", e => e.preventDefault());' +
-        'document.addEventListener("paste", e => e.preventDefault());' +
-        'document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && ["c","v","u","p"].includes(e.key)) e.preventDefault(); });'
+        'document.addEventListener("contextmenu", e => { if(typeof GOD_MODE!=="undefined"&&GOD_MODE)return; e.preventDefault(); });' +
+        'document.addEventListener("copy", e => { if(typeof GOD_MODE!=="undefined"&&GOD_MODE)return; e.preventDefault(); });' +
+        'document.addEventListener("cut", e => { if(typeof GOD_MODE!=="undefined"&&GOD_MODE)return; e.preventDefault(); });' +
+        'document.addEventListener("paste", e => { if(typeof GOD_MODE!=="undefined"&&GOD_MODE)return; e.preventDefault(); });' +
+        'document.addEventListener("keydown", e => { if(typeof GOD_MODE!=="undefined"&&GOD_MODE)return; if ((e.ctrlKey || e.metaKey) && ["c","v","u","p"].includes(e.key)) e.preventDefault(); });'
         : '';
 
     const antiCopyCSS = antiCopyMode ?
@@ -171,7 +190,6 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${taskName}</title>
     <title>${taskName}</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f8fafc; color: #1e293b; padding-bottom: 100px; }
@@ -206,11 +224,11 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
 <body>
     <div class="header">
         <h1>${taskName}</h1>
-        <p>Introduce tu código de lista (ej: 1, 2, 3...) para desbloquear los ejercicios.</p>
+        <p>${secureMode ? '⚠️ <strong>PASO OBLIGATORIO:</strong> Pide a tu profesor tu <strong>CÓDIGO DE ACCESO</strong> personal (4 letras/números) para poder empezar.' : 'Introduce tu código de lista (ej: 1, 2, 3...) para desbloquear los ejercicios.'}</p>
     </div>
     <div id="login-card" class="card">
-        <label><strong>Código de Alumno:</strong></label>
-        <input type="number" id="student-code" placeholder="Ej: 5" required>
+        <label><strong>${secureMode ? 'Código de Acceso:' : 'Código de Alumno:'}</strong></label>
+        <input type="${secureMode ? 'text' : 'number'}" id="student-code" placeholder="${secureMode ? 'Ej: A1B2' : 'Ej: 5'}" required style="text-transform: uppercase;">
         <button id="start-btn">Comenzar Tarea</button>
     </div>
     <div id="dashboard" class="hidden">
@@ -232,17 +250,266 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
         const GOOGLE_URL = "${googleScriptUrl || ''}";
         const MODULE_NAME = "${(moduleName || '').replace(/"/g, '\\"')}";
         const TASK_NAME = "${(taskName || '').replace(/"/g, '\\"')}";
+        const SECURE_MODE = ${secureMode};
+        const ACCESS_CODES = ${JSON.stringify(accessCodesMap)};
         ${cryptoEngineCode}
+        
+        // --- GLOBAL ERROR HANDLER (Nivel 1) ---
+        window.onerror = function(msg, url, line, col, error) {
+            showErrorBtn(msg + "\\nLine: " + line + ":" + col);
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function(event) {
+            showErrorBtn("Unhandled Promise Rejection: " + event.reason);
+        });
+
+        function showErrorBtn(details) {
+            let btn = document.getElementById('debug-bug-btn');
+            if(!btn) {
+                btn = document.createElement('div');
+                btn.id = 'debug-bug-btn';
+                btn.innerHTML = '🐞';
+                btn.style.cssText = 'position:fixed; bottom:10px; right:10px; font-size:24px; cursor:pointer; z-index:9999; background:rgba(255,0,0,0.2); padding:5px; border-radius:50%;';
+                btn.onclick = () => alert("DEBUG ERROR:\\n" + details);
+                document.body.appendChild(btn);
+            }
+        }
+
+        // --- GOD MODE (Nivel 2) ---
+        let GOD_MODE = false;
+        const GOD_PIN = "5332";
+        // Sequence: Up, Down, Right, Left (x3)
+        const GOD_SEQ = [
+            "ArrowUp", "ArrowDown", "ArrowRight", "ArrowLeft",
+            "ArrowUp", "ArrowDown", "ArrowRight", "ArrowLeft",
+            "ArrowUp", "ArrowDown", "ArrowRight", "ArrowLeft"
+        ];
+        let godSeqIndex = 0;
+        let pinAttempts = 0;
+
+        document.addEventListener('keydown', (e) => {
+            if (GOD_MODE) return; // Already active
+            
+            // Check Sequence
+            if (e.key === GOD_SEQ[godSeqIndex]) {
+                godSeqIndex++;
+                if (godSeqIndex === GOD_SEQ.length) {
+                    godSeqIndex = 0;
+                    showPinModal();
+                }
+            } else {
+                godSeqIndex = 0; // Reset if mistake
+            }
+        });
+
+        function showPinModal() {
+            pinAttempts = 0;
+            let modal = document.getElementById('god-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'god-modal';
+                modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:20000; display:flex; justify-content:center; align-items:center;';
+                modal.innerHTML = \`
+                    <div style="background:white; padding:2rem; border-radius:12px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+                        <h2 style="margin-top:0; color:#1e293b;">🕵️ Acceso Profesor</h2>
+                        <p style="margin-bottom:1rem; color:#64748b;">Introduce el PIN de seguridad</p>
+                        <input type="password" id="god-pin-input" maxlength="4" style="font-size:2rem; letter-spacing:10px; text-align:center; width:150px; margin-bottom:1rem; border:2px solid #e2e8f0; border-radius:8px;">
+                        <div id="god-msg" style="height:20px; color:red; margin-bottom:1rem; font-weight:bold;"></div>
+                        <button onclick="checkPin()" style="width:100%; background:#3b82f6; color:white; border:none; padding:10px; border-radius:6px; font-size:1rem; cursor:pointer;">Desbloquear</button>
+                        <button onclick="closeGodModal()" style="width:100%; background:transparent; color:#64748b; border:none; padding:10px; margin-top:5px; cursor:pointer;">Cancelar</button>
+                    </div>
+                \`;
+                document.body.appendChild(modal);
+            }
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            setTimeout(() => document.getElementById('god-pin-input').focus(), 100);
+            
+            // Enter key support
+            const input = document.getElementById('god-pin-input');
+            input.value = '';
+            input.onkeydown = (e) => { if(e.key === 'Enter') checkPin(); };
+        }
+
+        window.closeGodModal = function() {
+            const modal = document.getElementById('god-modal');
+            if(modal) modal.style.display = 'none';
+            godSeqIndex = 0;
+        };
+
+        window.checkPin = function() {
+            const input = document.getElementById('god-pin-input');
+            const msg = document.getElementById('god-msg');
+            
+            if (input.value === GOD_PIN) {
+                closeGodModal();
+                activateGodMode();
+            } else {
+                pinAttempts++;
+                input.value = '';
+                input.focus();
+                if (pinAttempts >= 3) {
+                    alert("⛔ Demasiados intentos fallidos.");
+                    closeGodModal();
+                } else {
+                    msg.textContent = "PIN Incorrecto (" + pinAttempts + "/3)";
+                }
+            }
+        };
+
+        function activateGodMode() {
+            console.log("DEBUG: Activating God Mode");
+            GOD_MODE = true;
+            
+            // 1. Generate Badges (Hidden by default)
+            document.querySelectorAll('.question-card').forEach((card, index) => {
+                if(card.querySelector('.god-sol-badge')) return;
+                
+                const result = studentAnswers[index].correctAnswer;
+                
+                // Try to find formula
+                let formula = "N/A";
+                try {
+                     const qConfig = TASK_CONFIG.questions[index];
+                     if (qConfig.type === 'parallel' && qConfig.items && qConfig.items.length > 0) {
+                         if (typeof memberIndex !== 'undefined' && memberIndex !== -1) {
+                             const itemIndex = memberIndex % qConfig.items.length;
+                             if (qConfig.items[itemIndex] && qConfig.items[itemIndex].formula) {
+                                 formula = qConfig.items[itemIndex].formula;
+                             }
+                         } else {
+                             formula = "Paralelo (Sin Grupo)";
+                         }
+                     } else if (qConfig.formula) {
+                         formula = qConfig.formula;
+                     }
+                } catch(e) { console.error(e); }
+
+                const contentDiv = card.querySelector('.q-content');
+
+                // Badge 1: Solution (Yellow)
+                const solBadge = document.createElement('div');
+                solBadge.className = 'god-sol-badge';
+                solBadge.style.cssText = 'display:none; background:#fef08a; color:#854d0e; padding:4px 8px; border-radius:4px; font-weight:bold; margin-top:5px; border:1px solid #fde047; margin-right:5px;';
+                solBadge.innerHTML = '👁️ Sol: ' + result;
+                contentDiv.appendChild(solBadge);
+
+                // Badge 2: Formula (Blue)
+                const formBadge = document.createElement('div');
+                formBadge.className = 'god-formula-badge';
+                formBadge.style.cssText = 'display:none; background:#dbeafe; color:#1e40af; padding:4px 8px; border-radius:4px; font-family:monospace; font-size:0.9rem; margin-top:5px; border:1px solid #93c5fd;';
+                formBadge.innerHTML = '📐 𝑓(x): ' + formula;
+                contentDiv.appendChild(formBadge);
+            });
+            
+            // 2. Visual Indicator & Controls
+            let indicator = document.getElementById('god-indicator');
+            if(!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'god-indicator';
+                indicator.style.cssText = "position:fixed; top:0; left:0; width:100%; background:#ef4444; color:white; padding:8px; font-weight:bold; z-index:10000; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 10px rgba(0,0,0,0.2);";
+                indicator.innerHTML = \`
+                    <span style="margin-left:20px;">🔓 MODO DIOS</span>
+                    <div>
+                        <button onclick="toggleGodAnswers()" id="god-sol-btn" style="margin-right:10px; background:rgba(255,255,255,0.2); color:white; border:1px solid white; padding:5px 15px; border-radius:20px; cursor:pointer;">👁️ Soluciones</button>
+                        <button onclick="toggleGodFormulas()" id="god-form-btn" style="margin-right:10px; background:rgba(255,255,255,0.2); color:white; border:1px solid white; padding:5px 15px; border-radius:20px; cursor:pointer;">📐 Fórmulas</button>
+                        <button onclick="deactivateGodMode()" style="margin-right:20px; background:white; color:#ef4444; border:none; padding:5px 15px; border-radius:20px; font-weight:bold; cursor:pointer;">🔒 Echar Candado</button>
+                    </div>
+                \`;
+                document.body.appendChild(indicator);
+            }
+            indicator.style.display = 'flex';
+        }
+
+        window.toggleGodAnswers = function() {
+            const badges = document.querySelectorAll('.god-sol-badge');
+            const btn = document.getElementById('god-sol-btn');
+            let isHidden = true;
+            
+            badges.forEach(b => {
+                if (b.style.display === 'none') {
+                    b.style.display = 'inline-block';
+                    isHidden = false;
+                } else {
+                    b.style.display = 'none';
+                    isHidden = true;
+                }
+            });
+            
+            if(btn) {
+                btn.style.background = isHidden ? 'rgba(255,255,255,0.2)' : 'white';
+                btn.style.color = isHidden ? 'white' : '#ef4444';
+            }
+        };
+
+        window.toggleGodFormulas = function() {
+            const badges = document.querySelectorAll('.god-formula-badge');
+            const btn = document.getElementById('god-form-btn');
+            let isHidden = true;
+            
+            badges.forEach(b => {
+                if (b.style.display === 'none') {
+                    b.style.display = 'inline-block';
+                    isHidden = false;
+                } else {
+                    b.style.display = 'none';
+                    isHidden = true;
+                }
+            });
+            
+            if(btn) {
+                btn.style.background = isHidden ? 'rgba(255,255,255,0.2)' : 'white';
+                btn.style.color = isHidden ? 'white' : '#ef4444';
+            }
+        };
+
+        window.deactivateGodMode = function() {
+            console.log("DEBUG: Deactivating God Mode");
+            GOD_MODE = false;
+            
+            // Hide Indicator
+            const indicator = document.getElementById('god-indicator');
+            if(indicator) indicator.style.display = 'none';
+            
+            // Remove Answer Badges
+            document.querySelectorAll('.god-sol-badge').forEach(el => el.remove());
+            document.querySelectorAll('.god-formula-badge').forEach(el => el.remove());
+            
+            alert("🔒 MODO DIOS DESACTIVADO\\nLas protecciones se han reactivado.");
+        };
         
         let studentCode = "";
         let studentName = "";
+        let currentGroup = null;
+        let memberIndex = -1;
         let questionStates = [];
         let studentAnswers = []; // Store student's answers for PDF
         let isFinished = false;
         
         document.getElementById("start-btn").addEventListener("click", () => {
-            studentCode = document.getElementById("student-code").value.trim();
-            if(!studentCode) return alert("Introduce tu código");
+            let inputCode = document.getElementById("student-code").value.trim();
+            console.log("DEBUG: Input Code:", inputCode);
+            console.log("DEBUG: Secure Mode:", SECURE_MODE);
+
+            if(!inputCode) return alert("Introduce tu código");
+            
+            if (SECURE_MODE) {
+                inputCode = inputCode.toUpperCase();
+                console.log("DEBUG: Normalized Code:", inputCode);
+                console.log("DEBUG: Available Codes:", Object.keys(ACCESS_CODES));
+
+                if (ACCESS_CODES[inputCode]) {
+                    // Map Access Code to Real Student ID
+                    studentCode = String(ACCESS_CODES[inputCode]);
+                    console.log("DEBUG: Login Success! Student ID:", studentCode);
+                } else {
+                    console.warn("DEBUG: Code not found in map.");
+                    alert("❌ Código de Acceso Incorrecto.");
+                    return;
+                }
+            } else {
+                studentCode = inputCode;
+            }
             
             // Find student name from TASK_CONFIG.students array
             const student = TASK_CONFIG.students?.find(s => String(s.id) === String(studentCode));
@@ -250,6 +517,26 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
             if (!student) {
                 alert("❌ Código no válido.\\n\\nEste código no pertenece a la lista de alumnos de esta clase.\\nPor favor, verifica tu número de lista.");
                 return;
+            }
+
+            // COOPERATIVE CHECK
+            if (TASK_CONFIG.mode === 'cooperative') {
+                if (!TASK_CONFIG.groups) {
+                    alert("Error: Modo cooperativo sin grupos definidos.");
+                    return;
+                }
+                // Check if student is in any group
+                // Groups are { id: 1, members: [id1, id2] }
+                const group = TASK_CONFIG.groups.find(g => g.members.includes(parseInt(studentCode)) || g.members.includes(String(studentCode)));
+                
+                if (!group) {
+                    alert("❌ No perteneces a ningún equipo asignado.\\nConsulta con tu profesor.");
+                    return;
+                }
+                currentGroup = group;
+                // Find index in members array
+                memberIndex = group.members.findIndex(m => m == studentCode);
+                alert(\`👥 ¡Bienvenido al Equipo \${group.id}!\\nEres el Miembro \${memberIndex + 1}.\`);
             }
 
             studentName = student.name;
@@ -263,7 +550,50 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
             container.innerHTML = "";
             
             TASK_CONFIG.questions.forEach((qConfig, index) => {
-                const params = CryptoEngine.generateParams(TASK_SEED, studentCode, qConfig, index);
+                // Determine Seed: Individual (StudentCode) or Cooperative (GroupId)
+                let seedForParams = studentCode;
+                let configToUse = { ...qConfig };
+
+                if (TASK_CONFIG.mode === 'cooperative' && currentGroup) {
+                    // PARALLEL MODE: Each member gets a specific sub-task
+                    if (qConfig.type === 'parallel' && qConfig.items && qConfig.items.length > 0) {
+                        // Use Individual Seed for Parallel Items (so they are unique to the student)
+                        seedForParams = studentCode;
+                        
+                        // Select item for this member (modulo distribution)
+                        const itemIndex = memberIndex % qConfig.items.length;
+                        configToUse = { ...qConfig.items[itemIndex] };
+                        
+                        // Add visual indicator
+                        configToUse.question = "<div class='mb-2 text-xs font-bold text-blue-600 uppercase tracking-wider'>Misión Individual</div>" + configToUse.question;
+                    } 
+                    else {
+                        // STANDARD COOPERATIVE: Shared question with shards
+                        const groupId = parseInt(currentGroup.id) || 0;
+                        seedForParams = groupId * 9999; // Deterministic group seed
+                        
+                        // Handle Shards (Fragmented Info)
+                        if (qConfig.shards && qConfig.shards.length > 0) {
+                            // Distribute shards among group members
+                            const groupSize = currentGroup.members.length;
+                            const myShards = qConfig.shards.filter((_, i) => (i % groupSize) === memberIndex);
+                            
+                            if (myShards.length > 0) {
+                                const shardsHtml = myShards.map(s => "<div class='mt-2 p-2 bg-purple-50 border border-purple-200 rounded text-purple-800 text-sm'><strong>🧩 Pista:</strong><br>" + s + "</div>").join('');
+                                configToUse.question = qConfig.question + "<div class='mt-4'>" + shardsHtml + "</div>";
+                            }
+                        }
+                    }
+                }
+
+                let params;
+                try {
+                    params = CryptoEngine.generateParams(TASK_SEED, seedForParams, configToUse, index);
+                } catch (e) {
+                    console.error("Error generating params:", e);
+                    params = { vars: {}, result: 0, question: "Error: " + e.message };
+                }
+                
                 questionStates.push({ solved: false, skipped: false, attempts: 0, result: params.result });
                 
                 // Store question and correct answer for PDF
@@ -277,10 +607,19 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
                 
                 const card = document.createElement("div");
                 card.className = "question-card";
+                if (index > 0) card.classList.add("hidden"); // Hide future questions
                 card.id = "q-card-" + index;
-                card.innerHTML = \`<div class="q-header"><span><strong>Pregunta \${index + 1}</strong></span><span class="q-badge" id="badge-\${index}">Pendiente</span></div><div class="q-content">\${params.question}</div><div id="input-area-\${index}"><input type="text" inputmode="decimal" id="input-\${index}" placeholder="Tu respuesta (usa coma , para decimales)" class="w-full p-2 border rounded"><button onclick="checkAnswer(\${index})">Comprobar</button><button onclick="skipAnswer(\${index})" id="skip-btn-\${index}" class="skip-btn hidden">Saltar Pregunta (0 pts)</button></div><div class="feedback" id="feedback-\${index}"></div>\`;
+                card.innerHTML = "<div class='q-header'><span><strong>Pregunta " + (index + 1) + "</strong></span><span class='q-badge' id='badge-" + index + "'>Pendiente</span></div><div class='q-content'>" + params.question + "</div><div id='input-area-" + index + "'><input type='text' inputmode='decimal' id='input-" + index + "' placeholder='Tu respuesta (usa coma , para decimales)' class='w-full p-2 border rounded'><button onclick='checkAnswer(" + index + ")'>Comprobar</button><button onclick='skipAnswer(" + index + ")' id='skip-btn-" + index + "' class='skip-btn hidden'>Saltar Pregunta (0 pts)</button></div><div class='feedback' id='feedback-" + index + "'></div>";
                 container.appendChild(card);
             });
+        }
+        
+        function revealNext(index) {
+            const nextCard = document.getElementById("q-card-" + (index + 1));
+            if (nextCard) {
+                nextCard.classList.remove("hidden");
+                nextCard.scrollIntoView({ behavior: "smooth" });
+            }
         }
         
         window.checkAnswer = function(index) {
@@ -316,10 +655,13 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
             // Store student's answer
             studentAnswers[index].studentAnswer = answer;
             
+            console.log("DEBUG Check Q" + (index+1) + ": Input=" + answer + ", Expected=" + state.result + ", Diff=" + Math.abs(answer - state.result) + ", Tolerance=" + tolerance);
+
             if(Math.abs(answer - state.result) <= tolerance) { 
                 state.solved = true; 
                 studentAnswers[index].isCorrect = true;
                 markAsSolved(index); 
+                revealNext(index);
             }
             else { 
                 feedback.textContent = "❌ Incorrecto"; 
@@ -335,6 +677,7 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
                 questionStates[index].skipped = true;
                 studentAnswers[index].wasSkipped = true;
                 markAsSkipped(index);
+                revealNext(index);
                 if(questionStates.every(q => q.solved || q.skipped)) finishTask(true);
             }
         };
@@ -409,10 +752,11 @@ export function generateStudentHTML(taskName, seed, config, antiCopyMode = true,
         };
         
         function markAsSolved(index) {
+            const answer = studentAnswers[index].studentAnswer;
             document.getElementById("q-card-" + index).classList.add("solved");
             document.getElementById("badge-" + index).textContent = "Completado";
             document.getElementById("badge-" + index).classList.add("correct");
-            document.getElementById("input-area-" + index).innerHTML = '<p style="color:green; font-weight:bold;">✅ ¡Respuesta Correcta!</p>';
+            document.getElementById("input-area-" + index).innerHTML = '<div style="padding:10px; background:#dcfce7; color:#166534; border-radius:6px; border:1px solid #bbf7d0;"><strong>✅ Respuesta Guardada:</strong> ' + answer + '</div>';
             document.getElementById("feedback-" + index).textContent = "";
         }
         
